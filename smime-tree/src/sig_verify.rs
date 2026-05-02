@@ -19,15 +19,14 @@ use crate::SmimeError;
 /// `D` must be a digest with an associated OID so that `VerifyingKey::new` can
 /// embed the DigestInfo prefix.  `err` maps a human-readable string to the
 /// appropriate `SmimeError` variant at the call site.
-pub(crate) fn verify_rsa_pkcs1<D, E>(
+pub(crate) fn verify_rsa_pkcs1<D>(
     cert: &Certificate,
     tbs_bytes: &[u8],
     sig_bytes: &[u8],
-    err: E,
+    err: impl Fn(String) -> SmimeError,
 ) -> Result<(), SmimeError>
 where
     D: Digest + AssociatedOid,
-    E: Fn(String) -> SmimeError,
 {
     let spki_der = cert
         .tbs_certificate()
@@ -45,15 +44,12 @@ where
 ///
 /// `err` maps a human-readable string to the appropriate `SmimeError` variant
 /// at the call site.
-pub(crate) fn verify_ecdsa_p256<E>(
+pub(crate) fn verify_ecdsa_p256(
     cert: &Certificate,
     tbs_bytes: &[u8],
     sig_bytes: &[u8],
-    err: E,
-) -> Result<(), SmimeError>
-where
-    E: Fn(String) -> SmimeError,
-{
+    err: impl Fn(String) -> SmimeError,
+) -> Result<(), SmimeError> {
     let pub_bytes = cert
         .tbs_certificate()
         .subject_public_key_info()
@@ -70,15 +66,12 @@ where
 ///
 /// `err` maps a human-readable string to the appropriate `SmimeError` variant
 /// at the call site.
-pub(crate) fn verify_ecdsa_p384<E>(
+pub(crate) fn verify_ecdsa_p384(
     cert: &Certificate,
     tbs_bytes: &[u8],
     sig_bytes: &[u8],
-    err: E,
-) -> Result<(), SmimeError>
-where
-    E: Fn(String) -> SmimeError,
-{
+    err: impl Fn(String) -> SmimeError,
+) -> Result<(), SmimeError> {
     let pub_bytes = cert
         .tbs_certificate()
         .subject_public_key_info()
