@@ -19,6 +19,8 @@ use const_oid::db::{
 use der::{asn1::OctetString, Decode, Encode};
 use spki::AlgorithmIdentifierOwned;
 
+use zeroize::Zeroizing;
+
 use crate::error::SmimeError;
 use crate::key::{
     DecryptionKey, KariAlgorithm, KariKeyAgreement, KeyEncryptionAlgorithm, KeyWrapAlgorithm,
@@ -90,10 +92,12 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
 
 /// Iterate all `RecipientInfo` entries, call the key to decrypt the CEK for
 /// the first matching recipient, and return it.
+///
+/// The CEK is wrapped in `Zeroizing` so it is scrubbed from memory on drop.
 fn find_and_decrypt_cek(
     env_data: &EnvelopedData,
     key: &dyn DecryptionKey,
-) -> Result<Vec<u8>, SmimeError> {
+) -> Result<Zeroizing<Vec<u8>>, SmimeError> {
     for ri in env_data.recip_infos.0.iter() {
         match ri {
             RecipientInfo::Ktri(ktri) => {
@@ -102,7 +106,7 @@ fn find_and_decrypt_cek(
                     continue;
                 }
                 let alg = map_ktri_alg(ktri)?;
-                return key.decrypt_cek(ktri.enc_key.as_bytes(), &alg);
+                return key.decrypt_cek(ktri.enc_key.as_bytes(), &alg).map(Zeroizing::new);
             }
 
             RecipientInfo::Kari(kari) => {
@@ -191,7 +195,7 @@ fn cms_rid_to_owned(
 fn try_decrypt_kari(
     kari: &KeyAgreeRecipientInfo,
     key: &dyn DecryptionKey,
-) -> Result<Option<Vec<u8>>, SmimeError> {
+) -> Result<Option<Zeroizing<Vec<u8>>>, SmimeError> {
     // Only ephemeral originator keys are supported (the standard S/MIME case).
     // Static originators (IssuerAndSerialNumber or SubjectKeyIdentifier) are rare
     // and require a different key-lookup path not modelled by the current trait.
@@ -229,7 +233,7 @@ fn try_decrypt_kari(
         rek.enc_key.as_bytes(),
         &kari_alg,
     )?;
-    Ok(Some(cek))
+    Ok(Some(Zeroizing::new(cek)))
 }
 
 /// Parse the `keyEncryptionAlgorithm` of a KARI into a [`KariAlgorithm`].
