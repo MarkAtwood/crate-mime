@@ -29,7 +29,7 @@ Do not relitigate without explicit user approval.
 3. **`mail-parser` is a private implementation detail.** No `mail-parser` types appear in
    the public API. All public types are defined in this crate.
 4. **Best-effort parsing.** Malformed input yields a partial result plus
-   `ParsedMessage.warnings: Vec<String>`. Only truly unparseable input (empty bytes, no
+   `ParsedMessage.warnings: Vec<String>`. Only truly unparsable input (empty bytes, no
    headers at all) returns `Err`.
 5. **Owned, lifetime-free public types.** `ParsedPart` and `ParsedMessage` carry no
    lifetime parameters. Both implement `Serialize + Deserialize`.
