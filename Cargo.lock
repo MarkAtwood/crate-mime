@@ -806,6 +806,7 @@ dependencies = [
  "spki",
  "tempfile",
  "x509-cert",
+ "zeroize",
 ]
 
 [[package]]

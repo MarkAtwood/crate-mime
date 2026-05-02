@@ -28,6 +28,7 @@ spki = { version = "0.8" }
 signature = { version = "=3.0.0-rc.10" }
 getrandom = { version = "0.4", features = ["sys_rng"] }
 serde = { version = "1", features = ["derive"] }
+zeroize = { version = "1", features = ["zeroize_derive"] }
 mime-tree = { path = "../mime-tree" }
 
 [dev-dependencies]

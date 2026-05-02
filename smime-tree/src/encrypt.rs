@@ -28,6 +28,8 @@ use rsa::{pkcs8::DecodePublicKey, RsaPublicKey};
 use spki::AlgorithmIdentifierOwned;
 use x509_cert::Certificate;
 
+use zeroize::Zeroizing;
+
 use crate::error::SmimeError;
 
 // OID shorthand constants used in this file.
@@ -136,7 +138,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             .expect("iv_buf is exactly 16 bytes = AES block size");
         let ct =
             cbc::Encryptor::<aes::Aes256>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes: Vec<u8> = cek_buf.to_vec();
+        let cek_bytes = Zeroizing::new(cek_buf.to_vec());
         let iv_oct = OctetString::new(iv_buf.as_slice())?;
         let iv_any = Any::encode_from(&iv_oct)?;
         let alg = AlgorithmIdentifierOwned {
@@ -158,7 +160,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             .expect("iv_buf is exactly 16 bytes = AES block size");
         let ct =
             cbc::Encryptor::<aes::Aes128>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes: Vec<u8> = cek_buf.to_vec();
+        let cek_bytes = Zeroizing::new(cek_buf.to_vec());
         let iv_oct = OctetString::new(iv_buf.as_slice())?;
         let iv_any = Any::encode_from(&iv_oct)?;
         let alg = AlgorithmIdentifierOwned {
@@ -271,6 +273,14 @@ fn build_rsa_recipient(
     cek: &[u8],
 ) -> Result<RecipientInfo, SmimeError> {
     use rsa::Pkcs1v15Encrypt;
+
+    // Pre-check that the OS RNG is functional.  The rsa crate requires
+    // CryptoRng and uses UnwrapErr(SysRng) which panics (not Err) if the
+    // OS RNG fails.  We check first to surface RNG failure as an error rather
+    // than a panic.  A TOCTOU window remains but covers only catastrophic
+    // system-level RNG failure, not normal operation.
+    let mut preflight = [0u8; 4];
+    getrandom::fill(&mut preflight).map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
 
     let spki_der = cert
         .tbs_certificate()
