@@ -41,6 +41,40 @@ Uses `mime-tree` byte ranges to locate exact signed bytes for digest verificatio
 
 MSRV: **1.85**
 
+## Current status and honest caveats
+
+These crates are published and tested against OpenSSL and Python's `cryptography`
+library, but adoption today comes with real limitations worth knowing up front.
+
+**Ecosystem timing is the main blocker for `smime-tree`.**
+Several of its dependencies are pinned to pre-release RustCrypto crates —
+`cms = "=0.3.0-pre.2"`, `x509-cert = "=0.3.0-rc.4"`, `p256`/`p384`/`rsa` at
+matching rc pins. Until those crates ship stable releases, pinning to specific
+pre-release versions is unavoidable and creates downstream resolver conflicts.
+The code is ready; the ecosystem is not quite there yet.
+
+**`smime-tree` is ahead of the broader Rust ecosystem for S/MIME.**
+At the time of writing there is no other general-purpose S/MIME crate at this
+abstraction level. Existing Rust MTA projects (e.g. Stalwart Mail Server) have
+hand-rolled their own implementations using different CMS libraries.
+`smime-tree` is designed to be the shared solution once the underlying
+RustCrypto CMS/X.509 stack stabilizes.
+
+**Certificate chain validation has algorithm gaps.**
+`pkix-chain` (used for RFC 5280 path validation) currently supports only
+RSA-PKCS1v15-SHA-256 and ECDSA-P-256-SHA-256 for CA certificate signatures.
+Chains where an intermediate or root CA uses ECDSA-P-384 — common in modern
+PKIs — will fail. See [issue #1](https://github.com/MarkAtwood/crate-mime/issues/1).
+There is also a version-bridge overhead (DER round-trip per certificate) until
+`pkix-chain` moves to x509-cert 0.3; see [issue #2](https://github.com/MarkAtwood/crate-mime/issues/2).
+
+**`mime-tree` is primarily useful as a JMAP body-structure provider.**
+For general-purpose MIME parsing, [`mail-parser`](https://crates.io/crates/mail-parser)
+— which `mime-tree` wraps internally — is the better direct choice.
+`mime-tree` adds value when you specifically need RFC 8621 §4.1.4-compatible
+`textBody`/`htmlBody`/`attachments` views and per-part byte ranges for lazy
+content retrieval, as in a JMAP or IMAP server.
+
 ## Repository
 
 <https://github.com/MarkAtwood/crate-mime>
