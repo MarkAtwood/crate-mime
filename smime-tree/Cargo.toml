@@ -1,0 +1,35 @@
+[package]
+name = "smime-tree"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "S/MIME sign/verify/encrypt/decrypt via key traits"
+authors = ["Mark Atwood <mark@reviewcommit.com>"]
+repository = "https://github.com/MarkAtwood/crate-mime"
+
+[dependencies]
+base64 = { version = "0.22" }
+cms = { version = "=0.3.0-pre.2" }
+crypto-common = { version = "0.2" }
+elliptic-curve = { version = "=0.14.0-rc.32", features = ["ecdh"] }
+const-oid = { version = "0.10", features = ["db"] }
+x509-cert = { version = "=0.3.0-rc.4", default-features = false, features = ["std"] }
+rsa = { version = "=0.10.0-rc.18" }
+p256 = { version = "=0.14.0-rc.9", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
+p384 = { version = "=0.14.0-rc.9", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
+ansi-x963-kdf = { version = "=0.1.0-rc.2" }
+aes-kw = { version = "0.3" }
+aes = { version = "0.9" }
+cbc = { version = "0.2", features = ["alloc"] }
+aes-gcm = { version = "=0.11.0-rc.3", default-features = false, features = ["aes", "alloc"] }
+sha2 = { version = "0.11" }
+der = { version = "0.8" }
+spki = { version = "0.8" }
+signature = { version = "=3.0.0-rc.10" }
+getrandom = { version = "0.4", features = ["sys_rng"] }
+serde = { version = "1", features = ["derive"] }
+mime-tree = { path = "../mime-tree" }
+
+[dev-dependencies]
+tempfile = "3"

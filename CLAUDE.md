@@ -52,7 +52,13 @@ RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc --no-deps --all-featu
 cargo +<msrv> test
 ```
 
-MSRV: 1.75.
+MSRV: 1.75 (mime-tree), 1.85 (smime-tree).
+
+## Standards Reference
+
+RFC text files for all relevant specifications live in `./standards/`.
+See `./standards/README.md` for the full index (16 RFCs covering MIME, CMS, S/MIME,
+PKIX, ECC, and RSA). Read from there rather than fetching from the network.
 
 ## Relation to jmap-mime
 
@@ -73,6 +79,46 @@ bd close <id>         # Complete work
 
 - Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+
+## Agent Workflow
+
+### Epic-first
+
+Before starting any multi-issue feature:
+1. `bd create --type=epic --title="..."` — one epic per feature
+2. `bd create --type=task --parent=<epic-id> --title="..."` — child issues (run in parallel via subagents)
+3. `bd dep add <child> <blocker>` — wire dependency edges
+4. `bd ready` — work unblocked issues; `bd epic status` — track completion
+5. `bd epic close-eligible` — close when all children are done
+
+### Subagents — one per issue
+
+**Each beads issue is executed by a dedicated subagent.** The orchestrating agent plans,
+creates epics and issues, wires dependencies, and fans out — it does not write code itself.
+
+Subagent lifecycle per issue:
+1. Receive the issue ID
+2. `bd show <id>` — read description, acceptance criteria, design notes
+3. `bd update <id> --claim` — mark in_progress
+4. Do the work (reads only files relevant to this issue)
+5. Run the quality gate: `cargo fmt --all && cargo clippy -p <crate> -- -D warnings && cargo test -p <crate>`
+6. `bd close <id>` — mark complete
+
+Orchestrator loop:
+1. Create epic + issues + dependency edges
+2. `bd ready` — find unblocked issues
+3. Spawn one subagent per ready issue (in parallel where issues are independent)
+4. When subagents finish, `bd ready` again → next wave
+5. Repeat until `bd epic close-eligible`
+
+If a subagent hits the same error 3 times without progress, it stops and escalates — the
+orchestrator surfaces this to the user rather than spawning another retry.
+
+### Agent teams
+
+Use `TeamCreate` for independent parallel workstreams — e.g., scaffolding `mime-tree`
+and `smime-tree` simultaneously. Each team member is itself an orchestrator that fans out
+to per-issue subagents. Coordinate via beads dependency edges, not shared mutable state.
 
 ## Session Completion
 

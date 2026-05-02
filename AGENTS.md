@@ -21,6 +21,11 @@ mime-tree   →  (no workspace deps)
 
 Callers handle MIME/S/MIME recursion. Neither crate recurses into the other.
 
+## Standards Reference
+
+RFC text files for all relevant specifications: `~/PROJECT/MIME/standards/`.
+See `~/PROJECT/MIME/standards/README.md` for the full index. Read from there.
+
 ## Quality Gate
 
 Run before every commit:
@@ -66,6 +71,54 @@ bd dolt push          # Sync beads data
 ```
 
 Use `bd` for ALL task tracking. Do not use TodoWrite, TaskCreate, or markdown TODO lists.
+
+## Epic Workflow
+
+Any multi-issue feature starts with an epic:
+
+```bash
+bd create --type=epic --title="Feature name"
+bd create --type=task --parent=<epic-id> --title="Child task"
+bd dep add <child-id> <blocker-id>
+bd ready               # find unblocked work
+bd epic status         # check progress
+bd epic close-eligible # close when all children done
+```
+
+## Subagents — one per issue
+
+**Each beads issue is executed by a dedicated subagent.** The orchestrating agent plans and
+fans out; it does not write code itself.
+
+Subagent lifecycle (every subagent does exactly this):
+```
+bd show <id>                          # read the issue
+bd update <id> --claim                # mark in_progress
+# ... do the work ...
+cargo fmt --all
+cargo clippy -p <crate> -- -D warnings
+cargo test -p <crate>
+bd close <id>
+```
+
+Orchestrator loop:
+```
+bd ready                              # find unblocked issues
+# spawn one subagent per ready issue, in parallel
+# wait for completions
+# repeat until bd epic close-eligible
+```
+
+Rules:
+- Each subagent reads only the files relevant to its issue — grep, don't load the whole codebase
+- Independent issues are worked in parallel; dependent issues wait for their blockers to close
+- If a subagent hits the same error 3 times, it stops and escalates — orchestrator surfaces to user
+
+## Agent Teams
+
+Use `TeamCreate` for independent parallel workstreams (e.g., `mime-tree` and `smime-tree`
+scaffolding simultaneously). Each team member is an orchestrator that fans out to per-issue
+subagents. Coordinate via beads dependency edges, not shared mutable state.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
