@@ -15,6 +15,10 @@ use x509_cert::Certificate;
 use crate::error::{CertChainError, SmimeError};
 use crate::key::RevocationChecker;
 
+/// Maximum chain depth (leaf + intermediates, excluding the trust anchor).
+/// Must match `ValidationPolicy::max_path_len` set in `validate_chain`.
+const MAX_DEPTH: usize = 10;
+
 /// Validate the certificate chain from `signer_cert` up to a trust anchor.
 ///
 /// # Arguments
@@ -63,9 +67,12 @@ pub(crate) fn validate_chain(
 
     // Step 3: Validate via pkix-chain (signatures, validity, chain linkage).
     // NoRevocation: revocation is applied in step 4 on the signature-verified chain.
+    // max_path_len is set explicitly to match build_chain::MAX_DEPTH so both limits
+    // stay in sync if either changes.
     let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let policy = pkix_chain::ValidationPolicy {
         current_time_unix: now_unix,
+        max_path_len: MAX_DEPTH as u8,
         ..Default::default()
     };
     pkix_chain::verify_chain_default(&chain_stable, &anchors_stable, &policy, &pkix_chain::NoRevocation)
@@ -93,8 +100,6 @@ fn build_chain<'a>(
     bag: &'a [Certificate],
     trust_anchors: &[Certificate],
 ) -> Result<Vec<&'a Certificate>, SmimeError> {
-    const MAX_DEPTH: usize = 10;
-
     let mut chain: Vec<&Certificate> = vec![signer_cert];
     let mut visited: HashSet<Vec<u8>> = HashSet::new();
     if let Ok(s) = signer_cert.tbs_certificate().subject().to_der() {
