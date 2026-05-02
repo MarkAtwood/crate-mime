@@ -1,5 +1,6 @@
 
 /target
+/doc
 
 # Beads / Dolt files (added by bd init)
 .dolt/
