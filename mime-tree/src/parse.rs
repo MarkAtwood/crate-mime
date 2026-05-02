@@ -63,7 +63,6 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
 /// Decode the body of a parsed part.
 ///
 /// Transfer-encoding decode and charset conversion are performed on demand.
-/// See [`crate::decode::decode_body_value`] for the full algorithm.
 pub fn decode_body_value(
     raw: &[u8],
     part: &ParsedPart,

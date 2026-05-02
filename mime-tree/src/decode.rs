@@ -120,7 +120,10 @@ pub fn decode_body_value(
     // or one of the input paths was cut short.
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
-        _ => (decoded, b64_input_was_limited || qp_input_was_limited || identity_was_limited),
+        _ => (
+            decoded,
+            b64_input_was_limited || qp_input_was_limited || identity_was_limited,
+        ),
     };
 
     // Step 3: charset conversion to UTF-8 via encoding_rs.

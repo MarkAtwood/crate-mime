@@ -2,11 +2,14 @@
 name = "mime-tree"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "RFC 5322/MIME parser producing a byte-range-indexed part tree"
 authors = ["Mark Atwood <mark@reviewcommit.com>"]
 repository = "https://github.com/MarkAtwood/crate-mime"
+readme = "README.md"
+keywords = ["mime", "email", "rfc5322", "parser", "s-mime"]
+categories = ["email", "encoding", "parser-implementations"]
 
 [dependencies]
 mail-parser = { version = "0.11", default-features = false, features = ["serde", "full_encoding"] }

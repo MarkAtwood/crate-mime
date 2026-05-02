@@ -94,7 +94,7 @@ See `~/PROJECT/MIME/standards/README.md` for the full index.
 ## Conventions
 
 - License: MIT OR Apache-2.0
-- MSRV: 1.75
+- MSRV: 1.85
 - No `unsafe`
 - Error types: defined in `error.rs`, exported from crate root
 

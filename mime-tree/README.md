@@ -1,7 +1,7 @@
 # mime-tree
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](../LICENSE)
-[![MSRV: 1.75](https://img.shields.io/badge/MSRV-1.75-orange.svg)](Cargo.toml)
+[![MSRV: 1.85](https://img.shields.io/badge/MSRV-1.85-orange.svg)](Cargo.toml)
 
 RFC 5322 / MIME parser that produces a walkable, byte-range-indexed part tree.
 Given raw message bytes, it returns a `ParsedMessage` with the full MIME structure,

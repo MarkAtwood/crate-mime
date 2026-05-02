@@ -1,0 +1,3 @@
+[default.extend-words]
+# "caf" is the French prefix for "café" — intentional in QP-encoding test data.
+caf = "caf"

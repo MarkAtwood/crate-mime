@@ -24,7 +24,7 @@ RFC 5322 / MIME parser. Given raw message bytes, returns a `ParsedMessage` with:
 - On-demand body decoding: Base64, Quoted-Printable, charset conversion via `encoding_rs`
 - `Serialize + Deserialize` on all public types
 
-MSRV: **1.75**
+MSRV: **1.85**
 
 ### [`smime-tree`](smime-tree/)
 
