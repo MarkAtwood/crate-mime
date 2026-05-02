@@ -106,7 +106,9 @@ fn find_and_decrypt_cek(
                     continue;
                 }
                 let alg = map_ktri_alg(ktri)?;
-                return key.decrypt_cek(ktri.enc_key.as_bytes(), &alg).map(Zeroizing::new);
+                return key
+                    .decrypt_cek(ktri.enc_key.as_bytes(), &alg)
+                    .map(Zeroizing::new);
             }
 
             RecipientInfo::Kari(kari) => {
@@ -254,10 +256,9 @@ fn map_kari_alg(kari: &KeyAgreeRecipientInfo) -> Result<KariAlgorithm, SmimeErro
 
     // The parameters field holds a DER-encoded AlgorithmIdentifier for the
     // key-wrap algorithm (RFC 5753 §3.1 / §7.1.4).
-    let params =
-        kari.key_enc_alg.parameters.as_ref().ok_or_else(|| {
-            SmimeError::MalformedInput("KARI keyEncryptionAlgorithm has no parameters".into())
-        })?;
+    let params = kari.key_enc_alg.parameters.as_ref().ok_or_else(|| {
+        SmimeError::MalformedInput("KARI keyEncryptionAlgorithm has no parameters".into())
+    })?;
     let wrap_alg = params.decode_as::<AlgorithmIdentifierOwned>()?;
 
     let key_wrap = if wrap_alg.oid == ID_AES_128_WRAP {

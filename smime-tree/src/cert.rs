@@ -118,12 +118,10 @@ pub(crate) fn validate_chain(
                     // have any intermediate CAs below it in the path.
                     if let Some(path_len) = get_path_len(anchor) {
                         if intermediate_count > path_len as usize {
-                            return Err(SmimeError::CertChain(
-                                CertChainError::PathLenViolated {
-                                    intermediate_count,
-                                    path_len,
-                                },
-                            ));
+                            return Err(SmimeError::CertChain(CertChainError::PathLenViolated {
+                                intermediate_count,
+                                path_len,
+                            }));
                         }
                     }
                     return Ok(());
@@ -155,27 +153,19 @@ pub(crate) fn validate_chain(
                 // violates the constraint.
                 if let Some(path_len) = get_path_len(p) {
                     if intermediate_count > path_len as usize {
-                        return Err(SmimeError::CertChain(
-                            CertChainError::PathLenViolated {
-                                intermediate_count,
-                                path_len,
-                            },
-                        ));
+                        return Err(SmimeError::CertChain(CertChainError::PathLenViolated {
+                            intermediate_count,
+                            path_len,
+                        }));
                     }
                 }
                 // Cycle detection: if this subject was already visited, the bag
                 // contains a cycle (e.g. A signed by B, B signed by A).  The
                 // chain is still rejected, but we surface the real cause rather
                 // than exhausting MAX_CHAIN_DEPTH silently.
-                let subj_der = p
-                    .tbs_certificate()
-                    .subject()
-                    .to_der()
-                    .map_err(|e| {
-                        SmimeError::CertChain(CertChainError::Other(format!(
-                            "subject DER encode: {e}"
-                        )))
-                    })?;
+                let subj_der = p.tbs_certificate().subject().to_der().map_err(|e| {
+                    SmimeError::CertChain(CertChainError::Other(format!("subject DER encode: {e}")))
+                })?;
                 if !visited.insert(subj_der) {
                     return Err(SmimeError::CertChain(CertChainError::Cycle));
                 }
@@ -250,12 +240,9 @@ fn get_path_len(cert: &Certificate) -> Option<u8> {
 /// Returns `Ok(())` on success.  The caller is responsible for mapping errors
 /// to the appropriate `CertChain` message.
 fn verify_signature(cert: &Certificate, issuer: &Certificate) -> Result<(), SmimeError> {
-    let tbs_der = cert
-        .tbs_certificate()
-        .to_der()
-        .map_err(|e| {
-            SmimeError::CertChain(CertChainError::Other(format!("TBS DER encode: {e}")))
-        })?;
+    let tbs_der = cert.tbs_certificate().to_der().map_err(|e| {
+        SmimeError::CertChain(CertChainError::Other(format!("TBS DER encode: {e}")))
+    })?;
     let sig_bytes = cert.signature().raw_bytes();
     let oid = &cert.signature_algorithm().oid;
 

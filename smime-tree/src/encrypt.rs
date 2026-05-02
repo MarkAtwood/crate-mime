@@ -16,11 +16,11 @@ use cms::{
     },
 };
 use const_oid::db::{rfc5753, rfc5911, rfc5912};
+use crypto_common::Generate as _;
 use der::{
     asn1::{BitString, ObjectIdentifier, OctetString, SetOfVec},
     Any, AnyRef, Encode, Sequence,
 };
-use crypto_common::Generate as _;
 use elliptic_curve::ecdh::EphemeralSecret;
 use elliptic_curve::sec1::ToSec1Point;
 use getrandom::{rand_core::UnwrapErr, SysRng};
@@ -162,8 +162,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     let enc_content = OctetString::new(encrypted_content)?;
 
     // RecipientInfos is a newtype over SetOfVec.
-    let set: SetOfVec<RecipientInfo> =
-        SetOfVec::try_from(recipient_infos)?;
+    let set: SetOfVec<RecipientInfo> = SetOfVec::try_from(recipient_infos)?;
     let recip_infos = RecipientInfos::from(set);
 
     let env_data = EnvelopedData {
@@ -207,10 +206,8 @@ where
 {
     let mut cek_buf = vec![0u8; key_len];
     let mut iv_buf = [0u8; 16];
-    getrandom::fill(&mut cek_buf)
-        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
-    getrandom::fill(&mut iv_buf)
-        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    getrandom::fill(&mut cek_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    getrandom::fill(&mut iv_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
     let ct = do_encrypt(&cek_buf, &iv_buf);
     let cek_bytes = Zeroizing::new(cek_buf);
     let iv_oct = OctetString::new(iv_buf.as_slice())?;
@@ -223,10 +220,7 @@ where
 }
 
 /// Inspect a certificate's SPKI and return the appropriate `RecipientInfo`.
-fn build_recipient_info(
-    cert: &Certificate,
-    cek: &[u8],
-) -> Result<RecipientInfo, SmimeError> {
+fn build_recipient_info(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     let spki = cert.tbs_certificate().subject_public_key_info();
     let alg_oid = spki.algorithm.oid;
 
@@ -272,10 +266,7 @@ fn build_recipient_info(
 }
 
 /// Build a KTRI (RSA PKCS#1v15 key transport) RecipientInfo.
-fn build_rsa_recipient(
-    cert: &Certificate,
-    cek: &[u8],
-) -> Result<RecipientInfo, SmimeError> {
+fn build_rsa_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     use rsa::Pkcs1v15Encrypt;
 
     // Pre-check that the OS RNG is functional.  The rsa crate requires
@@ -286,11 +277,7 @@ fn build_rsa_recipient(
     let mut preflight = [0u8; 4];
     getrandom::fill(&mut preflight).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
 
-    let spki_der = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .to_der()
-        ?;
+    let spki_der = cert.tbs_certificate().subject_public_key_info().to_der()?;
     let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
         .map_err(|e| SmimeError::Other(e.to_string()))?;
 
@@ -318,10 +305,7 @@ fn build_rsa_recipient(
 }
 
 /// Build a KARI (P-256 ECDH + AES-128-KW) RecipientInfo.
-fn build_p256_recipient(
-    cert: &Certificate,
-    cek: &[u8],
-) -> Result<RecipientInfo, SmimeError> {
+fn build_p256_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     use p256::NistP256;
 
     let raw_bits = cert
@@ -359,10 +343,7 @@ fn build_p256_recipient(
 ///
 /// P-384 provides ~192-bit security; AES-256-KW matches that level.
 /// The caller must supply a 32-byte CEK (AES-256-CBC).
-fn build_p384_recipient(
-    cert: &Certificate,
-    cek: &[u8],
-) -> Result<RecipientInfo, SmimeError> {
+fn build_p384_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     use p384::NistP384;
 
     let raw_bits = cert

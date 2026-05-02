@@ -748,7 +748,9 @@ fn test_encrypt_p256_decrypted_by_openssl() {
         base64_encode_pem(&ec256_cert_der)
     );
     let mut cert_file = tempfile::NamedTempFile::new().expect("create cert temp file");
-    cert_file.write_all(cert_pem.as_bytes()).expect("write cert");
+    cert_file
+        .write_all(cert_pem.as_bytes())
+        .expect("write cert");
     let cert_path = cert_file.path().to_path_buf();
 
     let output = Command::new("openssl")
@@ -823,7 +825,9 @@ fn test_encrypt_p384_decrypted_by_openssl() {
         base64_encode_pem(&ec384_cert_der)
     );
     let mut cert_file = tempfile::NamedTempFile::new().expect("create cert temp file");
-    cert_file.write_all(cert_pem.as_bytes()).expect("write cert");
+    cert_file
+        .write_all(cert_pem.as_bytes())
+        .expect("write cert");
     let cert_path = cert_file.path().to_path_buf();
 
     let output = Command::new("openssl")
@@ -892,12 +896,8 @@ impl DecryptionKey for StubKariKey {
                     .to_der()
                     .map(|a| a == *issuer_der)
                     .unwrap_or(false);
-                let serial_ok = self
-                    .cert
-                    .tbs_certificate()
-                    .serial_number()
-                    .as_bytes()
-                    == serial.as_slice();
+                let serial_ok =
+                    self.cert.tbs_certificate().serial_number().as_bytes() == serial.as_slice();
                 issuer_ok && serial_ok
             }
             _ => false,
@@ -944,9 +944,7 @@ fn test_encrypt_p256_kari_structure_is_valid() {
                  KARI RecipientInfo: {e}"
             );
         }
-        other => panic!(
-            "Expected UnsupportedAlgorithm from agree_ecdh stub; got: {other:?}"
-        ),
+        other => panic!("Expected UnsupportedAlgorithm from agree_ecdh stub; got: {other:?}"),
     }
 }
 

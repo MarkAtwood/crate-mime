@@ -158,7 +158,12 @@ fn verify_one(
     // Step 2: find signer cert in the bag or trust anchors.
     let signer_cert = match find_cert(bag_certs, trust_anchors, &si.sid) {
         Ok(Some(c)) => c,
-        Ok(None) => return fail(None, "signer cert not found in certificate bag or trust anchors"),
+        Ok(None) => {
+            return fail(
+                None,
+                "signer cert not found in certificate bag or trust anchors",
+            )
+        }
         Err(e) => return fail(None, format!("signer identifier DER encode: {e}")),
     };
 
@@ -350,10 +355,14 @@ fn verify_sig(
                 ))),
             }
         }
-        x if x == ECDSA_WITH_SHA_256 => sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e),
-        x if x == ECDSA_WITH_SHA_384 => sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e),
+        x if x == ECDSA_WITH_SHA_256 => {
+            sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e)
+        }
+        x if x == ECDSA_WITH_SHA_384 => {
+            sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e)
+        }
         _ => Err(SmimeError::UnsupportedAlgorithm(format!(
             "signature algorithm OID {sig_alg_oid}"
-        )))
+        ))),
     }
 }

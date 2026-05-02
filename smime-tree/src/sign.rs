@@ -343,8 +343,7 @@ fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
 fn random_boundary(content: &[u8]) -> Result<String, SmimeError> {
     for _ in 0..8 {
         let mut rand_bytes = [0u8; 16];
-        getrandom::fill(&mut rand_bytes)
-            .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+        getrandom::fill(&mut rand_bytes).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
         let mut hex = String::with_capacity(32);
         for b in rand_bytes {
             use std::fmt::Write as _;

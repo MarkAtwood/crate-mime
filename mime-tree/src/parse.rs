@@ -141,7 +141,13 @@ fn build_part(
         .content_type()
         .and_then(|ct| ct.attribute("charset"))
         .map(str::to_owned)
-        .or_else(|| if no_content_type { Some("us-ascii".to_owned()) } else { None });
+        .or_else(|| {
+            if no_content_type {
+                Some("us-ascii".to_owned())
+            } else {
+                None
+            }
+        });
 
     let transfer_encoding = map_encoding(part);
 
