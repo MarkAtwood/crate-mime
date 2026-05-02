@@ -81,6 +81,7 @@ pub enum KariKeyAgreement {
 /// Passed to [`DecryptionKey::agree_ecdh`] so the implementor knows which
 /// ECDH variant and key wrap algorithm to apply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct KariAlgorithm {
     /// ECDH key derivation scheme (determines curve and KDF hash).
     pub key_agreement: KariKeyAgreement,

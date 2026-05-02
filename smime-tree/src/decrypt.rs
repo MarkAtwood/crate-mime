@@ -202,32 +202,34 @@ fn try_decrypt_kari(
 
     let ukm: Option<Vec<u8>> = kari.ukm.as_ref().map(|u| u.as_bytes().to_vec());
 
-    // Parse the ECDH + key-wrap algorithm.  Skip this KARI entry if the
-    // algorithm is not recognised (unsupported OID is not a hard error).
-    let kari_alg = match map_kari_alg(kari) {
-        Ok(a) => a,
-        Err(_) => return Ok(None),
+    // Check whether any recipient in this KARI entry matches our key before
+    // parsing the algorithm.  This ordering matters: if a matching recipient
+    // is found but the algorithm OID is unsupported, we should return
+    // UnsupportedAlgorithm rather than silently returning Ok(None) (which
+    // would mislead the caller into thinking their key doesn't match).
+    let matching_rek = kari.recipient_enc_keys.iter().find(|rek| {
+        kari_rid_to_owned(&rek.rid)
+            .map(|rid| key.matches_recipient(&rid))
+            .unwrap_or(false)
+    });
+
+    let rek = match matching_rek {
+        Some(r) => r,
+        None => return Ok(None), // none of the recipients match our key
     };
 
-    for rek in &kari.recipient_enc_keys {
-        let rid = match kari_rid_to_owned(&rek.rid) {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-        if !key.matches_recipient(&rid) {
-            continue;
-        }
-        // Found a matching recipient: attempt decryption.  Propagate error.
-        let cek = key.agree_ecdh(
-            &ephemeral_bytes,
-            ukm.as_deref(),
-            rek.enc_key.as_bytes(),
-            &kari_alg,
-        )?;
-        return Ok(Some(cek));
-    }
+    // A matching recipient was found — now parse the algorithm.  An
+    // unsupported OID here is a hard error: the caller's key is the right
+    // one but the crate cannot handle the algorithm.
+    let kari_alg = map_kari_alg(kari)?;
 
-    Ok(None)
+    let cek = key.agree_ecdh(
+        &ephemeral_bytes,
+        ukm.as_deref(),
+        rek.enc_key.as_bytes(),
+        &kari_alg,
+    )?;
+    Ok(Some(cek))
 }
 
 /// Parse the `keyEncryptionAlgorithm` of a KARI into a [`KariAlgorithm`].
