@@ -203,8 +203,19 @@ fn build_recipient_info(
     let spki = cert.tbs_certificate().subject_public_key_info();
     let alg_oid = spki.algorithm.oid;
 
-    if alg_oid == rfc5912::RSA_ENCRYPTION || alg_oid == rfc5912::ID_RSAES_OAEP {
+    if alg_oid == rfc5912::RSA_ENCRYPTION {
         build_rsa_recipient(cert, cek, rng)
+    } else if alg_oid == rfc5912::ID_RSAES_OAEP {
+        // id-RSAES-OAEP in the SPKI field is not the same as RSA + PKCS#1v15.
+        // Routing to build_rsa_recipient() here would produce a PKCS#1v15-wrapped
+        // CEK that the recipient cannot decrypt with an OAEP key.  RSAES-OAEP
+        // encryption is not yet implemented; fail explicitly rather than silently
+        // producing a malformed message.
+        Err(SmimeError::UnsupportedAlgorithm(
+            "RSAES-OAEP recipient certs (id-RSAES-OAEP SPKI OID) are not supported; \
+             use RSA with PKCS#1v1.5"
+                .into(),
+        ))
     } else if alg_oid == rfc5912::ID_EC_PUBLIC_KEY {
         let curve_oid = spki
             .algorithm
