@@ -43,6 +43,7 @@ pub fn decode_body_value(
     // Step 1: transfer-decode.
     let mut is_encoding_problem = false;
     let mut b64_input_was_limited = false;
+    let mut qp_input_was_limited = false;
     let decoded: Vec<u8> = match part.transfer_encoding {
         TransferEncoding::Base64 => {
             // Limit base64 input to avoid allocating a full decode buffer when
@@ -83,6 +84,7 @@ pub fn decode_body_value(
             // mid-escape is handled gracefully by Robust mode.
             let qp_input = max_bytes.map_or(body_bytes, |n| {
                 let limit = n.saturating_mul(4).min(body_bytes.len());
+                qp_input_was_limited = limit < body_bytes.len();
                 &body_bytes[..limit]
             });
             match quoted_printable::decode(qp_input, quoted_printable::ParseMode::Robust) {
@@ -108,7 +110,7 @@ pub fn decode_body_value(
     // (The identity path already truncated above; this handles Base64/QP.)
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
-        Some(_) if b64_input_was_limited => (decoded, true),
+        Some(_) if b64_input_was_limited || qp_input_was_limited => (decoded, true),
         _ => {
             let is_truncated = matches!(
                 part.transfer_encoding,

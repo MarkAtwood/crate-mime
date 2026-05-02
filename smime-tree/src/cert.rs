@@ -97,6 +97,18 @@ pub(crate) fn validate_chain(
             // keys, so the first valid anchor may not be the right one.
             for anchor in &valid_candidates {
                 if verify_signature(current, anchor).is_ok() {
+                    // RFC 5280 §4.2.1.9: also enforce the trust anchor's own
+                    // pathLen constraint.  A root CA with pathLen=0 may not
+                    // have any intermediate CAs below it in the path.
+                    if let Some(path_len) = get_path_len(anchor) {
+                        if chain_depth > path_len as usize {
+                            return Err(SmimeError::CertChain(format!(
+                                "trust anchor pathLen constraint violated: \
+                                 {} intermediate CA(s) but pathLen is {}",
+                                chain_depth, path_len
+                            )));
+                        }
+                    }
                     return Ok(());
                 }
             }

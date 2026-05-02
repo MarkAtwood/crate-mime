@@ -24,9 +24,9 @@ use x509_cert::{
 
 use const_oid::db::rfc5911::{ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST, ID_SIGNING_TIME};
 use const_oid::db::rfc5912::{
-    ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512, ID_EC_PUBLIC_KEY, ID_SHA_256,
-    ID_SHA_384, ID_SHA_512, RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
-    SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
+    ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ID_EC_PUBLIC_KEY, ID_SHA_256, ID_SHA_384, ID_SHA_512,
+    RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION,
+    SHA_512_WITH_RSA_ENCRYPTION,
 };
 
 /// Sign MIME content. Returns `multipart/signed` outer MIME bytes.
@@ -285,11 +285,19 @@ fn signature_algorithm_oid(
     }
 
     if spki_oid == ID_EC_PUBLIC_KEY {
-        return Ok(match digest_alg {
-            DigestAlgorithm::Sha256 => ECDSA_WITH_SHA_256,
-            DigestAlgorithm::Sha384 => ECDSA_WITH_SHA_384,
-            DigestAlgorithm::Sha512 => ECDSA_WITH_SHA_512,
-        });
+        return match digest_alg {
+            DigestAlgorithm::Sha256 => Ok(ECDSA_WITH_SHA_256),
+            DigestAlgorithm::Sha384 => Ok(ECDSA_WITH_SHA_384),
+            // ECDSA with SHA-512 (P-521) is not supported: verify() has no
+            // P-521 verifier, so a message signed this way cannot be verified
+            // by this crate.  Callers using P-521 keys must override
+            // preferred_digest_algorithm() to return Sha384 or avoid P-521.
+            DigestAlgorithm::Sha512 => Err(SmimeError::UnsupportedAlgorithm(
+                "ECDSA with SHA-512 (P-521) is not supported; \
+                 use P-256 (SHA-256) or P-384 (SHA-384)"
+                    .into(),
+            )),
+        };
     }
 
     Err(SmimeError::UnsupportedAlgorithm(format!(

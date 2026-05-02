@@ -300,7 +300,7 @@ fn check_message_digest(
         .to_vec();
 
     if expected_bytes != content_hash {
-        return Err(SmimeError::Other("message digest mismatch".into()));
+        return Err(SmimeError::SignatureVerification);
     }
 
     Ok(())
