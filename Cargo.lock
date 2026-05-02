@@ -830,13 +830,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "pkix-chain-simple"
+name = "pkix-chain"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4da1912409ac64cd84dc272e9ab37a47e208430995866a23b7930de044f6d2c9"
+checksum = "ebce1a2a7bffeca6aeac2e6eccd09611237d4daaa7b4639e5b0e5cc719c322f3"
 dependencies = [
- "der 0.7.10",
  "pkix-path",
+ "pkix-revocation",
  "x509-cert 0.2.5",
 ]
 
@@ -851,6 +851,18 @@ dependencies = [
  "rsa 0.9.10",
  "sha2 0.10.9",
  "signature 2.2.0",
+ "spki 0.7.3",
+ "x509-cert 0.2.5",
+]
+
+[[package]]
+name = "pkix-revocation"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7b7652f07da363c0f241c97b05f93572ac92a030f9b3ca4b52fb183f3e194e3"
+dependencies = [
+ "der 0.7.10",
+ "pkix-path",
  "spki 0.7.3",
  "x509-cert 0.2.5",
 ]
@@ -1216,8 +1228,7 @@ dependencies = [
  "mime-tree 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "p256 0.14.0-rc.9",
  "p384",
- "pkix-chain-simple",
- "pkix-path",
+ "pkix-chain",
  "rsa 0.10.0-rc.18",
  "serde",
  "sha2 0.11.0",

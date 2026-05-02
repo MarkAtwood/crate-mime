@@ -1,9 +1,9 @@
 //! Certificate chain validation for S/MIME verify.
 //!
-//! Delegates RFC 5280 path validation to [`pkix_chain_simple::verify_simple`].
+//! Delegates RFC 5280 path validation to [`pkix_chain::verify_chain_default`].
 //!
 //! Because the `cms` crate requires x509-cert 0.3.0-rc and
-//! `pkix-chain-simple` requires x509-cert 0.2, all certificates are bridged
+//! `pkix-chain` requires x509-cert 0.2, all certificates are bridged
 //! via DER round-trip in [`bridge_cert`] before being passed to pkix.
 
 use der::Encode;
@@ -53,14 +53,18 @@ pub(crate) fn validate_chain(
         .map(|c| bridge_cert(c))
         .collect::<Result<_, _>>()?;
 
-    let anchors_stable: Vec<pkix_path::TrustAnchor> = trust_anchors
+    let anchors_stable: Vec<pkix_chain::TrustAnchor> = trust_anchors
         .iter()
-        .map(|a| bridge_cert(a).map(pkix_path::TrustAnchor::from_cert))
+        .map(|a| bridge_cert(a).map(pkix_chain::TrustAnchor::from_cert))
         .collect::<Result<_, _>>()?;
 
-    // Step 4: Validate via pkix-chain-simple.
+    // Step 4: Validate via pkix-chain.
     let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    pkix_chain_simple::verify_simple(&chain_stable, &anchors_stable, now_unix)
+    let policy = pkix_chain::ValidationPolicy {
+        current_time_unix: now_unix,
+        ..Default::default()
+    };
+    pkix_chain::verify_chain_default(&chain_stable, &anchors_stable, &policy, &pkix_chain::NoRevocation)
         .map(|_| ())
         .map_err(|e| map_pkix_error(e, &chain))
 }
@@ -160,11 +164,11 @@ fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, Smim
 // Error mapping
 // ---------------------------------------------------------------------------
 
-/// Map a `pkix_chain_simple::Error` to `SmimeError`, using the rc chain for
+/// Map a `pkix_chain::Error` to `SmimeError`, using the rc chain for
 /// subject/not_after strings in structured error variants.
-fn map_pkix_error(e: pkix_chain_simple::Error, chain: &[&Certificate]) -> SmimeError {
-    use pkix_chain_simple::Error as CSE;
-    use pkix_path::Error as PE;
+fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
+    use pkix_chain::Error as CE;
+    use pkix_chain::pkix_path::Error as PE;
 
     let subject_at = |i: usize| -> String {
         chain
@@ -174,29 +178,21 @@ fn map_pkix_error(e: pkix_chain_simple::Error, chain: &[&Certificate]) -> SmimeE
     };
 
     let chain_err = match e {
-        CSE::NoTrustAnchors => CertChainError::NoTrustAnchors,
-        CSE::ChainTooLong { .. } => CertChainError::TooDeep,
-        CSE::LeafIsCA | CSE::MissingRequiredExtension { index: 0 } => {
-            CertChainError::NotACa { subject: subject_at(0) }
-        }
-        CSE::MissingRequiredExtension { index } => {
-            CertChainError::NotACa { subject: subject_at(index) }
-        }
-        CSE::Path(PE::NoTrustedPath) | CSE::Path(PE::ChainBroken { .. }) => {
+        CE::Path(PE::NoTrustedPath) | CE::Path(PE::ChainBroken { .. }) => {
             let issuer = chain
                 .last()
                 .map(|c| c.tbs_certificate().issuer().to_string())
                 .unwrap_or_default();
             CertChainError::NoMatchingIssuer { issuer }
         }
-        CSE::Path(PE::PathTooLong) => CertChainError::TooDeep,
-        CSE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
+        CE::Path(PE::PathTooLong) => CertChainError::TooDeep,
+        CE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
             subject: subject_at(index),
         },
-        CSE::Path(PE::NotCA { index }) | CSE::Path(PE::KeyUsageMissing { index }) => {
+        CE::Path(PE::NotCA { index }) | CE::Path(PE::KeyUsageMissing { index }) => {
             CertChainError::NotACa { subject: subject_at(index) }
         }
-        CSE::Path(PE::ValidityPeriod { index }) => {
+        CE::Path(PE::ValidityPeriod { index }) => {
             if let Some(cert) = chain.get(index) {
                 CertChainError::CertificateExpired {
                     subject: cert.tbs_certificate().subject().to_string(),
