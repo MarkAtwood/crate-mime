@@ -72,8 +72,10 @@ pub(crate) fn validate_chain(
         // candidate, totalling O(N) allocations where N is the store/bag size.
         let issuer_der = match current.tbs_certificate().issuer().to_der() {
             Ok(d) => d,
-            Err(_) => {
-                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer))
+            Err(e) => {
+                return Err(SmimeError::CertChain(CertChainError::Other(format!(
+                    "issuer DER encode: {e}"
+                ))))
             }
         };
 

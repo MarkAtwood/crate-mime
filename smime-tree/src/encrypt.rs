@@ -90,7 +90,7 @@ struct EccCmsSharedInfo {
 ///
 /// # Errors
 ///
-/// Returns `SmimeError::Other("no recipients")` when `recipients` is empty.
+/// Returns `SmimeError::NoRecipients` when `recipients` is empty.
 /// Returns `SmimeError::UnsupportedAlgorithm` for any certificate whose
 /// subject public key algorithm is not RSA, P-256, or P-384.
 ///

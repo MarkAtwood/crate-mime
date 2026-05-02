@@ -64,7 +64,7 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
         .encrypted_content
         .encrypted_content
         .as_ref()
-        .ok_or_else(|| SmimeError::Other("EnvelopedData has no encrypted content".into()))?
+        .ok_or_else(|| SmimeError::MalformedInput("EnvelopedData has no encrypted content".into()))?
         .as_bytes();
 
     if content_enc_oid == ID_AES_128_CBC {
@@ -145,7 +145,7 @@ fn extract_cbc_iv(env_data: &EnvelopedData) -> Result<Vec<u8>, SmimeError> {
         .content_enc_alg
         .parameters
         .as_ref()
-        .ok_or_else(|| SmimeError::Other("CBC algorithm parameters missing".into()))?;
+        .ok_or_else(|| SmimeError::MalformedInput("CBC algorithm parameters missing".into()))?;
     let iv = params.decode_as::<OctetString>()?;
     Ok(iv.as_bytes().to_vec())
 }
@@ -252,7 +252,7 @@ fn map_kari_alg(kari: &KeyAgreeRecipientInfo) -> Result<KariAlgorithm, SmimeErro
     // key-wrap algorithm (RFC 5753 §3.1 / §7.1.4).
     let params =
         kari.key_enc_alg.parameters.as_ref().ok_or_else(|| {
-            SmimeError::Other("KARI keyEncryptionAlgorithm has no parameters".into())
+            SmimeError::MalformedInput("KARI keyEncryptionAlgorithm has no parameters".into())
         })?;
     let wrap_alg = params.decode_as::<AlgorithmIdentifierOwned>()?;
 
