@@ -168,8 +168,13 @@ fn test_verify_openssl_rsa_signed() {
     // created via: echo -n "Test message content").
     let signed_content: &[u8] = b"Test message content";
 
-    let result = verify(signed_content, &sig_der, &[ca_cert])
-        .expect("verify() must not return a DER parse error");
+    let result = verify(
+        signed_content,
+        &sig_der,
+        &[ca_cert],
+        std::time::SystemTime::now(),
+    )
+    .expect("verify() must not return a DER parse error");
 
     assert!(
         !result.signers.is_empty(),

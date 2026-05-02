@@ -27,7 +27,6 @@ use p384::ecdsa::{DerSignature as P384DerSig, VerifyingKey as P384VerifyingKey};
 use rsa::{pkcs1v15, pkcs8::DecodePublicKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256, Sha384, Sha512};
-use std::time::SystemTime;
 use x509_cert::Certificate;
 
 use crate::{cert::validate_chain, SmimeError};
@@ -73,6 +72,9 @@ pub struct SignerResult {
 ///   (the `application/pkcs7-signature` MIME part, after base64 decoding).
 /// * `trust_anchors`  — caller-supplied trust anchors; chain validation fails
 ///   if this slice is empty.
+/// * `now`            — current time used for certificate validity-period checks.
+///   Pass `SystemTime::now()` for normal use; pass a fixed time in tests to
+///   validate against certificates with known validity periods.
 ///
 /// # Errors
 ///
@@ -85,6 +87,7 @@ pub fn verify(
     signed_content: &[u8],
     signature_der: &[u8],
     trust_anchors: &[Certificate],
+    now: std::time::SystemTime,
 ) -> Result<VerificationResult, SmimeError> {
     // Parse ContentInfo → SignedData.
     let ci = ContentInfo::from_der(signature_der)?;
@@ -110,7 +113,7 @@ pub fn verify(
         .signer_infos
         .0
         .iter()
-        .map(|si| verify_one(signed_content, si, &bag_certs, trust_anchors))
+        .map(|si| verify_one(signed_content, si, &bag_certs, trust_anchors, now))
         .collect();
 
     if signers.is_empty() {
@@ -135,6 +138,7 @@ fn verify_one(
     si: &cms::signed_data::SignerInfo,
     bag_certs: &[Certificate],
     trust_anchors: &[Certificate],
+    now: std::time::SystemTime,
 ) -> SignerResult {
     // Step 1: compute content digest.
     let hash = match compute_digest(signed_content, &si.digest_alg.oid) {
@@ -210,7 +214,7 @@ fn verify_one(
     }
 
     // Step 5: validate certificate chain.
-    if let Err(e) = validate_chain(&signer_cert, bag_certs, trust_anchors, SystemTime::now()) {
+    if let Err(e) = validate_chain(&signer_cert, bag_certs, trust_anchors, now) {
         return SignerResult {
             verified: false,
             subject: Some(subject_str),

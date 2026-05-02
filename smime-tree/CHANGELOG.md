@@ -6,6 +6,9 @@ All notable changes to `smime-tree` will be documented here.
 
 ### Breaking Changes
 
+- `verify()` now takes an explicit `now: std::time::SystemTime` parameter for certificate
+  validity checking. Pass `SystemTime::now()` for normal use; pass a fixed time in tests
+  to validate against certificates with known validity periods.
 - `RecipientIdentifier` is now an owned type defined in `smime-tree` rather than a re-export of
   `cms::enveloped_data::RecipientIdentifier`. Update implementations of `DecryptionKey::matches_recipient()`
   to use the new `smime_tree::RecipientIdentifier` enum with variants `IssuerAndSerialNumber { issuer_der, serial }`
