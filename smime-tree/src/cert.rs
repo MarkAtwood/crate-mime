@@ -131,15 +131,23 @@ pub(crate) fn validate_chain(
         }
 
         // Step 3 — look for the issuer in the certificate bag.
-        let parent = bag.iter().find(|candidate| {
-            candidate
-                .tbs_certificate()
-                .subject()
-                .to_der()
-                .map(|s| s == issuer_der)
-                .unwrap_or(false)
-                && verify_signature(current, candidate).is_ok()
-        });
+        // Explicit loop (consistent with the trust anchor path in Step 2):
+        // separate subject-DN matching from signature verification so that
+        // DER-encode failures are visible and the two criteria stay distinct.
+        let mut parent: Option<&Certificate> = None;
+        for candidate in bag {
+            let Ok(subj) = candidate.tbs_certificate().subject().to_der() else {
+                continue; // skip candidates whose subject cannot be DER-encoded
+            };
+            if subj != issuer_der {
+                continue;
+            }
+            if verify_signature(current, candidate).is_ok() {
+                parent = Some(candidate);
+                break;
+            }
+        }
+        let parent = parent;
 
         match parent {
             Some(p) => {

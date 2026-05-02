@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// Transfer encoding of a MIME body part.
@@ -10,6 +12,19 @@ pub enum TransferEncoding {
     SevenBit,
     EightBit,
     Binary,
+}
+
+impl fmt::Display for TransferEncoding {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TransferEncoding::Identity => f.write_str("identity"),
+            TransferEncoding::QuotedPrintable => f.write_str("quoted-printable"),
+            TransferEncoding::Base64 => f.write_str("base64"),
+            TransferEncoding::SevenBit => f.write_str("7bit"),
+            TransferEncoding::EightBit => f.write_str("8bit"),
+            TransferEncoding::Binary => f.write_str("binary"),
+        }
+    }
 }
 
 /// A decoded RFC 5322 / MIME header field.

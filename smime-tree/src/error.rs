@@ -130,6 +130,8 @@ pub enum SmimeError {
     /// OS random number generator failed during a crypto operation.
     /// This indicates a catastrophic system-level failure.
     RngFailure(String),
+    /// Decryption failed (e.g. bad padding, wrong CEK, or corrupted ciphertext).
+    DecryptionFailed(String),
     /// Catch-all for operation errors not covered by a more specific variant.
     Other(String),
     /// All signers in the CMS SignedData failed verification.
@@ -155,6 +157,7 @@ impl fmt::Display for SmimeError {
             SmimeError::MalformedInput(msg) => write!(f, "malformed CMS input: {msg}"),
             SmimeError::NoRecipients => write!(f, "encrypt() called with no recipients"),
             SmimeError::RngFailure(msg) => write!(f, "RNG failure: {msg}"),
+            SmimeError::DecryptionFailed(msg) => write!(f, "decryption failed: {msg}"),
             SmimeError::Other(msg) => write!(f, "error: {msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
             SmimeError::AllSignersFailed(signers) => {

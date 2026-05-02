@@ -269,24 +269,25 @@ fn build_recipient_info(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo,
 fn build_rsa_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     use rsa::Pkcs1v15Encrypt;
 
-    // Pre-check that the OS RNG is functional.  The rsa crate requires
-    // CryptoRng and uses UnwrapErr(SysRng) which panics (not Err) if the
-    // OS RNG fails.  We check first to surface RNG failure as an error rather
-    // than a panic.  A TOCTOU window remains but covers only catastrophic
-    // system-level RNG failure, not normal operation.
-    let mut preflight = [0u8; 4];
+    // The rsa crate's encrypt() uses UnwrapErr(SysRng) internally, which panics
+    // if the OS RNG fails.  We do a 256-byte preflight check first: on any
+    // real OS, once getrandom succeeds the RNG stays functional for the rest
+    // of the call, so this covers all practical failure scenarios.  A narrow
+    // TOCTOU window between the preflight and the encrypt call remains but
+    // would only trigger on catastrophic OS-level RNG failure.
+    let mut preflight = [0u8; 256];
     getrandom::fill(&mut preflight).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    let _ = preflight;
 
     let spki_der = cert.tbs_certificate().subject_public_key_info().to_der()?;
-    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
-        .map_err(|e| SmimeError::Other(e.to_string()))?;
+    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| {
+        SmimeError::MalformedInput(format!("RSA public key in recipient cert: {e}"))
+    })?;
 
-    // UnwrapErr wraps SysRng so it implements CryptoRng as required by the rsa
-    // crate. A panic here would only occur if the OS RNG is broken.
     let mut rng = UnwrapErr(SysRng);
     let encrypted_key = rsa_pub
         .encrypt(&mut rng, Pkcs1v15Encrypt, cek)
-        .map_err(|e| SmimeError::Other(e.to_string()))?;
+        .map_err(|e| SmimeError::RngFailure(format!("RSA PKCS#1v15 encrypt: {e}")))?;
 
     let ias = IssuerAndSerialNumber {
         issuer: cert.tbs_certificate().issuer().clone(),
@@ -313,8 +314,9 @@ fn build_p256_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo,
         .subject_public_key_info()
         .subject_public_key
         .raw_bytes();
-    let recipient_pub =
-        p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
+    let recipient_pub = p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| {
+        SmimeError::MalformedInput(format!("P-256 public key in recipient cert: {e}"))
+    })?;
 
     let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
         .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
@@ -351,8 +353,9 @@ fn build_p384_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo,
         .subject_public_key_info()
         .subject_public_key
         .raw_bytes();
-    let recipient_pub =
-        p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
+    let recipient_pub = p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| {
+        SmimeError::MalformedInput(format!("P-384 public key in recipient cert: {e}"))
+    })?;
 
     let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
         .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;

@@ -32,7 +32,11 @@ impl fmt::Display for RecipientIdentifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RecipientIdentifier::IssuerAndSerialNumber { issuer_der, serial } => {
-                write!(f, "IssuerAndSerial(issuer={} bytes, serial=", issuer_der.len())?;
+                write!(
+                    f,
+                    "IssuerAndSerial(issuer={} bytes, serial=",
+                    issuer_der.len()
+                )?;
                 for (i, b) in serial.iter().enumerate() {
                     if i > 0 {
                         write!(f, ":")?;
@@ -85,6 +89,19 @@ pub enum KeyEncryptionAlgorithm {
     EcdhEs { curve: EcCurve },
 }
 
+impl fmt::Display for KeyEncryptionAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KeyEncryptionAlgorithm::RsaPkcs1v15 => f.write_str("RSA-PKCS1v15"),
+            KeyEncryptionAlgorithm::RsaOaep => f.write_str("RSA-OAEP"),
+            KeyEncryptionAlgorithm::EcdhEs { curve } => match curve {
+                EcCurve::P256 => f.write_str("ECDH-ES/P-256"),
+                EcCurve::P384 => f.write_str("ECDH-ES/P-384"),
+            },
+        }
+    }
+}
+
 /// AES key wrap algorithm used to protect the content-encryption key in KARI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -125,6 +142,16 @@ pub enum DigestAlgorithm {
     Sha256,
     Sha384,
     Sha512,
+}
+
+impl fmt::Display for DigestAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DigestAlgorithm::Sha256 => f.write_str("sha-256"),
+            DigestAlgorithm::Sha384 => f.write_str("sha-384"),
+            DigestAlgorithm::Sha512 => f.write_str("sha-512"),
+        }
+    }
 }
 
 /// Abstraction over a private key capable of decrypting an S/MIME message.

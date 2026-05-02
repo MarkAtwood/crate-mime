@@ -160,13 +160,13 @@ fn extract_cbc_iv(env_data: &EnvelopedData) -> Result<Vec<u8>, SmimeError> {
 fn decrypt_aes128_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
     let key: &[u8; 16] = cek
         .try_into()
-        .map_err(|_| SmimeError::Other("AES-128 CEK must be 16 bytes".into()))?;
+        .map_err(|_| SmimeError::MalformedInput("AES-128 CEK must be 16 bytes".into()))?;
     let iv: &[u8; 16] = iv
         .try_into()
-        .map_err(|_| SmimeError::Other("AES-128-CBC IV must be 16 bytes".into()))?;
+        .map_err(|_| SmimeError::MalformedInput("AES-128-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes128>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|e| SmimeError::Other(format!("AES-128-CBC unpad: {e}")))
+        .map_err(|e| SmimeError::DecryptionFailed(format!("AES-128-CBC: {e}")))
 }
 
 /// Convert a CMS `RecipientIdentifier` (from the `cms` crate's ASN.1 types) into the
@@ -297,11 +297,11 @@ fn kari_rid_to_owned(rid: &KeyAgreeRecipientIdentifier) -> Result<RecipientIdent
 fn decrypt_aes256_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
     let key: &[u8; 32] = cek
         .try_into()
-        .map_err(|_| SmimeError::Other("AES-256 CEK must be 32 bytes".into()))?;
+        .map_err(|_| SmimeError::MalformedInput("AES-256 CEK must be 32 bytes".into()))?;
     let iv: &[u8; 16] = iv
         .try_into()
-        .map_err(|_| SmimeError::Other("AES-256-CBC IV must be 16 bytes".into()))?;
+        .map_err(|_| SmimeError::MalformedInput("AES-256-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes256>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|e| SmimeError::Other(format!("AES-256-CBC unpad: {e}")))
+        .map_err(|e| SmimeError::DecryptionFailed(format!("AES-256-CBC: {e}")))
 }

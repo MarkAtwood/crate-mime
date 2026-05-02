@@ -1056,8 +1056,10 @@ impl DecryptionKey for TestEcP256DecryptionKey {
             .map_err(|e| SmimeError::Other(format!("ephemeral key parse: {e}")))?;
 
         // Step 2: ECDH — static private key × ephemeral public key → shared secret Z.
-        let shared =
-            elliptic_curve::ecdh::diffie_hellman(self.secret_key.to_nonzero_scalar(), eph_pub.as_affine());
+        let shared = elliptic_curve::ecdh::diffie_hellman(
+            self.secret_key.to_nonzero_scalar(),
+            eph_pub.as_affine(),
+        );
         let z = shared.raw_secret_bytes();
 
         // Step 3: X9.63 KDF with EccCmsSharedInfo (RFC 5753 §7.2).
@@ -1085,13 +1087,14 @@ impl DecryptionKey for TestEcP256DecryptionKey {
         // Step 4: AES-128-KW unwrap → raw CEK.
         use aes_kw::cipher::KeyInit as _;
         let unwrapper = aes_kw::KwAes128::new(&kek.into());
-        let mut cek = vec![
-            0u8;
-            enc_cek
-                .len()
-                .checked_sub(8)
-                .ok_or_else(|| SmimeError::Other("enc_cek too short for AES-KW".into()))?
-        ];
+        let mut cek =
+            vec![
+                0u8;
+                enc_cek
+                    .len()
+                    .checked_sub(8)
+                    .ok_or_else(|| SmimeError::Other("enc_cek too short for AES-KW".into()))?
+            ];
         unwrapper
             .unwrap_key(enc_cek, &mut cek)
             .map_err(|e| SmimeError::Other(format!("AES-128-KW unwrap: {e}")))?;
@@ -1121,8 +1124,7 @@ fn test_decrypt_openssl_kari_p256() {
     let plaintext = decrypt(&enveloped_der, &key).expect("decrypt() must succeed for P-256 KARI");
 
     assert_eq!(
-        plaintext,
-        b"Oracle P-256 KARI plaintext",
+        plaintext, b"Oracle P-256 KARI plaintext",
         "decrypted P-256 KARI must match oracle plaintext"
     );
 }
