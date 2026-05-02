@@ -32,6 +32,57 @@ original message buffer, which is required for correct digest computation.
 `decrypt` returns raw bytes. Feed them to `mime_tree::parse()` to get the part
 tree. If the result is itself S/MIME, loop — this crate does not recurse.
 
+## How it works
+
+### Verify
+
+`verify()` takes the raw bytes of the signed MIME part and the DER-encoded
+`application/pkcs7-signature` blob. It:
+
+1. Parses the DER blob as a CMS `ContentInfo` → `SignedData`.
+2. For each `SignerInfo`, recomputes the message digest over the supplied content
+   bytes (RFC 5652 §5.4) and checks it against the `messageDigest` signed attribute.
+3. Verifies the `SignerInfo` signature over the DER-encoded `SignedAttributes` SET.
+4. Locates the signer's certificate in the `SignedData` certificate bag and walks
+   the chain to a caller-supplied trust anchor (RFC 5280 §6.1).
+5. Returns a `VerificationResult` with one `SignerResult` per `SignerInfo` — all
+   failures are reported, not just the first.
+
+The caller extracts the exact signed bytes using `mime-tree` byte ranges. Using
+the wrong byte slice (e.g. re-encoded content) will cause digest mismatch.
+
+### Decrypt
+
+`decrypt()` takes a DER-encoded `ContentInfo` wrapping `EnvelopedData`. It:
+
+1. Iterates the `RecipientInfo` list; for each entry calls
+   `DecryptionKey::matches_recipient()` to find the right one.
+2. For KTRI (RSA): calls `DecryptionKey::decrypt_cek()` with the encrypted key bytes.
+3. For KARI (ECDH): calls `DecryptionKey::agree_ecdh()` with the ephemeral public key,
+   UKM, and wrapped CEK; the trait implementation performs the ECDH exchange and key unwrap.
+4. Decrypts the content with the recovered CEK (AES-128-CBC or AES-256-CBC).
+5. Returns the plaintext bytes. Feed them to `mime_tree::parse()` to get the part tree.
+
+### Sign
+
+`sign()` builds a detached CMS `SignedData` and wraps it in a `multipart/signed`
+MIME structure. It:
+
+1. Hashes `content_mime` with the selected digest algorithm.
+2. Builds `SignedAttributes`: content-type, message-digest, signing-time (`now`).
+3. Calls `SigningKey::sign()` over the DER-encoded `SignedAttributes` SET.
+4. Constructs `SignedData` with the signer's certificate embedded in the bag.
+5. Base64-encodes the DER blob into the `application/pkcs7-signature` MIME part.
+
+### Encrypt
+
+`encrypt()` builds a CMS `EnvelopedData` with one `RecipientInfo` per certificate:
+
+- RSA certificates → `KeyTransRecipientInfo` (RSA-OAEP key transport).
+- EC P-256/P-384 certificates → `KeyAgreeRecipientInfo` (ECDH-ES + AES key wrap).
+
+A random CEK is generated for each message. Content is encrypted with AES-256-CBC.
+
 ## Implementing the key traits
 
 ### `DecryptionKey`

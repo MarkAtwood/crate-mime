@@ -1,6 +1,15 @@
 # mime / smime workspace
 
-Two Rust crates for RFC 5322 / MIME parsing and S/MIME cryptographic processing.
+Processing a signed or encrypted email correctly requires two things that most
+libraries treat as one: knowing the *exact byte positions* of each MIME part in
+the original message (so a cryptographic verifier can hash the right bytes), and
+performing the *CMS/PKCS#7 cryptographic operations* without tying you to a
+specific key store. These two crates separate those concerns cleanly.
+
+`mime-tree` parses RFC 5322 / MIME messages into a byte-range-indexed part tree.
+`smime-tree` performs S/MIME sign/verify/encrypt/decrypt using those byte ranges
+and caller-supplied key trait implementations.
+
 No JMAP dependency. No async. No `unsafe` beyond what RustCrypto crates require.
 
 ## Crates
