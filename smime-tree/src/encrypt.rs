@@ -91,6 +91,14 @@ struct EccCmsSharedInfo {
 /// Returns `SmimeError::Other("no recipients")` when `recipients` is empty.
 /// Returns `SmimeError::UnsupportedAlgorithm` for any certificate whose
 /// subject public key algorithm is not RSA, P-256, or P-384.
+///
+/// # Panics
+///
+/// Panics if the operating system random-number generator fails while
+/// encrypting for an RSA recipient.  The `rsa` crate requires a `CryptoRng`
+/// implementation and does not expose a fallible variant; OS RNG failure at
+/// this point indicates a catastrophic system state.  ECDH recipients use a
+/// fallible RNG path and return `Err` instead of panicking.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError> {
     if recipients.is_empty() {
         return Err(SmimeError::Other("no recipients".into()));

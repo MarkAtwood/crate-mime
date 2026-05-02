@@ -97,7 +97,7 @@ pub(crate) fn validate_chain(
             // Try each valid anchor for signature verification — the CA renewal case
             // produces two simultaneously-valid certs with the same DN but different
             // keys, so the first valid anchor may not be the right one.
-            for anchor in &valid_candidates {
+            for anchor in valid_candidates {
                 if verify_signature(current, anchor).is_ok() {
                     // RFC 5280 §4.2.1.9: also enforce the trust anchor's own
                     // pathLen constraint.  A root CA with pathLen=0 may not
