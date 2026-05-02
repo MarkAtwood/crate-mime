@@ -116,7 +116,7 @@ pub fn decode_body_value(
     // is_truncated.  All three encoding paths pre-truncate their input and
     // record the result via a `*_was_limited` flag, so the logic here is
     // symmetric: either the decoded output itself exceeded max_bytes (possible
-    // for Base64, where the input limit rounds up to the next multiple of 4),
+    // for Base64 or QP, where the input limit is an approximation),
     // or one of the input paths was cut short.
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
@@ -127,6 +127,8 @@ pub fn decode_body_value(
     };
 
     // Step 3: charset conversion to UTF-8 via encoding_rs.
+    // Practical default: UTF-8 is more permissive than RFC 2045 §5.2 (us-ascii)
+    // but avoids false is_encoding_problem flags on modern charsetless text.
     let charset = part.charset.as_deref().unwrap_or("utf-8");
     let enc = encoding_rs::Encoding::for_label(charset.as_bytes()).unwrap_or(encoding_rs::UTF_8);
     let (cow, _, had_errors) = enc.decode(&truncated_bytes);
@@ -174,6 +176,7 @@ mod tests {
             header_range: (0u32, offset as u32),
             body_range: (offset as u32, length as u32),
             children: vec![],
+            is_encoding_problem: false,
         };
         (raw, part)
     }

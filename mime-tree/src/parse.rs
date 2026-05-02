@@ -190,6 +190,7 @@ fn build_part(
         header_range,
         body_range,
         children,
+        is_encoding_problem: part.is_encoding_problem,
     })
 }
 

@@ -38,8 +38,7 @@ const MAX_DEPTH: usize = 10;
 /// Signature verification is performed by `pkix-chain`'s `DefaultVerifier`,
 /// which supports RSA-PKCS1v15-SHA-256 and ECDSA-P-256-SHA-256. Chains whose
 /// CA certificates use ECDSA-P-384 or other algorithms will fail with
-/// `CertChainError::SignatureVerification`. P-384 support is planned for
-/// pkix-path v0.2.
+/// `CertChainError::SignatureVerification`.
 pub(crate) fn validate_chain(
     signer_cert: &Certificate,
     bag: &[Certificate],
@@ -119,10 +118,18 @@ fn build_chain<'a>(
     visited.insert(signer_subject_der);
 
     // Pre-compute anchor subject DERs once to avoid O(depth * anchors) encodes.
+    // A malformed anchor whose subject fails DER encoding is reported immediately
+    // rather than silently dropped (which would produce a misleading NoMatchingIssuer).
     let anchor_subjects: HashSet<Vec<u8>> = trust_anchors
         .iter()
-        .filter_map(|a| a.tbs_certificate().subject().to_der().ok())
-        .collect();
+        .map(|a| {
+            a.tbs_certificate().subject().to_der().map_err(|e| {
+                SmimeError::CertChain(CertChainError::Other(format!(
+                    "trust anchor subject DER encode failed: {e}"
+                )))
+            })
+        })
+        .collect::<Result<HashSet<Vec<u8>>, SmimeError>>()?;
 
     let mut current = signer_cert;
     for _ in 0..MAX_DEPTH {

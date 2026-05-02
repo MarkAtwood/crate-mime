@@ -198,21 +198,12 @@ fn try_decrypt_kari(
     kari: &KeyAgreeRecipientInfo,
     key: &dyn DecryptionKey,
 ) -> Result<Option<Zeroizing<Vec<u8>>>, SmimeError> {
-    // Only ephemeral originator keys are supported (the standard S/MIME case).
-    // Static originators (IssuerAndSerialNumber or SubjectKeyIdentifier) are rare
-    // and require a different key-lookup path not modelled by the current trait.
-    let ephemeral_bytes = match &kari.originator {
-        OriginatorIdentifierOrKey::OriginatorKey(orig) => orig.public_key.raw_bytes().to_vec(),
-        _ => return Ok(None),
-    };
-
     let ukm: Option<Vec<u8>> = kari.ukm.as_ref().map(|u| u.as_bytes().to_vec());
 
-    // Check whether any recipient in this KARI entry matches our key before
-    // parsing the algorithm.  This ordering matters: if a matching recipient
-    // is found but the algorithm OID is unsupported, we should return
-    // UnsupportedAlgorithm rather than silently returning Ok(None) (which
-    // would mislead the caller into thinking their key doesn't match).
+    // Check whether any recipient in this KARI entry matches our key FIRST.
+    // If no recipient matches, this KARI isn't for us regardless of originator type.
+    // If a recipient matches but the originator is static (not ephemeral), we return
+    // UnsupportedAlgorithm — the caller's key is the right one but we cannot handle it.
     let matching_rek = kari.recipient_enc_keys.iter().find(|rek| {
         kari_rid_to_owned(&rek.rid)
             .map(|rid| key.matches_recipient(&rid))
@@ -220,8 +211,21 @@ fn try_decrypt_kari(
     });
 
     let rek = match matching_rek {
-        Some(r) => r,
         None => return Ok(None), // none of the recipients match our key
+        Some(r) => r,
+    };
+
+    // A recipient matched — now check the originator type.  Only ephemeral
+    // originator keys are supported (the standard S/MIME case).  Static
+    // originators (IssuerAndSerialNumber or SubjectKeyIdentifier) require a
+    // different key-lookup path not modelled by the current trait.
+    let ephemeral_bytes = match &kari.originator {
+        OriginatorIdentifierOrKey::OriginatorKey(orig) => orig.public_key.raw_bytes().to_vec(),
+        _ => {
+            return Err(SmimeError::UnsupportedAlgorithm(
+                "KARI with static originator is not supported".into(),
+            ))
+        }
     };
 
     // A matching recipient was found — now parse the algorithm.  An
