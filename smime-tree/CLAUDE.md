@@ -143,8 +143,9 @@ See `~/PROJECT/MIME/standards/README.md` for the full index.
 ## Test Integrity
 
 - Never modify, skip, or weaken a failing test. Fix the code.
-- Oracles: use OpenSSL to generate S/MIME test messages; cross-validate results against
-  OpenSSL's output. `openssl smime -sign`, `-verify`, `-encrypt`, `-decrypt`.
+- Oracles: use OpenSSL (`openssl smime -sign`, `-verify`, `-encrypt`, `-decrypt`) or
+  Python pyca/cryptography (`from cryptography.hazmat.primitives.serialization.pkcs7 import ...`)
+  to generate S/MIME test fixtures and cross-validate results. Both are valid independent oracles.
 - Never derive expected values from this crate.
 
 ## Workspace Context
