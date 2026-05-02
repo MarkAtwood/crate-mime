@@ -100,7 +100,7 @@ pub fn decrypt(
 /// Digest algorithm is selected from the key's certificate (P-256→SHA-256,
 /// P-384→SHA-384, P-521→SHA-512, RSA→SHA-256); override via
 /// SigningKey::preferred_digest_algorithm().
-pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeError>;
+pub fn sign(content_mime: &[u8], key: &dyn SigningKey, now: std::time::SystemTime) -> Result<Vec<u8>, SmimeError>;
 
 /// Encrypt MIME content to one or more recipients.
 /// Returns application/pkcs7-mime; smime-type=enveloped-data bytes.

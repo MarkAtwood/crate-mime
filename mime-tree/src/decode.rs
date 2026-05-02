@@ -40,10 +40,13 @@ pub fn decode_body_value(
     }
     let body_bytes = &raw[offset..end];
 
-    // Step 1: transfer-decode.
+    // Step 1: transfer-decode, pre-truncating input to avoid decoding more
+    // than needed.  Each path sets a `*_was_limited` flag when input was cut
+    // short, so Step 2 knows whether additional content exists beyond the limit.
     let mut is_encoding_problem = false;
     let mut b64_input_was_limited = false;
     let mut qp_input_was_limited = false;
+    let mut identity_was_limited = false;
     let decoded: Vec<u8> = match part.transfer_encoding {
         TransferEncoding::Base64 => {
             // Limit base64 input to avoid allocating a full decode buffer when
@@ -100,27 +103,24 @@ pub fn decode_body_value(
         | TransferEncoding::EightBit
         | TransferEncoding::Binary => {
             // Slice to max_bytes before allocating to avoid copying the full body.
-            let truncated =
-                max_bytes.map_or(body_bytes, |n| &body_bytes[..n.min(body_bytes.len())]);
+            let truncated = max_bytes.map_or(body_bytes, |n| {
+                let limit = n.min(body_bytes.len());
+                identity_was_limited = limit < body_bytes.len();
+                &body_bytes[..limit]
+            });
             truncated.to_vec()
         }
     };
 
-    // Step 2: apply max_bytes truncation on the transfer-decoded bytes.
-    // (The identity path already truncated above; this handles Base64/QP.)
+    // Step 2: apply max_bytes truncation on the decoded bytes and determine
+    // is_truncated.  All three encoding paths pre-truncate their input and
+    // record the result via a `*_was_limited` flag, so the logic here is
+    // symmetric: either the decoded output itself exceeded max_bytes (possible
+    // for Base64, where the input limit rounds up to the next multiple of 4),
+    // or one of the input paths was cut short.
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
-        Some(_) if b64_input_was_limited || qp_input_was_limited => (decoded, true),
-        _ => {
-            let is_truncated = matches!(
-                part.transfer_encoding,
-                TransferEncoding::Identity
-                    | TransferEncoding::SevenBit
-                    | TransferEncoding::EightBit
-                    | TransferEncoding::Binary
-            ) && max_bytes.is_some_and(|n| length > n);
-            (decoded, is_truncated)
-        }
+        _ => (decoded, b64_input_was_limited || qp_input_was_limited || identity_was_limited),
     };
 
     // Step 3: charset conversion to UTF-8 via encoding_rs.

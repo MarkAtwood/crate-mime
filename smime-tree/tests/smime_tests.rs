@@ -301,7 +301,8 @@ fn test_sign_output_accepted_by_openssl() {
     };
 
     let content_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nHello from smime-tree\r\n";
-    let signed_bytes = sign(content_mime, &test_key).expect("sign() must succeed");
+    let signed_bytes =
+        sign(content_mime, &test_key, std::time::SystemTime::now()).expect("sign() must succeed");
 
     // Write the signed MIME message to a temp file.
     let mut signed_file = tempfile::NamedTempFile::new().expect("create temp file");
@@ -489,7 +490,8 @@ fn test_sign_verify_roundtrip_via_mime_tree() {
     };
 
     let content_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nHello roundtrip\r\n";
-    let signed_bytes = sign(content_mime, &test_key).expect("sign() must succeed");
+    let signed_bytes =
+        sign(content_mime, &test_key, std::time::SystemTime::now()).expect("sign() must succeed");
 
     // Parse the multipart/signed output with mime-tree.
     // The root is multipart, so children get IDs "1" (signed content) and

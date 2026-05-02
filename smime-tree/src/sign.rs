@@ -1,6 +1,7 @@
 //! S/MIME sign: produce a `multipart/signed` message.
 
 use crate::{DigestAlgorithm, SigningKey, SmimeError};
+use std::time::SystemTime;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use cms::{
@@ -34,6 +35,9 @@ use const_oid::db::rfc5912::{
 /// The `content_mime` bytes are placed verbatim as the first MIME part.
 /// The CMS `SignedData` blob is base64-encoded into the second MIME part.
 ///
+/// `now` is embedded as the CMS signing-time attribute (RFC 5652 §11.3).
+/// Pass `SystemTime::now()` for production use, or a fixed value in tests.
+///
 /// The digest algorithm is selected based on the signing key's certificate:
 /// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384.
 /// P-521 keys are not supported and will return `SmimeError::UnsupportedAlgorithm`.
@@ -46,7 +50,11 @@ use const_oid::db::rfc5912::{
 /// `multipart/signed` Content-Type but have no `From:`, `Date:`, or other
 /// RFC 5322 message headers.  To send as email, wrap the output in a full
 /// RFC 5322 message envelope.
-pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeError> {
+pub fn sign(
+    content_mime: &[u8],
+    key: &dyn SigningKey,
+    now: SystemTime,
+) -> Result<Vec<u8>, SmimeError> {
     let cert = key.certificate();
 
     // Select the digest algorithm based on the key type so that the algorithm
@@ -76,7 +84,7 @@ pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeE
     // SignedAttributes is a SetOfVec which sorts into canonical DER order.
     let ct_attr = make_content_type_attribute(ID_DATA)?;
     let md_attr = make_message_digest_attribute(&msg_digest)?;
-    let st_attr = make_signing_time_attribute()?;
+    let st_attr = make_signing_time_attribute(now)?;
 
     let mut attrs_vec: SetOfVec<Attribute> = SetOfVec::new();
     attrs_vec.insert(ct_attr)?;
@@ -221,9 +229,10 @@ fn make_message_digest_attribute(digest: &[u8]) -> Result<Attribute, SmimeError>
     })
 }
 
-/// Build a signing-time attribute (RFC 5652 §11.3) set to the current UTC time.
-fn make_signing_time_attribute() -> Result<Attribute, SmimeError> {
-    let time = x509_cert::time::Time::now()?;
+/// Build a signing-time attribute (RFC 5652 §11.3) set to `now`.
+fn make_signing_time_attribute(now: SystemTime) -> Result<Attribute, SmimeError> {
+    let time = x509_cert::time::Time::try_from(now)
+        .map_err(|e| SmimeError::MalformedInput(format!("signing time out of range: {e}")))?;
     let time_der = time.to_der()?;
     let value = AttributeValue::from_der(&time_der)?;
     let mut values: SetOfVec<AttributeValue> = SetOfVec::new();
