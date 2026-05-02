@@ -44,9 +44,7 @@ pub fn decode_body_value(
     // than needed.  Each path sets a `*_was_limited` flag when input was cut
     // short, so Step 2 knows whether additional content exists beyond the limit.
     let mut is_encoding_problem = false;
-    let mut b64_input_was_limited = false;
-    let mut qp_input_was_limited = false;
-    let mut identity_was_limited = false;
+    let mut input_was_limited = false;
     let decoded: Vec<u8> = match part.transfer_encoding {
         TransferEncoding::Base64 => {
             // Limit base64 input to avoid allocating a full decode buffer when
@@ -60,13 +58,13 @@ pub fn decode_body_value(
 
             // Strip CR/LF line wrapping, collect up to max_b64_chars bytes,
             // and detect truncation — all in a single pass.
-            let mut stripped = Vec::with_capacity(body_bytes.len());
+            let mut stripped = Vec::with_capacity(max_b64_chars.min(body_bytes.len()));
             for &b in body_bytes {
                 if b == b'\r' || b == b'\n' {
                     continue;
                 }
                 if stripped.len() >= max_b64_chars {
-                    b64_input_was_limited = true;
+                    input_was_limited = true;
                     break;
                 }
                 stripped.push(b);
@@ -87,7 +85,7 @@ pub fn decode_body_value(
             // mid-escape is handled gracefully by Robust mode.
             let qp_input = max_bytes.map_or(body_bytes, |n| {
                 let limit = n.saturating_mul(4).min(body_bytes.len());
-                qp_input_was_limited = limit < body_bytes.len();
+                input_was_limited = limit < body_bytes.len();
                 &body_bytes[..limit]
             });
             match quoted_printable::decode(qp_input, quoted_printable::ParseMode::Robust) {
@@ -105,7 +103,7 @@ pub fn decode_body_value(
             // Slice to max_bytes before allocating to avoid copying the full body.
             let truncated = max_bytes.map_or(body_bytes, |n| {
                 let limit = n.min(body_bytes.len());
-                identity_was_limited = limit < body_bytes.len();
+                input_was_limited = limit < body_bytes.len();
                 &body_bytes[..limit]
             });
             truncated.to_vec()
@@ -114,16 +112,13 @@ pub fn decode_body_value(
 
     // Step 2: apply max_bytes truncation on the decoded bytes and determine
     // is_truncated.  All three encoding paths pre-truncate their input and
-    // record the result via a `*_was_limited` flag, so the logic here is
+    // record the result via `input_was_limited`, so the logic here is
     // symmetric: either the decoded output itself exceeded max_bytes (possible
     // for Base64 or QP, where the input limit is an approximation),
-    // or one of the input paths was cut short.
+    // or the input path was cut short.
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
-        _ => (
-            decoded,
-            b64_input_was_limited || qp_input_was_limited || identity_was_limited,
-        ),
+        _ => (decoded, input_was_limited),
     };
 
     // Step 3: charset conversion to UTF-8 via encoding_rs.

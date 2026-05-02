@@ -328,13 +328,13 @@ fn verify_sig(
     let e = |msg: String| SmimeError::Other(msg);
     match *sig_alg_oid {
         x if x == SHA_256_WITH_RSA_ENCRYPTION => {
-            sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
+            sig_verify::verify_rsa_pkcs1::<Sha256>(cert, tbs_bytes, sig_bytes, e)
         }
         x if x == SHA_384_WITH_RSA_ENCRYPTION => {
-            sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
+            sig_verify::verify_rsa_pkcs1::<Sha384>(cert, tbs_bytes, sig_bytes, e)
         }
         x if x == SHA_512_WITH_RSA_ENCRYPTION => {
-            sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
+            sig_verify::verify_rsa_pkcs1::<Sha512>(cert, tbs_bytes, sig_bytes, e)
         }
         x if x == RSA_ENCRYPTION => {
             // RFC 5652 §5.4 + RFC 5751 §2.1: implementations MAY use rsaEncryption
@@ -342,13 +342,13 @@ fn verify_sig(
             // When they do, the digest is determined by SignerInfo.digestAlgorithm.
             match *digest_alg_oid {
                 d if d == ID_SHA_256 => {
-                    sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
+                    sig_verify::verify_rsa_pkcs1::<Sha256>(cert, tbs_bytes, sig_bytes, e)
                 }
                 d if d == ID_SHA_384 => {
-                    sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
+                    sig_verify::verify_rsa_pkcs1::<Sha384>(cert, tbs_bytes, sig_bytes, e)
                 }
                 d if d == ID_SHA_512 => {
-                    sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
+                    sig_verify::verify_rsa_pkcs1::<Sha512>(cert, tbs_bytes, sig_bytes, e)
                 }
                 _ => Err(SmimeError::UnsupportedAlgorithm(format!(
                     "rsaEncryption with digest OID {digest_alg_oid}"

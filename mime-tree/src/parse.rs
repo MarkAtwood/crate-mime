@@ -40,7 +40,7 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     // Compute preview: first 256 decoded characters from the first text_body part.
     let preview = body.text_body.first().and_then(|id| {
         let part = part_index.find_by_id(id)?;
-        let decoded = crate::decode::decode_body_value(raw, part, Some(256)).ok()?;
+        let decoded = crate::decode::decode_body_value(raw, part, Some(1024)).ok()?;
         let s: String = decoded.value.chars().take(256).collect();
         if s.is_empty() {
             None
@@ -86,7 +86,7 @@ fn extract_headers(part: &MessagePart<'_>, raw: &[u8]) -> Vec<ParsedHeader> {
             let name = h.name.as_str().to_owned();
             let value = raw
                 .get(h.offset_start as usize..h.offset_end as usize)
-                .map(|bytes| String::from_utf8_lossy(bytes).trim().to_owned())
+                .map(|bytes| String::from_utf8_lossy(bytes.trim_ascii()).into_owned())
                 .unwrap_or_default();
             ParsedHeader { name, value }
         })
@@ -127,21 +127,19 @@ fn build_part(
         part.offset_end.saturating_sub(part.offset_body),
     );
 
-    let no_content_type = part.content_type().is_none();
-    let content_type = part
-        .content_type()
+    let raw_ct = part.content_type();
+    let content_type = raw_ct
         .map(|ct| {
             let subtype = ct.subtype().unwrap_or("plain");
             format!("{}/{}", ct.ctype(), subtype)
         })
         .unwrap_or_else(|| "text/plain".to_owned());
 
-    let charset = part
-        .content_type()
+    let charset = raw_ct
         .and_then(|ct| ct.attribute("charset"))
         .map(str::to_owned)
         .or_else(|| {
-            if no_content_type {
+            if raw_ct.is_none() {
                 Some("us-ascii".to_owned())
             } else {
                 None

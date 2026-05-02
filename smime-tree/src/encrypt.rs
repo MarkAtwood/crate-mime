@@ -126,6 +126,8 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     // Encrypt the content and derive per-algorithm values; recipient loop runs once below.
     let (content_enc_alg, encrypted_content, cek_bytes) = if use_aes256 {
         encrypt_aes_cbc(32, ID_AES_256_CBC, |key, iv| {
+            // NOTE: key is exactly 32 bytes (passed as key_len to encrypt_aes_cbc)
+            // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
             let k = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(key)
                 .expect("key is exactly 32 bytes = AES-256 key size");
             let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv)
@@ -134,6 +136,8 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         })?
     } else {
         encrypt_aes_cbc(16, ID_AES_128_CBC, |key, iv| {
+            // NOTE: key is exactly 16 bytes (passed as key_len to encrypt_aes_cbc)
+            // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
             let k = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(key)
                 .expect("key is exactly 16 bytes = AES-128 key size");
             let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv)
@@ -463,29 +467,24 @@ where
     // Wrap the CEK with AES-KW. Wrapped output = cek.len() + 8 bytes.
     let wrapped_len = cek.len() + 8;
     let mut wrapped = vec![0u8; wrapped_len];
+    // Macro avoids duplicating the try_into + KeyInit + wrap_key pattern for
+    // the two supported KEK sizes; only the array size and KW type differ.
+    macro_rules! do_wrap {
+        ($n:literal, $kw:ty) => {{
+            use aes_kw::cipher::KeyInit;
+            let kek_arr: &[u8; $n] = kek
+                .as_slice()
+                .try_into()
+                .map_err(|_| SmimeError::Other("KEK length mismatch".into()))?;
+            let wrapper = <$kw>::new(kek_arr.into());
+            wrapper
+                .wrap_key(cek, &mut wrapped)
+                .map_err(|e| SmimeError::Other(e.to_string()))?;
+        }};
+    }
     match kek_len {
-        16 => {
-            use aes_kw::cipher::KeyInit;
-            let kek_arr: &[u8; 16] = kek
-                .as_slice()
-                .try_into()
-                .map_err(|_| SmimeError::Other("KEK length mismatch".into()))?;
-            let wrapper = aes_kw::KwAes128::new(kek_arr.into());
-            wrapper
-                .wrap_key(cek, &mut wrapped)
-                .map_err(|e| SmimeError::Other(e.to_string()))?;
-        }
-        32 => {
-            use aes_kw::cipher::KeyInit;
-            let kek_arr: &[u8; 32] = kek
-                .as_slice()
-                .try_into()
-                .map_err(|_| SmimeError::Other("KEK length mismatch".into()))?;
-            let wrapper = aes_kw::KwAes256::new(kek_arr.into());
-            wrapper
-                .wrap_key(cek, &mut wrapped)
-                .map_err(|e| SmimeError::Other(e.to_string()))?;
-        }
+        16 => do_wrap!(16, aes_kw::KwAes128),
+        32 => do_wrap!(32, aes_kw::KwAes256),
         _ => {
             return Err(SmimeError::Other(format!(
                 "unsupported KEK length: {kek_len} bytes"

@@ -8,7 +8,7 @@
 
 use der::Encode;
 use der_stable::Decode as _;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 use x509_cert::Certificate;
 
@@ -131,6 +131,15 @@ fn build_chain<'a>(
         })
         .collect::<Result<HashSet<Vec<u8>>, SmimeError>>()?;
 
+    // Pre-compute a subject-DER → cert map for the bag so the inner find is O(1)
+    // rather than O(N) with a DER encode per cert per iteration.  Malformed certs
+    // (subject DER encode fails) are silently skipped — consistent with the
+    // previous unwrap_or(false) behaviour.
+    let bag_by_subject: HashMap<Vec<u8>, &Certificate> = bag
+        .iter()
+        .filter_map(|c| c.tbs_certificate().subject().to_der().ok().map(|s| (s, c)))
+        .collect();
+
     let mut current = signer_cert;
     for _ in 0..MAX_DEPTH {
         let issuer_der = current.tbs_certificate().issuer().to_der().map_err(|e| {
@@ -142,14 +151,8 @@ fn build_chain<'a>(
             return Ok(chain);
         }
 
-        // Find the issuer in the bag by subject DN.
-        let parent = bag.iter().find(|c| {
-            c.tbs_certificate()
-                .subject()
-                .to_der()
-                .map(|s| s == issuer_der)
-                .unwrap_or(false)
-        });
+        // Find the issuer in the bag by subject DN — O(1) via pre-computed map.
+        let parent = bag_by_subject.get(&issuer_der).copied();
 
         match parent {
             None => {
