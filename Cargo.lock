@@ -657,7 +657,7 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
 name = "mime-tree"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "encoding_rs",
@@ -668,9 +668,9 @@ dependencies = [
 
 [[package]]
 name = "mime-tree"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4da03349b045c03a829c4c72f56d431f7c0dcff3283a18caf7daca1fcd8fc077"
+checksum = "049c8f3581b91efe2adf21b9ed04f7816965760fa06ef04ec24be159395dfb53"
 dependencies = [
  "base64",
  "encoding_rs",
@@ -1211,7 +1211,7 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "smime-tree"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aes",
  "aes-kw",
@@ -1225,7 +1225,7 @@ dependencies = [
  "der 0.8.0",
  "elliptic-curve 0.14.0-rc.32",
  "getrandom 0.4.2",
- "mime-tree 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mime-tree 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "p256 0.14.0-rc.9",
  "p384",
  "pkix-chain",
