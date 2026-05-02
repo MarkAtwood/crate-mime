@@ -105,7 +105,9 @@ pub(crate) fn validate_chain(
                 .collect();
             if valid_candidates.is_empty() {
                 return Err(SmimeError::CertChain(
-                    CertChainError::AllTrustAnchorsExpired,
+                    CertChainError::AllTrustAnchorsExpired {
+                        issuer: current.tbs_certificate().issuer().to_string(),
+                    },
                 ));
             }
             // Try each valid anchor for signature verification — the CA renewal case
@@ -127,7 +129,11 @@ pub(crate) fn validate_chain(
                     return Ok(());
                 }
             }
-            return Err(SmimeError::CertChain(CertChainError::SignatureVerification));
+            return Err(SmimeError::CertChain(
+                CertChainError::SignatureVerification {
+                    subject: current.tbs_certificate().subject().to_string(),
+                },
+            ));
         }
 
         // Step 3 — look for the issuer in the certificate bag.
@@ -153,7 +159,9 @@ pub(crate) fn validate_chain(
             Some(p) => {
                 // The parent must be a CA (BasicConstraints.cA = true).
                 if !is_ca_cert(p) {
-                    return Err(SmimeError::CertChain(CertChainError::NotACa));
+                    return Err(SmimeError::CertChain(CertChainError::NotACa {
+                        subject: p.tbs_certificate().subject().to_string(),
+                    }));
                 }
                 // RFC 5280 §4.2.1.9: check the pathLen constraint of the parent CA.
                 // intermediate_count is the count of CA certs already accumulated below p
@@ -175,13 +183,17 @@ pub(crate) fn validate_chain(
                     SmimeError::CertChain(CertChainError::Other(format!("subject DER encode: {e}")))
                 })?;
                 if !visited.insert(subj_der) {
-                    return Err(SmimeError::CertChain(CertChainError::Cycle));
+                    return Err(SmimeError::CertChain(CertChainError::Cycle {
+                        subject: p.tbs_certificate().subject().to_string(),
+                    }));
                 }
                 current = p;
                 intermediate_count += 1;
             }
             None => {
-                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer));
+                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer {
+                    issuer: current.tbs_certificate().issuer().to_string(),
+                }));
             }
         }
     }
@@ -196,9 +208,13 @@ pub(crate) fn validate_chain(
 /// Return `Ok(())` if `cert`'s validity period contains `now`.
 fn check_validity(cert: &Certificate, now: SystemTime) -> Result<(), SmimeError> {
     let not_before = SystemTime::from(&cert.tbs_certificate().validity().not_before);
-    let not_after = SystemTime::from(&cert.tbs_certificate().validity().not_after);
+    let not_after_time = &cert.tbs_certificate().validity().not_after;
+    let not_after = SystemTime::from(not_after_time);
     if now < not_before || now > not_after {
-        return Err(SmimeError::CertChain(CertChainError::CertificateExpired));
+        return Err(SmimeError::CertChain(CertChainError::CertificateExpired {
+            subject: cert.tbs_certificate().subject().to_string(),
+            not_after: not_after_time.to_string(),
+        }));
     }
     Ok(())
 }

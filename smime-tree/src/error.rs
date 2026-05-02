@@ -50,11 +50,22 @@ pub enum CertChainError {
     /// No trust anchors were provided.
     NoTrustAnchors,
     /// Certificate validity period does not contain the check time.
-    CertificateExpired,
+    CertificateExpired {
+        /// Subject DN of the certificate that failed the validity check.
+        subject: String,
+        /// The certificate's `notAfter` date (ISO 8601).
+        not_after: String,
+    },
     /// All trust anchors matching the issuer DN are outside their validity period.
-    AllTrustAnchorsExpired,
+    AllTrustAnchorsExpired {
+        /// Issuer DN for which all matching trust anchors were expired.
+        issuer: String,
+    },
     /// Certificate signature does not match the issuer's public key.
-    SignatureVerification,
+    SignatureVerification {
+        /// Subject DN of the certificate whose signature could not be verified.
+        subject: String,
+    },
     /// A `pathLen` constraint in a CA certificate was violated.
     PathLenViolated {
         /// Number of intermediate CA certificates below the constrained issuer.
@@ -63,11 +74,20 @@ pub enum CertChainError {
         path_len: u8,
     },
     /// An intermediate certificate lacks the CA flag (`BasicConstraints.cA = false`).
-    NotACa,
+    NotACa {
+        /// Subject DN of the certificate that was found not to be a CA.
+        subject: String,
+    },
     /// The certificate chain contains a cycle (A signed by B, B signed by A).
-    Cycle,
+    Cycle {
+        /// Subject DN of the certificate that closed the cycle.
+        subject: String,
+    },
     /// No trust anchor or intermediate certificate matches the issuer DN.
-    NoMatchingIssuer,
+    NoMatchingIssuer {
+        /// Issuer DN for which no matching certificate was found.
+        issuer: String,
+    },
     /// Certificate chain exceeds the maximum allowed depth.
     TooDeep,
     /// Other chain validation error (DER encoding failures, etc.).
@@ -78,14 +98,16 @@ impl fmt::Display for CertChainError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CertChainError::NoTrustAnchors => write!(f, "no trust anchors provided"),
-            CertChainError::CertificateExpired => {
-                write!(f, "certificate expired or not yet valid")
-            }
-            CertChainError::AllTrustAnchorsExpired => {
-                write!(f, "all matching trust anchors are expired or not yet valid")
-            }
-            CertChainError::SignatureVerification => {
-                write!(f, "issuer signature does not match")
+            CertChainError::CertificateExpired { subject, not_after } => write!(
+                f,
+                "certificate '{subject}' expired or not yet valid (not_after={not_after})"
+            ),
+            CertChainError::AllTrustAnchorsExpired { issuer } => write!(
+                f,
+                "all trust anchors matching issuer '{issuer}' are expired or not yet valid"
+            ),
+            CertChainError::SignatureVerification { subject } => {
+                write!(f, "issuer signature on '{subject}' does not match")
             }
             CertChainError::PathLenViolated {
                 intermediate_count,
@@ -95,11 +117,16 @@ impl fmt::Display for CertChainError {
                 "pathLen constraint violated: {intermediate_count} intermediate CA(s) \
                  but pathLen is {path_len}"
             ),
-            CertChainError::NotACa => write!(f, "intermediate certificate is not a CA"),
-            CertChainError::Cycle => write!(f, "certificate chain contains a cycle"),
-            CertChainError::NoMatchingIssuer => write!(
+            CertChainError::NotACa { subject } => {
+                write!(f, "certificate '{subject}' is not a CA")
+            }
+            CertChainError::Cycle { subject } => {
+                write!(f, "certificate chain cycle at '{subject}'")
+            }
+            CertChainError::NoMatchingIssuer { issuer } => write!(
                 f,
-                "no trust anchor matches issuer (add the CA root cert to trust_anchors)"
+                "no trust anchor or intermediate matches issuer '{issuer}' \
+                 (add the CA root cert to trust_anchors)"
             ),
             CertChainError::TooDeep => {
                 write!(f, "certificate chain exceeds maximum depth of 10")
