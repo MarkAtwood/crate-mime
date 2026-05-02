@@ -1,41 +1,33 @@
 //! Certificate chain validation for S/MIME verify.
 //!
-//! Performs a manual chain walk using RustCrypto primitives.  No network
-//! calls are made; the caller supplies a bag of intermediate certificates
-//! (extracted from the CMS SignedData) and a set of trust anchors.
+//! Delegates RFC 5280 path validation to [`pkix_chain_simple::verify_simple`].
+//!
+//! Because the `cms` crate requires x509-cert 0.3.0-rc and
+//! `pkix-chain-simple` requires x509-cert 0.2, all certificates are bridged
+//! via DER round-trip in [`bridge_cert`] before being passed to pkix.
 
-use const_oid::db::rfc5912::{
-    ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, SHA_256_WITH_RSA_ENCRYPTION,
-    SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
-};
 use der::Encode;
-use sha2::{Sha256, Sha384, Sha512};
+use der_stable::Decode as _;
 use std::collections::HashSet;
-use std::time::SystemTime;
-use x509_cert::ext::pkix::{BasicConstraints, KeyUsage, KeyUsages};
+use std::time::{SystemTime, UNIX_EPOCH};
 use x509_cert::Certificate;
 
-use crate::error::CertChainError;
+use crate::error::{CertChainError, SmimeError};
 use crate::key::RevocationChecker;
-use crate::sig_verify;
-use crate::SmimeError;
-
-/// Maximum certificate chain depth accepted (prevents cycles and absurdly long chains).
-const MAX_CHAIN_DEPTH: usize = 10;
 
 /// Validate the certificate chain from `signer_cert` up to a trust anchor.
 ///
 /// # Arguments
 ///
 /// * `signer_cert`   – end-entity certificate extracted from the CMS SignerInfo
-/// * `bag`           – intermediate certificates from the CMS SignedData certificates bag
+/// * `bag`           – intermediate certificates from the CMS SignedData bag
 /// * `trust_anchors` – caller-supplied trust anchors (must be non-empty)
-/// * `now`           – current time used for validity-period checks
+/// * `now`           – current time for validity-period checks
+/// * `revocation`    – revocation checker called per cert; pass `&NoRevocationCheck` to skip
 ///
 /// # Errors
 ///
-/// Returns `SmimeError::CertChain` if the chain cannot be built or validated,
-/// or `SmimeError::UnsupportedAlgorithm` for an unrecognised signature algorithm.
+/// Returns `SmimeError::CertChain` if the chain cannot be built or validated.
 pub(crate) fn validate_chain(
     signer_cert: &Certificate,
     bag: &[Certificate],
@@ -47,138 +39,88 @@ pub(crate) fn validate_chain(
         return Err(SmimeError::CertChain(CertChainError::NoTrustAnchors));
     }
 
-    let mut current: &Certificate = signer_cert;
+    // Step 1: Order intermediates from the bag into a leaf-first chain.
+    let chain = build_chain(signer_cert, bag, trust_anchors)?;
 
-    // Track visited subjects (DER-encoded) to detect cycles in the bag.
-    let mut visited: HashSet<Vec<u8>> = HashSet::new();
-    if let Ok(subj) = signer_cert.tbs_certificate().subject().to_der() {
-        visited.insert(subj);
+    // Step 2: Run the caller's revocation checker over the validated chain.
+    for cert in &chain {
+        revocation.check(cert)?;
     }
 
-    // Count of non-self-issued intermediate CA certs accumulated below the
-    // current position in the chain (RFC 5280 §4.2.1.9 pathLen semantics).
-    let mut intermediate_count: usize = 0;
+    // Step 3: Bridge to x509-cert 0.2 (required by pkix-chain-simple).
+    let chain_stable: Vec<x509_cert_stable::Certificate> = chain
+        .iter()
+        .map(|c| bridge_cert(c))
+        .collect::<Result<_, _>>()?;
 
-    for _depth in 0..MAX_CHAIN_DEPTH {
-        // Step 1 — validity period.
-        check_validity(current, now)?;
+    let anchors_stable: Vec<pkix_path::TrustAnchor> = trust_anchors
+        .iter()
+        .map(|a| bridge_cert(a).map(pkix_path::TrustAnchor::from_cert))
+        .collect::<Result<_, _>>()?;
 
-        // Step 1b — revocation check (no-op unless caller injects OCSP/CRL).
-        revocation.check(current)?;
+    // Step 4: Validate via pkix-chain-simple.
+    let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    pkix_chain_simple::verify_simple(&chain_stable, &anchors_stable, now_unix)
+        .map(|_| ())
+        .map_err(|e| map_pkix_error(e, &chain))
+}
 
-        // Pre-encode the current cert's issuer DN once per loop iteration.
-        // Both Step 2 (trust anchor filter) and Step 3 (bag search) need to
-        // compare against this DN; encoding it inline would allocate once per
-        // candidate, totalling O(N) allocations where N is the store/bag size.
-        let issuer_der = match current.tbs_certificate().issuer().to_der() {
-            Ok(d) => d,
-            Err(e) => {
-                return Err(SmimeError::CertChain(CertChainError::Other(format!(
-                    "issuer DER encode: {e}"
-                ))))
-            }
-        };
+// ---------------------------------------------------------------------------
+// Chain assembly
+// ---------------------------------------------------------------------------
 
-        // Step 2 — look for the issuer among the trust anchors first.
-        // Collect all anchors whose subject DN matches the current cert's issuer.
-        // There may be more than one (CA renewal: same DN, different key/validity).
-        let candidates: Vec<&Certificate> = trust_anchors
-            .iter()
-            .filter(|a| {
-                a.tbs_certificate()
-                    .subject()
-                    .to_der()
-                    .map(|s| s == issuer_der)
-                    .unwrap_or(false)
-            })
-            .collect();
-        if !candidates.is_empty() {
-            // Collect all candidates whose validity period contains `now`.
-            // RFC 5280 §6.1.3(a)(1) requires the current time to fall within
-            // the validity interval of every certificate in the certification
-            // path, including trust anchors.  Skipping this check would allow
-            // an expired root to validate a still-valid end-entity certificate.
-            let valid_candidates: Vec<&Certificate> = candidates
-                .iter()
-                .copied()
-                .filter(|a| check_validity(a, now).is_ok())
-                .collect();
-            if valid_candidates.is_empty() {
-                return Err(SmimeError::CertChain(
-                    CertChainError::AllTrustAnchorsExpired {
-                        issuer: current.tbs_certificate().issuer().to_string(),
-                    },
-                ));
-            }
-            // Try each valid anchor for signature verification — the CA renewal case
-            // produces two simultaneously-valid certs with the same DN but different
-            // keys, so the first valid anchor may not be the right one.
-            for anchor in valid_candidates {
-                if verify_signature(current, anchor).is_ok() {
-                    // RFC 5280 §4.2.1.9: also enforce the trust anchor's own
-                    // pathLen constraint.  A root CA with pathLen=0 may not
-                    // have any intermediate CAs below it in the path.
-                    if let Some(path_len) = get_path_len(anchor) {
-                        if intermediate_count > path_len as usize {
-                            return Err(SmimeError::CertChain(CertChainError::PathLenViolated {
-                                intermediate_count,
-                                path_len,
-                            }));
-                        }
-                    }
-                    return Ok(());
-                }
-            }
-            return Err(SmimeError::CertChain(
-                CertChainError::SignatureVerification {
-                    subject: current.tbs_certificate().subject().to_string(),
-                },
-            ));
+/// Build an ordered leaf-first chain from `signer_cert` and the bag.
+///
+/// Walks issuer DN links through the bag until the current tail's issuer
+/// matches a trust anchor subject. Does not verify signatures — that is
+/// pkix-chain-simple's job.
+fn build_chain<'a>(
+    signer_cert: &'a Certificate,
+    bag: &'a [Certificate],
+    trust_anchors: &[Certificate],
+) -> Result<Vec<&'a Certificate>, SmimeError> {
+    const MAX_DEPTH: usize = 10;
+
+    let mut chain: Vec<&Certificate> = vec![signer_cert];
+    let mut visited: HashSet<Vec<u8>> = HashSet::new();
+    if let Ok(s) = signer_cert.tbs_certificate().subject().to_der() {
+        visited.insert(s);
+    }
+
+    let mut current = signer_cert;
+    for _ in 0..MAX_DEPTH {
+        let issuer_der = current.tbs_certificate().issuer().to_der().map_err(|e| {
+            SmimeError::CertChain(CertChainError::Other(format!("issuer DER encode: {e}")))
+        })?;
+
+        // Done if the current cert's issuer is one of the trust anchors.
+        let anchored = trust_anchors.iter().any(|a| {
+            a.tbs_certificate()
+                .subject()
+                .to_der()
+                .map(|s| s == issuer_der)
+                .unwrap_or(false)
+        });
+        if anchored {
+            return Ok(chain);
         }
 
-        // Step 3 — look for the issuer in the certificate bag.
-        // Explicit loop (consistent with the trust anchor path in Step 2):
-        // separate subject-DN matching from signature verification so that
-        // DER-encode failures are visible and the two criteria stay distinct.
-        let mut parent: Option<&Certificate> = None;
-        for candidate in bag {
-            let Ok(subj) = candidate.tbs_certificate().subject().to_der() else {
-                continue; // skip candidates whose subject cannot be DER-encoded
-            };
-            if subj != issuer_der {
-                continue;
-            }
-            if verify_signature(current, candidate).is_ok() {
-                parent = Some(candidate);
-                break;
-            }
-        }
-        let parent = parent;
+        // Find the issuer in the bag by subject DN.
+        let parent = bag.iter().find(|c| {
+            c.tbs_certificate()
+                .subject()
+                .to_der()
+                .map(|s| s == issuer_der)
+                .unwrap_or(false)
+        });
 
         match parent {
+            None => {
+                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer {
+                    issuer: current.tbs_certificate().issuer().to_string(),
+                }));
+            }
             Some(p) => {
-                // The parent must be a CA (BasicConstraints.cA = true).
-                if !is_ca_cert(p) {
-                    return Err(SmimeError::CertChain(CertChainError::NotACa {
-                        subject: p.tbs_certificate().subject().to_string(),
-                    }));
-                }
-                // RFC 5280 §4.2.1.9: check the pathLen constraint of the parent CA.
-                // intermediate_count is the count of CA certs already accumulated below p
-                // in this chain.  If p's pathLen (if present) < intermediate_count, this
-                // violates the constraint.
-                if let Some(path_len) = get_path_len(p) {
-                    if intermediate_count > path_len as usize {
-                        return Err(SmimeError::CertChain(CertChainError::PathLenViolated {
-                            intermediate_count,
-                            path_len,
-                        }));
-                    }
-                }
-                // Cycle detection: if this subject was already visited, the bag
-                // contains a cycle (e.g. A signed by B, B signed by A).  The
-                // chain is still rejected, but we surface the real cause rather
-                // than exhausting MAX_CHAIN_DEPTH silently.
                 let subj_der = p.tbs_certificate().subject().to_der().map_err(|e| {
                     SmimeError::CertChain(CertChainError::Other(format!("subject DER encode: {e}")))
                 })?;
@@ -187,13 +129,8 @@ pub(crate) fn validate_chain(
                         subject: p.tbs_certificate().subject().to_string(),
                     }));
                 }
+                chain.push(p);
                 current = p;
-                intermediate_count += 1;
-            }
-            None => {
-                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer {
-                    issuer: current.tbs_certificate().issuer().to_string(),
-                }));
             }
         }
     }
@@ -202,86 +139,74 @@ pub(crate) fn validate_chain(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// DER bridge
 // ---------------------------------------------------------------------------
 
-/// Return `Ok(())` if `cert`'s validity period contains `now`.
-fn check_validity(cert: &Certificate, now: SystemTime) -> Result<(), SmimeError> {
-    let not_before = SystemTime::from(&cert.tbs_certificate().validity().not_before);
-    let not_after_time = &cert.tbs_certificate().validity().not_after;
-    let not_after = SystemTime::from(not_after_time);
-    if now < not_before || now > not_after {
-        return Err(SmimeError::CertChain(CertChainError::CertificateExpired {
-            subject: cert.tbs_certificate().subject().to_string(),
-            not_after: not_after_time.to_string(),
-        }));
-    }
-    Ok(())
+/// DER-encode an x509-cert 0.3-rc `Certificate` and re-parse as x509-cert 0.2.
+///
+/// Both crate versions represent the same RFC 5280 ASN.1 structure; the
+/// round-trip is lossless. This bridge is needed because `cms` (and the
+/// rest of smime-tree) is pinned to x509-cert 0.3.0-rc while
+/// `pkix-chain-simple` requires x509-cert 0.2.
+fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, SmimeError> {
+    let der = cert
+        .to_der()
+        .map_err(|e| SmimeError::CertChain(CertChainError::Other(format!("cert DER encode: {e}"))))?;
+    x509_cert_stable::Certificate::from_der(&der)
+        .map_err(|e| SmimeError::CertChain(CertChainError::Other(format!("cert DER bridge: {e}"))))
 }
 
-/// Return `true` if `cert` may act as a CA.
-///
-/// Per RFC 5280 §4.2.1.9, a CA cert must have `BasicConstraints.cA = true`.
-/// Per RFC 5280 §4.2.1.3, if `KeyUsage` is present it must include
-/// `keyCertSign`; a cert that explicitly excludes `keyCertSign` must not be
-/// used to verify certificate signatures even if `BasicConstraints.cA = true`.
-fn is_ca_cert(cert: &Certificate) -> bool {
-    let tbs = cert.tbs_certificate();
+// ---------------------------------------------------------------------------
+// Error mapping
+// ---------------------------------------------------------------------------
 
-    // BasicConstraints.cA must be true.
-    let has_ca_flag = tbs
-        .get_extension::<BasicConstraints>()
-        .ok()
-        .flatten()
-        .map(|(_critical, bc)| bc.ca)
-        .unwrap_or(false);
-    if !has_ca_flag {
-        return false;
-    }
+/// Map a `pkix_chain_simple::Error` to `SmimeError`, using the rc chain for
+/// subject/not_after strings in structured error variants.
+fn map_pkix_error(e: pkix_chain_simple::Error, chain: &[&Certificate]) -> SmimeError {
+    use pkix_chain_simple::Error as CSE;
+    use pkix_path::Error as PE;
 
-    // If KeyUsage is present, keyCertSign must be asserted (RFC 5280 §4.2.1.3).
-    if let Some((_critical, ku)) = tbs.get_extension::<KeyUsage>().ok().flatten() {
-        if !ku.0.contains(KeyUsages::KeyCertSign) {
-            return false;
+    let subject_at = |i: usize| -> String {
+        chain
+            .get(i)
+            .map(|c| c.tbs_certificate().subject().to_string())
+            .unwrap_or_default()
+    };
+
+    let chain_err = match e {
+        CSE::NoTrustAnchors => CertChainError::NoTrustAnchors,
+        CSE::ChainTooLong { .. } => CertChainError::TooDeep,
+        CSE::LeafIsCA | CSE::MissingRequiredExtension { index: 0 } => {
+            CertChainError::NotACa { subject: subject_at(0) }
         }
-    }
-
-    true
-}
-
-/// Return the pathLen constraint from a certificate's BasicConstraints extension,
-/// if present.
-fn get_path_len(cert: &Certificate) -> Option<u8> {
-    cert.tbs_certificate()
-        .get_extension::<BasicConstraints>()
-        .ok()
-        .flatten()
-        .and_then(|(_, bc)| bc.path_len_constraint)
-}
-
-/// Verify `cert`'s signature using `issuer`'s public key.
-///
-/// Returns `Ok(())` on success.  The caller is responsible for mapping errors
-/// to the appropriate `CertChain` message.
-fn verify_signature(cert: &Certificate, issuer: &Certificate) -> Result<(), SmimeError> {
-    let tbs_der = cert.tbs_certificate().to_der().map_err(|e| {
-        SmimeError::CertChain(CertChainError::Other(format!("TBS DER encode: {e}")))
-    })?;
-    let sig_bytes = cert.signature().raw_bytes();
-    let oid = &cert.signature_algorithm().oid;
-
-    let e = |msg: String| SmimeError::CertChain(CertChainError::Other(msg));
-    if *oid == SHA_256_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha256, _>(issuer, &tbs_der, sig_bytes, e)
-    } else if *oid == SHA_384_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha384, _>(issuer, &tbs_der, sig_bytes, e)
-    } else if *oid == SHA_512_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha512, _>(issuer, &tbs_der, sig_bytes, e)
-    } else if *oid == ECDSA_WITH_SHA_256 {
-        sig_verify::verify_ecdsa_p256(issuer, &tbs_der, sig_bytes, e)
-    } else if *oid == ECDSA_WITH_SHA_384 {
-        sig_verify::verify_ecdsa_p384(issuer, &tbs_der, sig_bytes, e)
-    } else {
-        Err(SmimeError::UnsupportedAlgorithm(oid.to_string()))
-    }
+        CSE::MissingRequiredExtension { index } => {
+            CertChainError::NotACa { subject: subject_at(index) }
+        }
+        CSE::Path(PE::NoTrustedPath) | CSE::Path(PE::ChainBroken { .. }) => {
+            let issuer = chain
+                .last()
+                .map(|c| c.tbs_certificate().issuer().to_string())
+                .unwrap_or_default();
+            CertChainError::NoMatchingIssuer { issuer }
+        }
+        CSE::Path(PE::PathTooLong) => CertChainError::TooDeep,
+        CSE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
+            subject: subject_at(index),
+        },
+        CSE::Path(PE::NotCA { index }) | CSE::Path(PE::KeyUsageMissing { index }) => {
+            CertChainError::NotACa { subject: subject_at(index) }
+        }
+        CSE::Path(PE::ValidityPeriod { index }) => {
+            if let Some(cert) = chain.get(index) {
+                CertChainError::CertificateExpired {
+                    subject: cert.tbs_certificate().subject().to_string(),
+                    not_after: cert.tbs_certificate().validity().not_after.to_string(),
+                }
+            } else {
+                CertChainError::Other(format!("{e}"))
+            }
+        }
+        other => CertChainError::Other(format!("{other}")),
+    };
+    SmimeError::CertChain(chain_err)
 }
