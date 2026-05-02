@@ -108,7 +108,7 @@ if decoded.is_truncated {
 - **No S/MIME crypto.** `application/pkcs7-mime` and `application/pkcs7-signature`
   parts are treated as opaque binary leaves. Use `smime-tree` for S/MIME processing.
 - **Best-effort parsing.** Malformed input yields a partial result plus
-  `warnings`; only truly unparseable input (empty bytes, no headers) returns `Err`.
+  `warnings`; only truly unparsable input (empty bytes, no headers) returns `Err`.
 - **No async.** Synchronous only.
 - **Byte ranges, not stored bytes.** The crate never retains the raw message bytes.
 
