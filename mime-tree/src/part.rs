@@ -13,7 +13,7 @@ pub enum TransferEncoding {
 }
 
 /// A decoded RFC 5322 / MIME header field.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParsedHeader {
     pub name: String,
     pub value: String,
@@ -29,7 +29,7 @@ pub struct ParsedHeader {
 ///
 /// For `multipart/*` parts, `children` is non-empty and `body_range` covers
 /// the entire multipart body including boundaries.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParsedPart {
     /// IMAP dotted-path part ID: `"1"`, `"1.1"`, `"1.2"`, etc.
     pub part_id: String,

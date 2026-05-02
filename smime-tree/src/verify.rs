@@ -55,8 +55,6 @@ use crate::{
 /// Certificate chains from CAs that encode the same DN inconsistently
 /// between issuer and subject fields (non-conformant CAs) will be rejected.
 ///
-/// # Errors
-///
 /// # Limitations
 ///
 /// `SignerInfo` entries that omit `signedAttrs` are always rejected as a
@@ -284,24 +282,26 @@ fn check_message_digest(
     let md_attr = signed_attrs
         .iter()
         .find(|a| a.oid == ID_MESSAGE_DIGEST)
-        .ok_or_else(|| SmimeError::Other("messageDigest attribute not found".into()))?;
+        .ok_or_else(|| SmimeError::MalformedInput("messageDigest attribute not found".into()))?;
 
     // The attribute value is encoded as an OctetString DER blob inside the Any.
     let attr_value = md_attr
         .values
         .iter()
         .next()
-        .ok_or_else(|| SmimeError::Other("messageDigest attribute has no value".into()))?;
+        .ok_or_else(|| SmimeError::MalformedInput("messageDigest attribute has no value".into()))?;
     let attr_der = attr_value.to_der()?;
     let expected_bytes = OctetString::from_der(&attr_der)
         .map_err(|_| {
-            SmimeError::Other("cannot decode messageDigest attribute value as OctetString".into())
+            SmimeError::MalformedInput(
+                "cannot decode messageDigest attribute value as OctetString".into(),
+            )
         })?
         .as_bytes()
         .to_vec();
 
     if expected_bytes != content_hash {
-        return Err(SmimeError::Other("message digest mismatch".into()));
+        return Err(SmimeError::SignatureVerification);
     }
 
     Ok(())
