@@ -7,6 +7,19 @@ RFC 5322 / MIME parser that produces a walkable, byte-range-indexed part tree.
 Given raw message bytes, it returns a `ParsedMessage` with the full MIME structure,
 RFC 8621-compatible body views, and on-demand body decoding.
 
+## Why this crate exists
+
+Most MIME parsers either give back owned strings (losing the original byte positions
+needed for S/MIME signature verification) or expose the underlying parsing library's
+types in their API (locking callers to that dependency). `mime-tree` gives you
+`(offset, length)` byte ranges into your original `&[u8]` buffer — so you can feed
+the exact bytes of a signed part directly to a cryptographic verifier without copying
+or re-encoding. The parsed result is fully owned, lifetime-free, and
+`Serialize + Deserialize`, so it round-trips through any store or message bus.
+
+For S/MIME sign/verify/encrypt/decrypt, see the companion crate
+[`smime-tree`](../smime-tree/).
+
 ## Quick example
 
 ```rust
@@ -98,6 +111,18 @@ if decoded.is_truncated {
   `warnings`; only truly unparseable input (empty bytes, no headers) returns `Err`.
 - **No async.** Synchronous only.
 - **Byte ranges, not stored bytes.** The crate never retains the raw message bytes.
+
+## Specification references
+
+| RFC | Title |
+|---|---|
+| [RFC 5322](https://www.rfc-editor.org/rfc/rfc5322) | Internet Message Format |
+| [RFC 2045](https://www.rfc-editor.org/rfc/rfc2045) | MIME Part One: Format of Internet Message Bodies |
+| [RFC 2046](https://www.rfc-editor.org/rfc/rfc2046) | MIME Part Two: Media Types (multipart boundaries) |
+| [RFC 2047](https://www.rfc-editor.org/rfc/rfc2047) | MIME Part Three: Encoded-Word in headers |
+| [RFC 2183](https://www.rfc-editor.org/rfc/rfc2183) | Content-Disposition header |
+| [RFC 2231](https://www.rfc-editor.org/rfc/rfc2231) | MIME Parameter Value and Encoded Word Extensions |
+| [RFC 8621 §4.1.4](https://www.rfc-editor.org/rfc/rfc8621#section-4.1.4) | JMAP for Mail — body structure algorithm (textBody / htmlBody / attachments) |
 
 ## License
 

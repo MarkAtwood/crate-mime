@@ -7,11 +7,24 @@ S/MIME sign, verify, encrypt, and decrypt via caller-provided key traits.
 Implements RFC 5751 (S/MIME v3.2) over CMS (RFC 5652) with no async, no network
 calls, and no commitment to where keys live.
 
+## Why this crate exists
+
+S/MIME libraries typically own the keys — they expect a PKCS#12 file, a software
+keystore, or a specific HSM SDK. `smime-tree` inverts this: key operations are
+defined by traits (`SigningKey`, `DecryptionKey`) that the caller implements. The
+crate handles CMS structure parsing, algorithm dispatch, certificate chain validation,
+and MIME formatting; the caller decides where the private key actually lives — in
+memory, a hardware token, an HSM, or a remote signing service.
+
+`smime-tree` depends on [`mime-tree`](../mime-tree/) for byte-range extraction:
+`verify()` uses `ParsedPart.body_range` to locate the exact signed bytes in the
+original message buffer, which is required for correct digest computation.
+
 ## Operations
 
 | Function | Input | Output |
 |---|---|---|
-| `sign(content_mime, key)` | Raw MIME bytes + `SigningKey` | `multipart/signed` MIME bytes |
+| `sign(content_mime, key, now)` | Raw MIME bytes + `SigningKey` + current time | `multipart/signed` MIME bytes |
 | `verify(signed_content, signature_der, trust_anchors, now, revocation)` | Signed content + DER signature | `VerificationResult` |
 | `encrypt(inner_mime, recipients)` | MIME bytes + recipient certificates | `application/pkcs7-mime` bytes |
 | `decrypt(enveloped_der, key)` | DER blob + `DecryptionKey` | Inner MIME bytes |
@@ -141,6 +154,19 @@ fresh is the caller's responsibility.
   hardware token — the crate does not care.
 - **Caller handles recursion.** Decrypted bytes are returned as-is. If they
   contain another S/MIME layer, the caller loops.
+
+## Specification references
+
+| RFC | Title |
+|---|---|
+| [RFC 5751](https://www.rfc-editor.org/rfc/rfc5751) | S/MIME Version 3.2 Message Specification |
+| [RFC 5652](https://www.rfc-editor.org/rfc/rfc5652) | Cryptographic Message Syntax (CMS) |
+| [RFC 5280](https://www.rfc-editor.org/rfc/rfc5280) | PKIX Certificate and CRL Profile (certificate chain validation) |
+| [RFC 5753](https://www.rfc-editor.org/rfc/rfc5753) | Use of ECC Algorithms in CMS (ECDH P-256/P-384 key agreement) |
+| [RFC 8017](https://www.rfc-editor.org/rfc/rfc8017) | PKCS#1 v2.2 — RSA Cryptography Standard (RSA key transport) |
+| [RFC 3565](https://www.rfc-editor.org/rfc/rfc3565) | AES Algorithm in CMS (AES-128-CBC, AES-256-CBC content encryption) |
+| [RFC 5083](https://www.rfc-editor.org/rfc/rfc5083) | AES-GCM in CMS (AuthEnvelopedData) |
+| [RFC 2634](https://www.rfc-editor.org/rfc/rfc2634) | Enhanced Security Services (triple-wrap, countersignatures) |
 
 ## License
 
