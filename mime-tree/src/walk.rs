@@ -79,7 +79,7 @@ fn parse_structure<'a>(
         let is_inline = part
             .disposition
             .as_deref()
-            .map_or(true, |d| !d.eq_ignore_ascii_case("attachment"))
+            .is_none_or(|d| !d.eq_ignore_ascii_case("attachment"))
             && (part.content_type == "text/plain"
                 || part.content_type == "text/html"
                 || is_inline_media_type(&part.content_type))

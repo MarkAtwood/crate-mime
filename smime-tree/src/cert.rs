@@ -75,8 +75,13 @@ pub(crate) fn validate_chain(
         max_path_len: MAX_DEPTH as u8,
         ..Default::default()
     };
-    pkix_chain::verify_chain_default(&chain_stable, &anchors_stable, &policy, &pkix_chain::NoRevocation)
-        .map_err(|e| map_pkix_error(e, &chain))?;
+    pkix_chain::verify_chain_default(
+        &chain_stable,
+        &anchors_stable,
+        &policy,
+        &pkix_chain::NoRevocation,
+    )
+    .map_err(|e| map_pkix_error(e, &chain))?;
 
     // Step 4: Run the caller's revocation checker over the signature-verified chain.
     for cert in &chain {
@@ -102,9 +107,22 @@ fn build_chain<'a>(
 ) -> Result<Vec<&'a Certificate>, SmimeError> {
     let mut chain: Vec<&Certificate> = vec![signer_cert];
     let mut visited: HashSet<Vec<u8>> = HashSet::new();
-    if let Ok(s) = signer_cert.tbs_certificate().subject().to_der() {
-        visited.insert(s);
-    }
+    let signer_subject_der = signer_cert
+        .tbs_certificate()
+        .subject()
+        .to_der()
+        .map_err(|e| {
+            SmimeError::CertChain(CertChainError::Other(format!(
+                "signer cert subject DER encode: {e}"
+            )))
+        })?;
+    visited.insert(signer_subject_der);
+
+    // Pre-compute anchor subject DERs once to avoid O(depth * anchors) encodes.
+    let anchor_subjects: HashSet<Vec<u8>> = trust_anchors
+        .iter()
+        .filter_map(|a| a.tbs_certificate().subject().to_der().ok())
+        .collect();
 
     let mut current = signer_cert;
     for _ in 0..MAX_DEPTH {
@@ -113,14 +131,7 @@ fn build_chain<'a>(
         })?;
 
         // Done if the current cert's issuer is one of the trust anchors.
-        let anchored = trust_anchors.iter().any(|a| {
-            a.tbs_certificate()
-                .subject()
-                .to_der()
-                .map(|s| s == issuer_der)
-                .unwrap_or(false)
-        });
-        if anchored {
+        if anchor_subjects.contains(&issuer_der) {
             return Ok(chain);
         }
 
@@ -168,9 +179,9 @@ fn build_chain<'a>(
 /// rest of smime-tree) is pinned to x509-cert 0.3.0-rc while
 /// `pkix-chain` requires x509-cert 0.2.
 fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, SmimeError> {
-    let der = cert
-        .to_der()
-        .map_err(|e| SmimeError::CertChain(CertChainError::Other(format!("cert DER encode: {e}"))))?;
+    let der = cert.to_der().map_err(|e| {
+        SmimeError::CertChain(CertChainError::Other(format!("cert DER encode: {e}")))
+    })?;
     x509_cert_stable::Certificate::from_der(&der)
         .map_err(|e| SmimeError::CertChain(CertChainError::Other(format!("cert DER bridge: {e}"))))
 }
@@ -182,8 +193,8 @@ fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, Smim
 /// Map a `pkix_chain::Error` to `SmimeError`, using the rc chain for
 /// subject/not_after strings in structured error variants.
 fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
-    use pkix_chain::Error as CE;
     use pkix_chain::pkix_path::Error as PE;
+    use pkix_chain::Error as CE;
 
     let subject_at = |i: usize| -> String {
         chain
@@ -205,7 +216,9 @@ fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
             subject: subject_at(index),
         },
         CE::Path(PE::NotCA { index }) | CE::Path(PE::KeyUsageMissing { index }) => {
-            CertChainError::NotACa { subject: subject_at(index) }
+            CertChainError::NotACa {
+                subject: subject_at(index),
+            }
         }
         CE::Path(PE::ValidityPeriod { index }) => {
             if let Some(cert) = chain.get(index) {

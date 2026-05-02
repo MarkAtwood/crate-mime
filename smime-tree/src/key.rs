@@ -67,6 +67,15 @@ pub enum EcCurve {
     P384,
 }
 
+impl fmt::Display for EcCurve {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EcCurve::P256 => f.write_str("P-256"),
+            EcCurve::P384 => f.write_str("P-384"),
+        }
+    }
+}
+
 /// Algorithm used to encrypt (wrap) the content-encryption key.
 ///
 /// # ECDH / KARI
@@ -94,10 +103,7 @@ impl fmt::Display for KeyEncryptionAlgorithm {
         match self {
             KeyEncryptionAlgorithm::RsaPkcs1v15 => f.write_str("RSA-PKCS1v15"),
             KeyEncryptionAlgorithm::RsaOaep => f.write_str("RSA-OAEP"),
-            KeyEncryptionAlgorithm::EcdhEs { curve } => match curve {
-                EcCurve::P256 => f.write_str("ECDH-ES/P-256"),
-                EcCurve::P384 => f.write_str("ECDH-ES/P-384"),
-            },
+            KeyEncryptionAlgorithm::EcdhEs { curve } => write!(f, "ECDH-ES/{curve}"),
         }
     }
 }
@@ -112,6 +118,15 @@ pub enum KeyWrapAlgorithm {
     Aes256Kw,
 }
 
+impl fmt::Display for KeyWrapAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KeyWrapAlgorithm::Aes128Kw => f.write_str("AES-128-KW"),
+            KeyWrapAlgorithm::Aes256Kw => f.write_str("AES-256-KW"),
+        }
+    }
+}
+
 /// ECDH key derivation scheme used in `KeyAgreeRecipientInfo` (RFC 5753 §7.1.4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -120,6 +135,15 @@ pub enum KariKeyAgreement {
     StdDhSha256Kdf,
     /// `dhSinglePass-stdDH-sha384kdf-scheme` — P-384 with X9.63 KDF using SHA-384.
     StdDhSha384Kdf,
+}
+
+impl fmt::Display for KariKeyAgreement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KariKeyAgreement::StdDhSha256Kdf => f.write_str("stdDH-SHA256-KDF"),
+            KariKeyAgreement::StdDhSha384Kdf => f.write_str("stdDH-SHA384-KDF"),
+        }
+    }
 }
 
 /// Combined algorithm parameters for ECDH key agreement (`KeyAgreeRecipientInfo`).

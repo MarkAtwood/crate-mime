@@ -289,13 +289,13 @@ fn check_message_digest(
         .find(|a| a.oid == ID_MESSAGE_DIGEST)
         .ok_or_else(|| SmimeError::MalformedInput("messageDigest attribute not found".into()))?;
 
-    // The attribute value is encoded as an OctetString DER blob inside the Any.
+    // The attribute value is an Any containing a DER OctetString.
     let attr_value =
         md_attr.values.iter().next().ok_or_else(|| {
             SmimeError::MalformedInput("messageDigest attribute has no value".into())
         })?;
-    let attr_der = attr_value.to_der()?;
-    let expected_bytes = OctetString::from_der(&attr_der)
+    let expected_bytes = attr_value
+        .decode_as::<OctetString>()
         .map_err(|_| {
             SmimeError::MalformedInput(
                 "cannot decode messageDigest attribute value as OctetString".into(),

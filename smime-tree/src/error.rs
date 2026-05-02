@@ -129,7 +129,7 @@ impl fmt::Display for CertChainError {
                  (add the CA root cert to trust_anchors)"
             ),
             CertChainError::TooDeep => {
-                write!(f, "certificate chain exceeds maximum depth of 10")
+                write!(f, "certificate chain exceeds the maximum allowed depth")
             }
             CertChainError::Other(msg) => write!(f, "{msg}"),
         }
@@ -185,7 +185,7 @@ impl fmt::Display for SmimeError {
             SmimeError::NoRecipients => write!(f, "encrypt() called with no recipients"),
             SmimeError::RngFailure(msg) => write!(f, "RNG failure: {msg}"),
             SmimeError::DecryptionFailed(msg) => write!(f, "decryption failed: {msg}"),
-            SmimeError::Other(msg) => write!(f, "error: {msg}"),
+            SmimeError::Other(msg) => write!(f, "{msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
             SmimeError::AllSignersFailed(signers) => {
                 let first_error = signers
