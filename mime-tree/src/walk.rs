@@ -280,4 +280,142 @@ mod tests {
         assert_eq!(msg.html_body, vec!["1".to_owned()]);
         assert_eq!(msg.attachments, vec!["2".to_owned()]);
     }
+
+    /// Test 4 — html-only multipart/alternative: cross-population into textBody.
+    ///
+    /// Expected: text_body = ["1"], html_body = ["1"], attachments = []
+    ///
+    /// Oracle: RFC 8621 §4.1.4 end-of-alternative cross-population rule —
+    /// "If textBody didn't have any parts added to it, copy htmlBody into
+    /// textBody" (and vice versa). A sole text/html alternative mirrors into
+    /// textBody, matching RFC §4.1.4 example part C (html-only body).
+    #[test]
+    fn alternative_html_only_mirrors_to_text_body() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"b\"\r\n",
+            "\r\n",
+            "--b\r\n",
+            "Content-Type: text/html\r\n",
+            "\r\n",
+            "<p>HTML only</p>\r\n",
+            "--b--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["1".to_owned()]);
+        assert!(msg.attachments.is_empty());
+    }
+
+    /// Test 5 — text-only multipart/alternative: cross-population into htmlBody.
+    ///
+    /// Expected: text_body = ["1"], html_body = ["1"], attachments = []
+    ///
+    /// Oracle: RFC 8621 §4.1.4 — symmetric to Test 4: a sole text/plain
+    /// alternative mirrors into htmlBody.
+    #[test]
+    fn alternative_text_only_mirrors_to_html_body() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"b\"\r\n",
+            "\r\n",
+            "--b\r\n",
+            "Content-Type: text/plain\r\n",
+            "\r\n",
+            "Text only\r\n",
+            "--b--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["1".to_owned()]);
+        assert!(msg.attachments.is_empty());
+    }
+
+    /// Test 6 — multipart/related: non-first children go to attachments.
+    ///
+    /// Structure: multipart/related → text/html (i=0) + image/gif (i=1)
+    /// Expected: text_body = ["1"], html_body = ["1"], attachments = ["2"]
+    ///
+    /// Oracle: RFC 8621 §4.1.4 isInline condition — the third clause requires
+    /// `(i == 0 OR (multipartType != "related" AND ...))`.  For i > 0 inside
+    /// multipart/related the clause is always false, so non-first children are
+    /// non-inline and go to attachments regardless of media type.
+    #[test]
+    fn related_non_first_child_goes_to_attachments() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/related; boundary=\"b\"\r\n",
+            "\r\n",
+            "--b\r\n",
+            "Content-Type: text/html\r\n",
+            "\r\n",
+            "<p>HTML with inline image</p>\r\n",
+            "--b\r\n",
+            "Content-Type: image/gif\r\n",
+            "Content-ID: <img@example.com>\r\n",
+            "\r\n",
+            "<gif data>\r\n",
+            "--b--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["1".to_owned()]);
+        assert_eq!(msg.attachments, vec!["2".to_owned()]);
+    }
+
+    /// Test 7 — in_alternative nullification: mixed-within-alternative sets
+    /// html_body to None when a text/plain is found.
+    ///
+    /// Structure:
+    ///   multipart/alternative:
+    ///     - multipart/mixed:
+    ///         - text/plain   ← sets html_body=None (in_alternative=true, not in alternative)
+    ///     - text/html        ← html_body is None; nothing pushed
+    ///
+    /// Expected: text_body = ["1.1"], html_body = [], attachments = []
+    ///
+    /// Oracle: RFC 8621 §4.1.4 — when in_alternative is set and the current
+    /// multipart is not "alternative", encountering text/plain sets htmlBody to
+    /// null (preventing html parts at the same level from populating htmlBody).
+    #[test]
+    fn alternative_mixed_subtree_nullifies_html_body() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"outer\"\r\n",
+            "\r\n",
+            "--outer\r\n",
+            "Content-Type: multipart/mixed; boundary=\"inner\"\r\n",
+            "\r\n",
+            "--inner\r\n",
+            "Content-Type: text/plain\r\n",
+            "\r\n",
+            "Plain text in mixed\r\n",
+            "--inner--\r\n",
+            "--outer\r\n",
+            "Content-Type: text/html\r\n",
+            "\r\n",
+            "<p>This html is suppressed because html_body was nullified</p>\r\n",
+            "--outer--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        assert_eq!(msg.text_body, vec!["1.1".to_owned()]);
+        assert!(
+            msg.html_body.is_empty(),
+            "html_body should be empty after nullification; got: {:?}",
+            msg.html_body
+        );
+        assert!(msg.attachments.is_empty());
+    }
 }

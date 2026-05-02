@@ -493,3 +493,106 @@ fn test_sign_verify_roundtrip_via_mime_tree() {
         result.signers
     );
 }
+
+// ---------------------------------------------------------------------------
+// Tests F-H: cert chain validation edge cases
+//
+// These tests reuse the existing OpenSSL-generated fixtures (no new fixture
+// generation needed) and exercise error paths in validate_chain() that are
+// not covered by the happy-path tests.
+// ---------------------------------------------------------------------------
+
+/// Test F: cert chain validation fails when time is before notBefore.
+///
+/// Oracle: cert validity window is "2026-05-02 to 2036-04-29".  Passing a
+/// time far in the past (1970-01-01) must cause certificate chain validation
+/// to fail, producing AllSignersFailed with a CertificateExpired error.
+#[test]
+fn test_verify_fails_before_cert_not_before() {
+    let ca_cert_der = from_hex(CA_CERT_HEX);
+    let ca_cert = Certificate::from_der(&ca_cert_der).expect("parse CA cert");
+    let sig_der = from_hex(SIG_RSA_DER_HEX);
+
+    let result = verify(
+        b"Test message content",
+        &sig_der,
+        &[ca_cert],
+        std::time::UNIX_EPOCH, // 1970-01-01 — before any cert's notBefore
+        &NoRevocationCheck,
+    );
+
+    match result {
+        Err(SmimeError::AllSignersFailed(signers)) => {
+            let error_str = signers[0].error.as_deref().unwrap_or("");
+            assert!(
+                error_str.contains("expired") || error_str.contains("valid"),
+                "expected an expiry/validity error, got: {error_str}"
+            );
+        }
+        other => panic!("expected AllSignersFailed; got: {other:?}"),
+    }
+}
+
+/// Test G: verify() fails with no trust anchors.
+///
+/// Oracle: validate_chain() returns CertChain(NoTrustAnchors) immediately
+/// when trust_anchors is empty.  verify() wraps this into AllSignersFailed.
+#[test]
+fn test_verify_fails_with_no_trust_anchors() {
+    let sig_der = from_hex(SIG_RSA_DER_HEX);
+
+    let result = verify(
+        b"Test message content",
+        &sig_der,
+        &[], // no trust anchors
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
+        &NoRevocationCheck,
+    );
+
+    match result {
+        Err(SmimeError::AllSignersFailed(signers)) => {
+            let error_str = signers[0].error.as_deref().unwrap_or("");
+            assert!(
+                error_str.contains("trust anchor"),
+                "expected 'trust anchor' in error, got: {error_str}"
+            );
+        }
+        other => panic!("expected AllSignersFailed; got: {other:?}"),
+    }
+}
+
+/// Test H: verify() fails when the trust anchor does not sign the signer cert.
+///
+/// The RSA leaf cert is passed as the trust anchor instead of the CA cert.
+/// The chain walk finds no matching issuer and fails with NoMatchingIssuer.
+#[test]
+fn test_verify_fails_with_wrong_trust_anchor() {
+    let rsa_cert_der = from_hex(RSA_CERT_HEX);
+    let wrong_anchor = Certificate::from_der(&rsa_cert_der).expect("parse RSA cert");
+    let sig_der = from_hex(SIG_RSA_DER_HEX);
+
+    let result = verify(
+        b"Test message content",
+        &sig_der,
+        &[wrong_anchor], // leaf cert, not the CA
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
+        &NoRevocationCheck,
+    );
+
+    match result {
+        Err(SmimeError::AllSignersFailed(signers)) => {
+            // With the wrong trust anchor, the chain walker either detects a
+            // "no matching issuer" (NoMatchingIssuer) or, when the CA cert is
+            // in the signature bag and re-encountered during chain building, a
+            // "cycle" (Cycle). Both indicate the chain could not be verified.
+            let error_str = signers[0].error.as_deref().unwrap_or("");
+            assert!(
+                error_str.contains("trust anchor")
+                    || error_str.contains("issuer")
+                    || error_str.contains("cycle"),
+                "expected a chain error (trust anchor / issuer / cycle), got: {error_str}"
+            );
+        }
+        other => panic!("expected AllSignersFailed; got: {other:?}"),
+    }
+}

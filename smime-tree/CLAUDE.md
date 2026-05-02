@@ -118,7 +118,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
 | `aes` + mode crates | Content encryption (AES-128-CBC, AES-256-CBC, AES-256-GCM) | No |
 | `sha2` | Digest algorithms | No |
 | `der` | DER encode/decode (transitive from `cms`) | No |
-| `mime-tree` | `ParsedPart` byte ranges for `verify()` | Yes (`ParsedPart`) |
+| `mime-tree` | `ParsedPart` byte ranges for `verify()` | No |
 | `serde` | `Serialize + Deserialize` on result types | Yes |
 
 No async deps. No tokio. Synchronous only.

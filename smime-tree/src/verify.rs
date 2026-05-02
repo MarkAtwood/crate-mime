@@ -158,7 +158,7 @@ fn verify_one(
     // Step 2: find signer cert in the bag or trust anchors.
     let signer_cert = match find_cert(bag_certs, trust_anchors, &si.sid) {
         Ok(Some(c)) => c,
-        Ok(None) => return fail(None, "signer cert not found in certificate bag"),
+        Ok(None) => return fail(None, "signer cert not found in certificate bag or trust anchors"),
         Err(e) => return fail(None, format!("signer identifier DER encode: {e}")),
     };
 
