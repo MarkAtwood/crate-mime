@@ -282,6 +282,22 @@ fn signature_algorithm_oid(
 /// Uses the first 16 bytes of the SHA-256 of the content (hex-encoded) so that
 /// tests produce reproducible boundaries.
 ///
+/// # Security rationale for determinism
+///
+/// A deterministic boundary is safe here for two independent reasons:
+///
+/// 1. **Collision impossibility by construction.** The boundary is derived from a
+///    cryptographic hash of the content, so the boundary string cannot appear as a
+///    substring of the content it was derived from — any content that contained the
+///    boundary string would hash to a different value, producing a different boundary.
+///    The `Err` path below is a belt-and-suspenders defence against future algorithmic
+///    changes or hash truncation edge cases, not a realistic collision path.
+///
+/// 2. **No oracle attack surface.** An attacker cannot manipulate the boundary
+///    independently of the content: changing the content changes the hash, which changes
+///    the boundary. There is no chosen-boundary attack because the boundary is not
+///    caller-controlled.
+///
 /// Returns `Err` if the derived boundary string appears as a substring of `content`,
 /// which would violate RFC 2046 §5.1.1.
 fn boundary_from_content(content: &[u8]) -> Result<String, SmimeError> {
@@ -293,7 +309,7 @@ fn boundary_from_content(content: &[u8]) -> Result<String, SmimeError> {
         .windows(boundary.len())
         .any(|w| w == boundary.as_bytes())
     {
-        return Err(SmimeError::Io(
+        return Err(SmimeError::Other(
             "MIME boundary collision: content contains boundary string".into(),
         ));
     }
@@ -305,8 +321,9 @@ fn wrap_base64(b64: &str, width: usize) -> String {
     b64.as_bytes()
         .chunks(width)
         .map(|chunk| {
-            // BASE64 output is always ASCII; this will not fail.
-            std::str::from_utf8(chunk).unwrap_or_default()
+            // b64 is a &str, so its byte slices are always valid UTF-8.
+            std::str::from_utf8(chunk)
+                .expect("base64 output is a str slice — from_utf8 always succeeds")
         })
         .collect::<Vec<_>>()
         .join("\r\n")

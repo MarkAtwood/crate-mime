@@ -83,12 +83,12 @@ struct EccCmsSharedInfo {
 ///
 /// # Errors
 ///
-/// Returns `SmimeError::Io("no recipients")` when `recipients` is empty.
+/// Returns `SmimeError::Other("no recipients")` when `recipients` is empty.
 /// Returns `SmimeError::UnsupportedAlgorithm` for any certificate whose
 /// subject public key algorithm is not RSA, P-256, or P-384.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError> {
     if recipients.is_empty() {
-        return Err(SmimeError::Io("no recipients".into()));
+        return Err(SmimeError::Other("no recipients".into()));
     }
 
     let mut rng = UnwrapErr(SysRng);
@@ -110,7 +110,8 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
 
     use aes::cipher::{block_padding::Pkcs7, BlockModeEncrypt, KeyIvInit};
 
-    let (content_enc_alg, encrypted_content, recipient_infos) = if use_aes256 {
+    // Encrypt the content and derive per-algorithm values; recipient loop runs once below.
+    let (content_enc_alg, encrypted_content, cek_bytes) = if use_aes256 {
         // AES-256-CBC: 32-byte key, 16-byte IV.
         let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::generate_from_rng(&mut rng);
         let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::generate_from_rng(&mut rng);
@@ -123,12 +124,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             oid: ID_AES_256_CBC,
             parameters: Some(iv_any),
         };
-        // Build recipients with the 32-byte CEK.
-        let mut ris: Vec<RecipientInfo> = Vec::with_capacity(recipients.len());
-        for cert in recipients {
-            ris.push(build_recipient_info(cert, &cek_bytes, &mut rng)?);
-        }
-        (alg, ct, ris)
+        (alg, ct, cek_bytes)
     } else {
         // AES-128-CBC: 16-byte key, 16-byte IV.
         let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::generate_from_rng(&mut rng);
@@ -142,13 +138,14 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             oid: ID_AES_128_CBC,
             parameters: Some(iv_any),
         };
-        // Build recipients with the 16-byte CEK.
-        let mut ris: Vec<RecipientInfo> = Vec::with_capacity(recipients.len());
-        for cert in recipients {
-            ris.push(build_recipient_info(cert, &cek_bytes, &mut rng)?);
-        }
-        (alg, ct, ris)
+        (alg, ct, cek_bytes)
     };
+
+    // Build recipient infos. All recipients use the same CEK regardless of algorithm.
+    let mut recipient_infos: Vec<RecipientInfo> = Vec::with_capacity(recipients.len());
+    for cert in recipients {
+        recipient_infos.push(build_recipient_info(cert, &cek_bytes, &mut rng)?);
+    }
 
     // RFC 5652 §6.1: version is V0 when all recipients are KTRI; V2 when any
     // recipient is KARI (or KEKRI/PWRI). Determine after building all infos.
@@ -244,12 +241,12 @@ fn build_rsa_recipient(
         .subject_public_key_info()
         .to_der()
         .map_err(SmimeError::Der)?;
-    let rsa_pub =
-        RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| SmimeError::Io(e.to_string()))?;
+    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
+        .map_err(|e| SmimeError::Other(e.to_string()))?;
 
     let encrypted_key = rsa_pub
         .encrypt(rng, Pkcs1v15Encrypt, cek)
-        .map_err(|e| SmimeError::Io(e.to_string()))?;
+        .map_err(|e| SmimeError::Other(e.to_string()))?;
 
     let ias = IssuerAndSerialNumber {
         issuer: cert.tbs_certificate().issuer().clone(),
@@ -281,9 +278,8 @@ fn build_p256_recipient(
         .subject_public_key
         .raw_bytes();
     let recipient_pub =
-        p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Io(e.to_string()))?;
+        p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
-    // Generate ephemeral key pair.
     let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::generate_from_rng(rng);
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
@@ -296,34 +292,14 @@ fn build_p256_recipient(
         cek,
     )?;
 
-    let ephemeral_pub_bytes = ephemeral_pub.to_sec1_point(false);
-    let originator_pub = OriginatorPublicKey {
-        algorithm: AlgorithmIdentifierOwned {
-            oid: rfc5912::ID_EC_PUBLIC_KEY,
-            parameters: Some(Any::from(&rfc5912::SECP_256_R_1)),
-        },
-        public_key: BitString::from_bytes(ephemeral_pub_bytes.as_bytes())
-            .map_err(SmimeError::Der)?,
-    };
-
-    let ias = IssuerAndSerialNumber {
-        issuer: cert.tbs_certificate().issuer().clone(),
-        serial_number: cert.tbs_certificate().serial_number().clone(),
-    };
-
-    Ok(RecipientInfo::Kari(KeyAgreeRecipientInfo {
-        version: CmsVersion::V3,
-        originator: OriginatorIdentifierOrKey::OriginatorKey(originator_pub),
-        ukm: None,
-        key_enc_alg: AlgorithmIdentifierOwned {
-            oid: DH_SHA256_KDF,
-            parameters: Some(wrap_alg_any(ID_AES_128_WRAP)?),
-        },
-        recipient_enc_keys: vec![RecipientEncryptedKey {
-            rid: KeyAgreeRecipientIdentifier::IssuerAndSerialNumber(ias),
-            enc_key: EncryptedKey::new(wrapped_cek).map_err(SmimeError::Der)?,
-        }],
-    }))
+    build_kari_recipient(
+        cert,
+        ephemeral_pub.to_sec1_point(false).as_bytes().to_vec(),
+        rfc5912::SECP_256_R_1,
+        DH_SHA256_KDF,
+        ID_AES_128_WRAP,
+        wrapped_cek,
+    )
 }
 
 /// Build a KARI (P-384 ECDH + AES-256-KW) RecipientInfo.
@@ -343,9 +319,8 @@ fn build_p384_recipient(
         .subject_public_key
         .raw_bytes();
     let recipient_pub =
-        p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Io(e.to_string()))?;
+        p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
-    // Generate ephemeral key pair.
     let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::generate_from_rng(rng);
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
@@ -358,14 +333,40 @@ fn build_p384_recipient(
         cek,
     )?;
 
-    let ephemeral_pub_bytes = ephemeral_pub.to_sec1_point(false);
+    build_kari_recipient(
+        cert,
+        ephemeral_pub.to_sec1_point(false).as_bytes().to_vec(),
+        rfc5912::SECP_384_R_1,
+        DH_SHA384_KDF,
+        ID_AES_256_WRAP,
+        wrapped_cek,
+    )
+}
+
+/// Assemble a KARI `RecipientInfo` from pre-computed ECDH outputs.
+///
+/// Both `build_p256_recipient` and `build_p384_recipient` call this after
+/// performing their curve-specific key generation and CEK wrapping.
+///
+/// `ephemeral_pub_bytes` — uncompressed SEC1 point bytes of the ephemeral public key.
+/// `curve_oid`           — OID of the named curve (goes into OriginatorPublicKey).
+/// `kdf_oid`             — ECDH+KDF scheme OID (e.g. dhSinglePass-stdDH-sha256kdf-scheme).
+/// `wrap_oid`            — AES key-wrap algorithm OID (e.g. id-aes128-Wrap).
+/// `wrapped_cek`         — CEK after AES-KW, ready to place in RecipientEncryptedKey.
+fn build_kari_recipient(
+    cert: &Certificate,
+    ephemeral_pub_bytes: Vec<u8>,
+    curve_oid: ObjectIdentifier,
+    kdf_oid: ObjectIdentifier,
+    wrap_oid: ObjectIdentifier,
+    wrapped_cek: Vec<u8>,
+) -> Result<RecipientInfo, SmimeError> {
     let originator_pub = OriginatorPublicKey {
         algorithm: AlgorithmIdentifierOwned {
             oid: rfc5912::ID_EC_PUBLIC_KEY,
-            parameters: Some(Any::from(&rfc5912::SECP_384_R_1)),
+            parameters: Some(Any::from(&curve_oid)),
         },
-        public_key: BitString::from_bytes(ephemeral_pub_bytes.as_bytes())
-            .map_err(SmimeError::Der)?,
+        public_key: BitString::from_bytes(&ephemeral_pub_bytes).map_err(SmimeError::Der)?,
     };
 
     let ias = IssuerAndSerialNumber {
@@ -378,8 +379,8 @@ fn build_p384_recipient(
         originator: OriginatorIdentifierOrKey::OriginatorKey(originator_pub),
         ukm: None,
         key_enc_alg: AlgorithmIdentifierOwned {
-            oid: DH_SHA384_KDF,
-            parameters: Some(wrap_alg_any(ID_AES_256_WRAP)?),
+            oid: kdf_oid,
+            parameters: Some(wrap_alg_any(wrap_oid)?),
         },
         recipient_enc_keys: vec![RecipientEncryptedKey {
             rid: KeyAgreeRecipientIdentifier::IssuerAndSerialNumber(ias),
@@ -420,7 +421,7 @@ where
     let kek_len = (wrap_key_bits / 8) as usize;
     let mut kek = vec![0u8; kek_len];
     ansi_x963_kdf::derive_key_into::<D>(shared_secret_bytes, &shared_info_der, &mut kek)
-        .map_err(|_| SmimeError::Io("ANSI X9.63 KDF failed".into()))?;
+        .map_err(|_| SmimeError::Other("ANSI X9.63 KDF failed".into()))?;
 
     // Wrap the CEK with AES-KW. Wrapped output = cek.len() + 8 bytes.
     let wrapped_len = cek.len() + 8;
@@ -431,36 +432,25 @@ where
             let kek_arr: &[u8; 16] = kek
                 .as_slice()
                 .try_into()
-                .map_err(|_| SmimeError::Io("KEK length mismatch".into()))?;
+                .map_err(|_| SmimeError::Other("KEK length mismatch".into()))?;
             let wrapper = aes_kw::KwAes128::new(kek_arr.into());
             wrapper
                 .wrap_key(cek, &mut wrapped)
-                .map_err(|e| SmimeError::Io(e.to_string()))?;
-        }
-        24 => {
-            use aes_kw::cipher::KeyInit;
-            let kek_arr: &[u8; 24] = kek
-                .as_slice()
-                .try_into()
-                .map_err(|_| SmimeError::Io("KEK length mismatch".into()))?;
-            let wrapper = aes_kw::KwAes192::new(kek_arr.into());
-            wrapper
-                .wrap_key(cek, &mut wrapped)
-                .map_err(|e| SmimeError::Io(e.to_string()))?;
+                .map_err(|e| SmimeError::Other(e.to_string()))?;
         }
         32 => {
             use aes_kw::cipher::KeyInit;
             let kek_arr: &[u8; 32] = kek
                 .as_slice()
                 .try_into()
-                .map_err(|_| SmimeError::Io("KEK length mismatch".into()))?;
+                .map_err(|_| SmimeError::Other("KEK length mismatch".into()))?;
             let wrapper = aes_kw::KwAes256::new(kek_arr.into());
             wrapper
                 .wrap_key(cek, &mut wrapped)
-                .map_err(|e| SmimeError::Io(e.to_string()))?;
+                .map_err(|e| SmimeError::Other(e.to_string()))?;
         }
         _ => {
-            return Err(SmimeError::Io(format!(
+            return Err(SmimeError::Other(format!(
                 "unsupported KEK length: {kek_len} bytes"
             )));
         }
@@ -490,8 +480,11 @@ fn build_mime(der: &[u8]) -> Vec<u8> {
     // Fold at 76 chars; base64 output is always ASCII.
     let mut folded = String::with_capacity(b64.len() + b64.len() / 76 * 2 + 4);
     for chunk in b64.as_bytes().chunks(76) {
-        // SAFETY: base64 output is ASCII-only, so from_utf8 never fails.
-        folded.push_str(core::str::from_utf8(chunk).unwrap_or_default());
+        // b64 is a String, so its byte slices are always valid UTF-8.
+        folded.push_str(
+            core::str::from_utf8(chunk)
+                .expect("base64 output is a String — from_utf8 always succeeds"),
+        );
         folded.push_str("\r\n");
     }
 

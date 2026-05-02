@@ -4,11 +4,31 @@ All notable changes to `smime-tree` will be documented here.
 
 ## [Unreleased]
 
+### Added
+
+- `DecryptionKey::agree_ecdh()` default method for ECDH (KARI) decryption.
+  Default returns `Err(UnsupportedAlgorithm)` — no change for existing RSA key
+  implementations.  Override to support `KeyAgreeRecipientInfo` (P-256/P-384).
+- `KariAlgorithm`, `KariKeyAgreement`, `KeyWrapAlgorithm` types describing the
+  ECDH scheme and AES-KW variant; passed to `agree_ecdh()`.
+- `decrypt()` now handles `KeyAgreeRecipientInfo` entries: it extracts the
+  ephemeral public key and UKM, calls `agree_ecdh()`, and returns the CEK.
+  Unsupported ECDH OIDs are skipped (not hard errors); static originators
+  (rare) are also skipped.
+
 ### Breaking Changes
+
+- `SmimeError::Io(String)` renamed to `SmimeError::Other(String)`. The variant was
+  used for all sorts of non-I/O errors (parse failures, format mismatches, algorithm
+  parameter errors). Update any match arms or direct constructions of `SmimeError::Io`
+  to `SmimeError::Other`.
 
 - `verify()` now takes an explicit `now: std::time::SystemTime` parameter for certificate
   validity checking. Pass `SystemTime::now()` for normal use; pass a fixed time in tests
   to validate against certificates with known validity periods.
+- `verify()` now takes a `revocation: &dyn RevocationChecker` parameter. Pass
+  `&NoRevocationCheck` to retain previous behaviour (no revocation checking). Implement
+  `RevocationChecker` to inject OCSP or CRL validation at the call site.
 - `RecipientIdentifier` is now an owned type defined in `smime-tree` rather than a re-export of
   `cms::enveloped_data::RecipientIdentifier`. Update implementations of `DecryptionKey::matches_recipient()`
   to use the new `smime_tree::RecipientIdentifier` enum with variants `IssuerAndSerialNumber { issuer_der, serial }`

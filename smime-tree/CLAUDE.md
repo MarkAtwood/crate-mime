@@ -80,11 +80,13 @@ pub trait SigningKey {
 /// `signed_content` — exact raw bytes of the signed MIME part (use mime-tree byte ranges).
 /// `signature_der`  — DER bytes of the application/pkcs7-signature part.
 /// `now`            — current time for certificate validity checks; pass SystemTime::now() normally.
+/// `revocation`     — revocation checker called per cert in chain; pass &NoRevocationCheck to skip.
 pub fn verify(
     signed_content: &[u8],
     signature_der: &[u8],
     trust_anchors: &[Certificate],
     now: std::time::SystemTime,
+    revocation: &dyn RevocationChecker,
 ) -> Result<VerificationResult, SmimeError>;
 
 /// Decrypt an enveloped-data blob. Returns inner MIME bytes.

@@ -32,7 +32,7 @@ use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
 use sha2::Sha256;
 use smime_tree::{
     decrypt, encrypt, sign, verify, DecryptionKey, DigestAlgorithm, KeyEncryptionAlgorithm,
-    RecipientIdentifier, SigningKey, SmimeError,
+    NoRevocationCheck, RecipientIdentifier, SigningKey, SmimeError,
 };
 use x509_cert::Certificate;
 
@@ -95,7 +95,7 @@ impl DecryptionKey for TestRsaDecryptionKey {
             KeyEncryptionAlgorithm::RsaPkcs1v15 => self
                 .private_key
                 .decrypt(rsa::Pkcs1v15Encrypt, encrypted_key)
-                .map_err(|e| SmimeError::Io(e.to_string())),
+                .map_err(|e| SmimeError::Other(e.to_string())),
             other => Err(SmimeError::UnsupportedAlgorithm(format!(
                 "test key only supports RsaPkcs1v15, got {:?}",
                 other
@@ -173,6 +173,7 @@ fn test_verify_openssl_rsa_signed() {
         &sig_der,
         &[ca_cert],
         std::time::SystemTime::now(),
+        &NoRevocationCheck,
     )
     .expect("verify() must not return a DER parse error");
 

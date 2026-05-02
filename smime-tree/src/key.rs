@@ -43,6 +43,36 @@ pub enum KeyEncryptionAlgorithm {
     EcdhEs { curve: EcCurve },
 }
 
+/// AES key wrap algorithm used to protect the content-encryption key in KARI.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KeyWrapAlgorithm {
+    /// AES-128 key wrap (`id-aes128-Wrap`, RFC 3394).
+    Aes128Kw,
+    /// AES-256 key wrap (`id-aes256-Wrap`, RFC 3394).
+    Aes256Kw,
+}
+
+/// ECDH key derivation scheme used in `KeyAgreeRecipientInfo` (RFC 5753 §7.1.4).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KariKeyAgreement {
+    /// `dhSinglePass-stdDH-sha256kdf-scheme` — P-256 with X9.63 KDF using SHA-256.
+    StdDhSha256Kdf,
+    /// `dhSinglePass-stdDH-sha384kdf-scheme` — P-384 with X9.63 KDF using SHA-384.
+    StdDhSha384Kdf,
+}
+
+/// Combined algorithm parameters for ECDH key agreement (`KeyAgreeRecipientInfo`).
+///
+/// Passed to [`DecryptionKey::agree_ecdh`] so the implementor knows which
+/// ECDH variant and key wrap algorithm to apply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KariAlgorithm {
+    /// ECDH key derivation scheme (determines curve and KDF hash).
+    pub key_agreement: KariKeyAgreement,
+    /// AES key wrap algorithm used to protect the CEK.
+    pub key_wrap: KeyWrapAlgorithm,
+}
+
 /// Digest algorithm used when creating or verifying a signature.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DigestAlgorithm {
@@ -89,6 +119,39 @@ pub trait DecryptionKey {
     /// ```
     fn matches_recipient(&self, id: &RecipientIdentifier) -> bool;
 
+    /// Perform ECDH key agreement and unwrap the content-encryption key.
+    ///
+    /// Called when the `EnvelopedData` contains a KARI (`KeyAgreeRecipientInfo`)
+    /// entry that matches this key (as determined by `matches_recipient`).
+    ///
+    /// The implementor must:
+    /// 1. Perform ECDH using the recipient's private key and
+    ///    `ephemeral_public_key_bytes` (SEC1 uncompressed EC point) to obtain
+    ///    the shared secret *Z*.
+    /// 2. Apply the X9.63 KDF (RFC 5753 §3.6.1): hash *Z* concatenated with a
+    ///    counter and the `SharedInfo` structure (which encodes `alg.key_wrap`
+    ///    OID and `ukm`) to derive the key-encryption key (KEK).
+    /// 3. Unwrap `enc_cek` with AES-128-KW or AES-256-KW (per `alg.key_wrap`)
+    ///    using the derived KEK.
+    /// 4. Return the raw CEK bytes.
+    ///
+    /// # Default
+    ///
+    /// Returns `Err(SmimeError::UnsupportedAlgorithm("KARI not supported by this key"))`.
+    /// Override to enable ECDH decryption.
+    fn agree_ecdh(
+        &self,
+        ephemeral_public_key_bytes: &[u8],
+        ukm: Option<&[u8]>,
+        enc_cek: &[u8],
+        alg: &KariAlgorithm,
+    ) -> Result<Vec<u8>, SmimeError> {
+        let _ = (ephemeral_public_key_bytes, ukm, enc_cek, alg);
+        Err(SmimeError::UnsupportedAlgorithm(
+            "KARI (ECDH key agreement) not supported by this key".into(),
+        ))
+    }
+
     /// Returns a hint about which key encryption algorithms this key supports.
     ///
     /// This crate does not currently consult this hint internally. It is provided
@@ -100,6 +163,36 @@ pub trait DecryptionKey {
     /// unsupported ones).
     fn supported_key_enc_algorithm(&self) -> Option<KeyEncryptionAlgorithm> {
         None
+    }
+}
+
+/// Trait for checking certificate revocation status during signature verification.
+///
+/// This crate makes no network calls. Callers that need OCSP or CRL checking
+/// implement this trait and inject it into [`crate::verify()`].
+///
+/// The no-op implementation [`NoRevocationCheck`] is provided for cases where
+/// revocation checking is not needed (e.g. tests, trusted internal PKI,
+/// air-gapped deployments).
+pub trait RevocationChecker {
+    /// Check whether `cert` has been revoked.
+    ///
+    /// Return `Ok(())` if the certificate is valid (not revoked or revocation
+    /// status is acceptable).  Return `Err(SmimeError::CertChain(...))` if the
+    /// certificate is revoked or its revocation status cannot be confirmed.
+    fn check(&self, cert: &x509_cert::Certificate) -> Result<(), SmimeError>;
+}
+
+/// A no-op [`RevocationChecker`] that accepts all certificates without
+/// consulting OCSP or CRL.
+///
+/// Use this when revocation checking is managed out-of-band, not required
+/// for the deployment, or during testing with synthetic certificates.
+pub struct NoRevocationCheck;
+
+impl RevocationChecker for NoRevocationCheck {
+    fn check(&self, _cert: &x509_cert::Certificate) -> Result<(), SmimeError> {
+        Ok(())
     }
 }
 

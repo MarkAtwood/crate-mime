@@ -4,23 +4,19 @@
 //! calls are made; the caller supplies a bag of intermediate certificates
 //! (extracted from the CMS SignedData) and a set of trust anchors.
 
-use const_oid::{
-    db::rfc5912::{
-        ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, SHA_256_WITH_RSA_ENCRYPTION,
-        SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
-    },
-    AssociatedOid,
+use const_oid::db::rfc5912::{
+    ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, SHA_256_WITH_RSA_ENCRYPTION,
+    SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
 };
 use der::Encode;
-use p256::ecdsa::{DerSignature as P256DerSig, VerifyingKey as P256VerifyingKey};
-use p384::ecdsa::{DerSignature as P384DerSig, VerifyingKey as P384VerifyingKey};
-use rsa::{pkcs1v15, pkcs8::DecodePublicKey, RsaPublicKey};
-use sha2::digest::Digest;
 use sha2::{Sha256, Sha384, Sha512};
+use std::collections::HashSet;
 use std::time::SystemTime;
 use x509_cert::ext::pkix::BasicConstraints;
 use x509_cert::Certificate;
 
+use crate::key::RevocationChecker;
+use crate::sig_verify;
 use crate::SmimeError;
 
 /// Maximum certificate chain depth accepted (prevents cycles and absurdly long chains).
@@ -44,6 +40,7 @@ pub(crate) fn validate_chain(
     bag: &[Certificate],
     trust_anchors: &[Certificate],
     now: SystemTime,
+    revocation: &dyn RevocationChecker,
 ) -> Result<(), SmimeError> {
     if trust_anchors.is_empty() {
         return Err(SmimeError::CertChain("no trust anchors provided".into()));
@@ -51,9 +48,18 @@ pub(crate) fn validate_chain(
 
     let mut current: &Certificate = signer_cert;
 
+    // Track visited subjects (DER-encoded) to detect cycles in the bag.
+    let mut visited: HashSet<Vec<u8>> = HashSet::new();
+    if let Ok(subj) = signer_cert.tbs_certificate().subject().to_der() {
+        visited.insert(subj);
+    }
+
     for _depth in 0..MAX_CHAIN_DEPTH {
         // Step 1 — validity period.
         check_validity(current, now)?;
+
+        // Step 1b — revocation check (no-op unless caller injects OCSP/CRL).
+        revocation.check(current)?;
 
         // Step 2 — look for the issuer among the trust anchors first.
         // Collect all anchors whose subject DN matches the current cert's issuer.
@@ -69,6 +75,10 @@ pub(crate) fn validate_chain(
             .collect();
         if !candidates.is_empty() {
             // Collect all candidates whose validity period contains `now`.
+            // RFC 5280 §6.1.3(a)(1) requires the current time to fall within
+            // the validity interval of every certificate in the certification
+            // path, including trust anchors.  Skipping this check would allow
+            // an expired root to validate a still-valid end-entity certificate.
             let valid_candidates: Vec<&&Certificate> = candidates
                 .iter()
                 .filter(|a| check_validity(a, now).is_ok())
@@ -105,6 +115,20 @@ pub(crate) fn validate_chain(
                 if !is_ca_cert(p) {
                     return Err(SmimeError::CertChain(
                         "intermediate cert is not a CA".into(),
+                    ));
+                }
+                // Cycle detection: if this subject was already visited, the bag
+                // contains a cycle (e.g. A signed by B, B signed by A).  The
+                // chain is still rejected, but we surface the real cause rather
+                // than exhausting MAX_CHAIN_DEPTH silently.
+                let subj_der = p
+                    .tbs_certificate()
+                    .subject()
+                    .to_der()
+                    .map_err(|e| SmimeError::CertChain(format!("subject DER encode: {e}")))?;
+                if !visited.insert(subj_der) {
+                    return Err(SmimeError::CertChain(
+                        "certificate chain contains a cycle".into(),
                     ));
                 }
                 current = p;
@@ -151,6 +175,14 @@ fn is_ca_cert(cert: &Certificate) -> bool {
 }
 
 /// Return `true` if the DER encodings of two `Name` values are identical.
+///
+/// RFC 5280 §7.1 technically permits case-insensitive, whitespace-folding
+/// comparison of distinguished names.  We use byte-exact DER comparison
+/// instead: it is simpler, avoids string normalisation edge cases, and is
+/// correct for any certificate chain produced by a conformant CA — a
+/// conformant CA encodes the same DN identically in issuer and subject fields.
+/// Chains where the names are logically equivalent but differ in case or
+/// whitespace will be rejected; such chains are themselves non-conformant.
 fn names_equal(a: &x509_cert::name::Name, b: &x509_cert::name::Name) -> bool {
     match (a.to_der(), b.to_der()) {
         (Ok(a_der), Ok(b_der)) => a_der == b_der,
@@ -170,80 +202,18 @@ fn verify_signature(cert: &Certificate, issuer: &Certificate) -> Result<(), Smim
     let sig_bytes = cert.signature().raw_bytes();
     let oid = &cert.signature_algorithm().oid;
 
+    let e = |msg: String| SmimeError::CertChain(msg);
     if *oid == SHA_256_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha256>(issuer, &tbs_der, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha256, _>(issuer, &tbs_der, sig_bytes, e)
     } else if *oid == SHA_384_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha384>(issuer, &tbs_der, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha384, _>(issuer, &tbs_der, sig_bytes, e)
     } else if *oid == SHA_512_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha512>(issuer, &tbs_der, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha512, _>(issuer, &tbs_der, sig_bytes, e)
     } else if *oid == ECDSA_WITH_SHA_256 {
-        verify_ecdsa_p256(issuer, &tbs_der, sig_bytes)
+        sig_verify::verify_ecdsa_p256(issuer, &tbs_der, sig_bytes, e)
     } else if *oid == ECDSA_WITH_SHA_384 {
-        verify_ecdsa_p384(issuer, &tbs_der, sig_bytes)
+        sig_verify::verify_ecdsa_p384(issuer, &tbs_der, sig_bytes, e)
     } else {
         Err(SmimeError::UnsupportedAlgorithm(oid.to_string()))
     }
-}
-
-/// Verify an RSA PKCS#1 v1.5 signature.
-///
-/// `D` must be a digest with an associated OID so that `VerifyingKey::new` can
-/// embed the DigestInfo prefix.
-fn verify_rsa_pkcs1<D>(
-    issuer: &Certificate,
-    tbs_der: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError>
-where
-    D: Digest + AssociatedOid,
-{
-    let spki_der = issuer
-        .tbs_certificate()
-        .subject_public_key_info()
-        .to_der()
-        .map_err(|e| SmimeError::CertChain(format!("SPKI DER encode: {e}")))?;
-    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
-        .map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    let verifying_key = pkcs1v15::VerifyingKey::<D>::new(rsa_pub);
-    let signature = pkcs1v15::Signature::try_from(sig_bytes)
-        .map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_der, &signature)
-        .map_err(|e| SmimeError::CertChain(format!("RSA sig verify: {e}")))
-}
-
-/// Verify an ECDSA-P256-SHA256 signature.
-fn verify_ecdsa_p256(
-    issuer: &Certificate,
-    tbs_der: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError> {
-    // subject_public_key is a BitString containing the uncompressed SEC1 point.
-    let pub_bytes = issuer
-        .tbs_certificate()
-        .subject_public_key_info()
-        .subject_public_key
-        .raw_bytes();
-    let verifying_key = P256VerifyingKey::from_sec1_bytes(pub_bytes)
-        .map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    let sig = P256DerSig::try_from(sig_bytes).map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_der, &sig)
-        .map_err(|e| SmimeError::CertChain(format!("ECDSA P-256 sig verify: {e}")))
-}
-
-/// Verify an ECDSA-P384-SHA384 signature.
-fn verify_ecdsa_p384(
-    issuer: &Certificate,
-    tbs_der: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError> {
-    let pub_bytes = issuer
-        .tbs_certificate()
-        .subject_public_key_info()
-        .subject_public_key
-        .raw_bytes();
-    let verifying_key = P384VerifyingKey::from_sec1_bytes(pub_bytes)
-        .map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    let sig = P384DerSig::try_from(sig_bytes).map_err(|e| SmimeError::CertChain(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_der, &sig)
-        .map_err(|e| SmimeError::CertChain(format!("ECDSA P-384 sig verify: {e}")))
 }

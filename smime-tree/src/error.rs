@@ -13,11 +13,14 @@ pub enum SmimeError {
     SignatureVerification,
     /// Certificate chain validation failed.
     CertChain(String),
-    /// I/O or formatting error.
-    Io(String),
+    /// Catch-all for operation errors not covered by a more specific variant.
+    Other(String),
     /// All signers in the CMS SignedData failed verification.
     /// The `signers` vec contains per-signer error details.
     AllSignersFailed(Vec<crate::verify::SignerResult>),
+    /// The `ContentInfo` content type is not what this operation expects.
+    /// For example, passing a `SignedData` blob to `decrypt()`.
+    WrongContentType(String),
 }
 
 impl fmt::Display for SmimeError {
@@ -32,7 +35,8 @@ impl fmt::Display for SmimeError {
             }
             SmimeError::SignatureVerification => write!(f, "signature verification failed"),
             SmimeError::CertChain(msg) => write!(f, "certificate chain error: {msg}"),
-            SmimeError::Io(msg) => write!(f, "I/O error: {msg}"),
+            SmimeError::Other(msg) => write!(f, "error: {msg}"),
+            SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
             SmimeError::AllSignersFailed(signers) => {
                 let first_error = signers
                     .first()

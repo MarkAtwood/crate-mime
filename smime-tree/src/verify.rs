@@ -10,26 +10,19 @@ use cms::{
     content_info::ContentInfo,
     signed_data::{SignedData, SignerIdentifier},
 };
-use const_oid::{
-    db::{
-        rfc5911::ID_MESSAGE_DIGEST,
-        rfc5912::{
-            ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ID_SHA_256, ID_SHA_384, ID_SHA_512,
-            RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION,
-            SHA_512_WITH_RSA_ENCRYPTION,
-        },
+use const_oid::db::{
+    rfc5911::ID_MESSAGE_DIGEST,
+    rfc5912::{
+        ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ID_SHA_256, ID_SHA_384, ID_SHA_512, RSA_ENCRYPTION,
+        SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
     },
-    AssociatedOid,
 };
 use der::{asn1::OctetString, Decode, Encode};
-use p256::ecdsa::{DerSignature as P256DerSig, VerifyingKey as P256VerifyingKey};
-use p384::ecdsa::{DerSignature as P384DerSig, VerifyingKey as P384VerifyingKey};
-use rsa::{pkcs1v15, pkcs8::DecodePublicKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
-use sha2::{digest::Digest, Sha256, Sha384, Sha512};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 use x509_cert::Certificate;
 
-use crate::{cert::validate_chain, SmimeError};
+use crate::{cert::validate_chain, key::RevocationChecker, sig_verify, SmimeError};
 
 // ---------------------------------------------------------------------------
 // Public result types
@@ -58,6 +51,13 @@ pub struct SignerResult {
     pub error: Option<String>,
 }
 
+impl VerificationResult {
+    /// Returns `true` if at least one signer verified successfully.
+    pub fn is_verified(&self) -> bool {
+        self.signers.iter().any(|s| s.verified)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -75,6 +75,9 @@ pub struct SignerResult {
 /// * `now`            — current time used for certificate validity-period checks.
 ///   Pass `SystemTime::now()` for normal use; pass a fixed time in tests to
 ///   validate against certificates with known validity periods.
+/// * `revocation`     — revocation checker invoked for each certificate in the
+///   chain.  Pass `&NoRevocationCheck` to skip revocation checking.  Implement
+///   [`RevocationChecker`] to inject OCSP or CRL validation.
 ///
 /// # Errors
 ///
@@ -88,6 +91,7 @@ pub fn verify(
     signature_der: &[u8],
     trust_anchors: &[Certificate],
     now: std::time::SystemTime,
+    revocation: &dyn RevocationChecker,
 ) -> Result<VerificationResult, SmimeError> {
     // Parse ContentInfo → SignedData.
     let ci = ContentInfo::from_der(signature_der)?;
@@ -113,11 +117,22 @@ pub fn verify(
         .signer_infos
         .0
         .iter()
-        .map(|si| verify_one(signed_content, si, &bag_certs, trust_anchors, now))
+        .map(|si| {
+            verify_one(
+                signed_content,
+                si,
+                &bag_certs,
+                trust_anchors,
+                now,
+                revocation,
+            )
+        })
         .collect();
 
     if signers.is_empty() {
-        return Err(SmimeError::Io("no SignerInfo entries in SignedData".into()));
+        return Err(SmimeError::Other(
+            "no SignerInfo entries in SignedData".into(),
+        ));
     }
     if signers.iter().all(|s| !s.verified) {
         return Err(SmimeError::AllSignersFailed(signers));
@@ -130,6 +145,15 @@ pub fn verify(
 // Per-signer verification
 // ---------------------------------------------------------------------------
 
+/// Build a failed `SignerResult` with a human-readable error message.
+fn fail(subject: Option<String>, msg: impl Into<String>) -> SignerResult {
+    SignerResult {
+        verified: false,
+        subject,
+        error: Some(msg.into()),
+    }
+}
+
 /// Run all five verification steps for a single `SignerInfo`.
 ///
 /// Any failure is captured in `SignerResult.error` rather than propagated.
@@ -139,29 +163,18 @@ fn verify_one(
     bag_certs: &[Certificate],
     trust_anchors: &[Certificate],
     now: std::time::SystemTime,
+    revocation: &dyn RevocationChecker,
 ) -> SignerResult {
     // Step 1: compute content digest.
     let hash = match compute_digest(signed_content, &si.digest_alg.oid) {
         Ok(h) => h,
-        Err(e) => {
-            return SignerResult {
-                verified: false,
-                subject: None,
-                error: Some(e.to_string()),
-            }
-        }
+        Err(e) => return fail(None, e.to_string()),
     };
 
     // Step 2: find signer cert in the bag or trust anchors.
     let signer_cert = match find_cert(bag_certs, trust_anchors, &si.sid) {
         Some(c) => c,
-        None => {
-            return SignerResult {
-                verified: false,
-                subject: None,
-                error: Some("signer cert not found in certificate bag".into()),
-            }
-        }
+        None => return fail(None, "signer cert not found in certificate bag"),
     };
 
     let subject_str = signer_cert.tbs_certificate().subject().to_string();
@@ -169,33 +182,17 @@ fn verify_one(
     // Step 3: check that signed_attrs is present, then verify message digest.
     let signed_attrs = match si.signed_attrs.as_ref() {
         Some(a) => a,
-        None => {
-            return SignerResult {
-                verified: false,
-                subject: Some(subject_str),
-                error: Some("no signed attributes present".into()),
-            }
-        }
+        None => return fail(Some(subject_str), "no signed attributes present"),
     };
 
     if let Err(e) = check_message_digest(signed_attrs, &hash) {
-        return SignerResult {
-            verified: false,
-            subject: Some(subject_str),
-            error: Some(e.to_string()),
-        };
+        return fail(Some(subject_str), e.to_string());
     }
 
     // Step 4: verify signature over DER(signed_attrs).
     let tbs_bytes = match signed_attrs.to_der() {
         Ok(b) => b,
-        Err(e) => {
-            return SignerResult {
-                verified: false,
-                subject: Some(subject_str),
-                error: Some(format!("signed_attrs DER encode: {e}")),
-            }
-        }
+        Err(e) => return fail(Some(subject_str), format!("signed_attrs DER encode: {e}")),
     };
     let sig_bytes = si.signature.as_bytes();
 
@@ -206,20 +203,12 @@ fn verify_one(
         &tbs_bytes,
         sig_bytes,
     ) {
-        return SignerResult {
-            verified: false,
-            subject: Some(subject_str),
-            error: Some(e.to_string()),
-        };
+        return fail(Some(subject_str), e.to_string());
     }
 
-    // Step 5: validate certificate chain.
-    if let Err(e) = validate_chain(&signer_cert, bag_certs, trust_anchors, now) {
-        return SignerResult {
-            verified: false,
-            subject: Some(subject_str),
-            error: Some(e.to_string()),
-        };
+    // Step 5: validate certificate chain (includes revocation check per cert).
+    if let Err(e) = validate_chain(&signer_cert, bag_certs, trust_anchors, now, revocation) {
+        return fail(Some(subject_str), e.to_string());
     }
 
     SignerResult {
@@ -234,16 +223,13 @@ fn verify_one(
 // ---------------------------------------------------------------------------
 
 fn compute_digest(data: &[u8], oid: &der::asn1::ObjectIdentifier) -> Result<Vec<u8>, SmimeError> {
-    if *oid == ID_SHA_256 {
-        Ok(Sha256::digest(data).to_vec())
-    } else if *oid == ID_SHA_384 {
-        Ok(Sha384::digest(data).to_vec())
-    } else if *oid == ID_SHA_512 {
-        Ok(Sha512::digest(data).to_vec())
-    } else {
-        Err(SmimeError::UnsupportedAlgorithm(format!(
+    match *oid {
+        x if x == ID_SHA_256 => Ok(Sha256::digest(data).to_vec()),
+        x if x == ID_SHA_384 => Ok(Sha384::digest(data).to_vec()),
+        x if x == ID_SHA_512 => Ok(Sha512::digest(data).to_vec()),
+        _ => Err(SmimeError::UnsupportedAlgorithm(format!(
             "digest OID {oid}"
-        )))
+        ))),
     }
 }
 
@@ -306,7 +292,7 @@ fn check_message_digest(
     let md_attr = signed_attrs
         .iter()
         .find(|a| a.oid == ID_MESSAGE_DIGEST)
-        .ok_or_else(|| SmimeError::Io("messageDigest attribute not found".into()))?;
+        .ok_or_else(|| SmimeError::Other("messageDigest attribute not found".into()))?;
 
     // The attribute value is encoded as an OctetString DER blob inside the Any.
     let expected_bytes: Vec<u8> = md_attr
@@ -315,10 +301,10 @@ fn check_message_digest(
         .next()
         .and_then(|v| OctetString::from_der(v.to_der().ok()?.as_slice()).ok())
         .map(|os| os.as_bytes().to_vec())
-        .ok_or_else(|| SmimeError::Io("cannot decode messageDigest attribute value".into()))?;
+        .ok_or_else(|| SmimeError::Other("cannot decode messageDigest attribute value".into()))?;
 
     if expected_bytes != content_hash {
-        return Err(SmimeError::Io("message digest mismatch".into()));
+        return Err(SmimeError::Other("message digest mismatch".into()));
     }
 
     Ok(())
@@ -335,93 +321,35 @@ fn verify_sig(
     tbs_bytes: &[u8],
     sig_bytes: &[u8],
 ) -> Result<(), SmimeError> {
+    let e = |msg: String| SmimeError::Other(msg);
     if *sig_alg_oid == SHA_256_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha256>(cert, tbs_bytes, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
     } else if *sig_alg_oid == SHA_384_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha384>(cert, tbs_bytes, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
     } else if *sig_alg_oid == SHA_512_WITH_RSA_ENCRYPTION {
-        verify_rsa_pkcs1::<Sha512>(cert, tbs_bytes, sig_bytes)
+        sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
     } else if *sig_alg_oid == RSA_ENCRYPTION {
         // RFC 5652 §5.4 + RFC 5751 §2.1: implementations MAY use rsaEncryption
         // in SignerInfo.signatureAlgorithm (rather than sha*WithRSAEncryption).
         // When they do, the digest is determined by SignerInfo.digestAlgorithm.
         if *digest_alg_oid == ID_SHA_256 {
-            verify_rsa_pkcs1::<Sha256>(cert, tbs_bytes, sig_bytes)
+            sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
         } else if *digest_alg_oid == ID_SHA_384 {
-            verify_rsa_pkcs1::<Sha384>(cert, tbs_bytes, sig_bytes)
+            sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
         } else if *digest_alg_oid == ID_SHA_512 {
-            verify_rsa_pkcs1::<Sha512>(cert, tbs_bytes, sig_bytes)
+            sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
         } else {
             Err(SmimeError::UnsupportedAlgorithm(format!(
                 "rsaEncryption with digest OID {digest_alg_oid}"
             )))
         }
     } else if *sig_alg_oid == ECDSA_WITH_SHA_256 {
-        verify_ecdsa_p256(cert, tbs_bytes, sig_bytes)
+        sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e)
     } else if *sig_alg_oid == ECDSA_WITH_SHA_384 {
-        verify_ecdsa_p384(cert, tbs_bytes, sig_bytes)
+        sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e)
     } else {
         Err(SmimeError::UnsupportedAlgorithm(format!(
             "signature algorithm OID {sig_alg_oid}"
         )))
     }
-}
-
-/// Verify an RSA PKCS#1 v1.5 signature using the signer cert's public key.
-fn verify_rsa_pkcs1<D>(
-    cert: &Certificate,
-    tbs_bytes: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError>
-where
-    D: Digest + AssociatedOid,
-{
-    let spki_der = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .to_der()
-        .map_err(|e| SmimeError::Io(format!("SPKI DER encode: {e}")))?;
-    let rsa_pub =
-        RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| SmimeError::Io(e.to_string()))?;
-    let verifying_key = pkcs1v15::VerifyingKey::<D>::new(rsa_pub);
-    let signature =
-        pkcs1v15::Signature::try_from(sig_bytes).map_err(|e| SmimeError::Io(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &signature)
-        .map_err(|e| SmimeError::Io(format!("RSA sig verify: {e}")))
-}
-
-/// Verify an ECDSA-P256-SHA256 signature using the signer cert's public key.
-fn verify_ecdsa_p256(
-    cert: &Certificate,
-    tbs_bytes: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError> {
-    let pub_bytes = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .subject_public_key
-        .raw_bytes();
-    let verifying_key =
-        P256VerifyingKey::from_sec1_bytes(pub_bytes).map_err(|e| SmimeError::Io(e.to_string()))?;
-    let sig = P256DerSig::try_from(sig_bytes).map_err(|e| SmimeError::Io(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &sig)
-        .map_err(|e| SmimeError::Io(format!("ECDSA P-256 sig verify: {e}")))
-}
-
-/// Verify an ECDSA-P384-SHA384 signature using the signer cert's public key.
-fn verify_ecdsa_p384(
-    cert: &Certificate,
-    tbs_bytes: &[u8],
-    sig_bytes: &[u8],
-) -> Result<(), SmimeError> {
-    let pub_bytes = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .subject_public_key
-        .raw_bytes();
-    let verifying_key =
-        P384VerifyingKey::from_sec1_bytes(pub_bytes).map_err(|e| SmimeError::Io(e.to_string()))?;
-    let sig = P384DerSig::try_from(sig_bytes).map_err(|e| SmimeError::Io(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &sig)
-        .map_err(|e| SmimeError::Io(format!("ECDSA P-384 sig verify: {e}")))
 }

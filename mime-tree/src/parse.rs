@@ -134,26 +134,23 @@ fn build_part(
     let cid = part.content_id().map(str::to_owned);
 
     let children = match &part.body {
-        PartType::Multipart(child_ids) => {
-            let ids: Vec<u32> = child_ids.clone();
-            ids.iter()
-                .enumerate()
-                .filter_map(|(n, &child_idx)| {
-                    let child_id = if part_id.is_empty() {
-                        (n + 1).to_string()
-                    } else {
-                        format!("{}.{}", part_id, n + 1)
-                    };
-                    build_part(message, child_idx, child_id, warnings)
-                })
-                .collect()
-        }
-        PartType::Message(nested) => {
-            // Nested RFC 5322 message — recurse into the nested message's root
-            // part using this crate's part-tree walker, mapped to a synthetic
-            // Message wrapper. We treat the nested message as a single leaf from
-            // the outer tree's perspective and only walk its first part.
-            let _ = nested; // actual decode happens in decode_body_value
+        PartType::Multipart(child_ids) => child_ids
+            .iter()
+            .enumerate()
+            .filter_map(|(n, &child_idx)| {
+                let child_id = if part_id.is_empty() {
+                    (n + 1).to_string()
+                } else {
+                    format!("{}.{}", part_id, n + 1)
+                };
+                build_part(message, child_idx, child_id, warnings)
+            })
+            .collect(),
+        PartType::Message(_nested) => {
+            // message/rfc822 is intentionally treated as an opaque leaf.
+            // Its raw bytes are accessible via body_range; callers that need
+            // the inner structure should pass those bytes to parse() themselves.
+            // See crate invariant: callers handle recursion, not this crate.
             vec![]
         }
         _ => vec![],
