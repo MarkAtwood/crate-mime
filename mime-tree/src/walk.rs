@@ -6,10 +6,10 @@
 use crate::part::ParsedPart;
 
 /// Result of the RFC 8621 §4.1.4 walk algorithm.
-pub struct BodyStructure {
-    pub text_body: Vec<String>,
-    pub html_body: Vec<String>,
-    pub attachments: Vec<String>,
+pub(crate) struct BodyStructure {
+    pub(crate) text_body: Vec<String>,
+    pub(crate) html_body: Vec<String>,
+    pub(crate) attachments: Vec<String>,
 }
 
 /// Compute RFC 8621 §4.1.4 `textBody`, `htmlBody`, and `attachments` part ID lists.
@@ -125,11 +125,12 @@ fn parse_structure<'a>(
             } else if in_alternative {
                 // Inside a container that is itself nested within an alternative:
                 // nullify the opposite list so later inline media go to attachments.
+                // RFC 8621 §4.1.4: "if (textBody) { htmlBody = null; }" / "if (htmlBody) { textBody = null; }"
                 if part.content_type == "text/plain" {
-                    *html_body = None;
+                    *html_body = None; // RFC 8621 §4.1.4: plain text found — nullify htmlBody
                 }
                 if part.content_type == "text/html" {
-                    *text_body = None;
+                    *text_body = None; // RFC 8621 §4.1.4: html found — nullify textBody
                 }
             }
 

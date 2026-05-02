@@ -358,7 +358,7 @@ fn random_boundary(content: &[u8]) -> Result<String, SmimeError> {
             return Ok(boundary);
         }
     }
-    Err(SmimeError::MalformedInput(
+    Err(SmimeError::RngFailure(
         "MIME boundary collision: failed to generate a unique boundary after 8 attempts".into(),
     ))
 }

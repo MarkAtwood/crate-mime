@@ -38,7 +38,7 @@
 //!   [`NoRevocationCheck`] to skip OCSP/CRL.
 //! - **No async**: all operations are synchronous.
 //! - **Supported algorithms**:
-//!   - Sign/verify: RSA PKCS#1 v1.5 (SHA-256/384/512), ECDSA P-256 (SHA-256), P-384 (SHA-384).
+//!   - Sign/verify: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA P-256 (SHA-256 only), P-384 (SHA-384 only). P-521 is not supported.
 //!   - Encrypt/decrypt: AES-128-CBC (RSA/P-256 recipients), AES-256-CBC (P-384 recipients).
 //!   - Key transport: RSA PKCS#1 v1.5 (`KeyTransRecipientInfo`).
 //!   - Key agreement: ECDH P-256 + AES-128-KW, ECDH P-384 + AES-256-KW (`KeyAgreeRecipientInfo`).

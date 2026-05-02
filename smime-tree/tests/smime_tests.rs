@@ -32,7 +32,8 @@ use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
 use sha2::Sha256;
 use smime_tree::{
     decrypt, encrypt, sign, verify, DecryptionKey, DigestAlgorithm, KariAlgorithm,
-    KeyEncryptionAlgorithm, NoRevocationCheck, RecipientIdentifier, SigningKey, SmimeError,
+    KariKeyAgreement, KeyEncryptionAlgorithm, NoRevocationCheck, RecipientIdentifier, SigningKey,
+    SmimeError,
 };
 use x509_cert::Certificate;
 
@@ -675,10 +676,13 @@ const EC256_CERT_HEX: &str = "3082015e30820105021470f5150810906a5ae45ce460932b47
 const EC256_KEY_PKCS8_HEX: &str = "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104208129913fffd405d87c5ab78084faebd02d9d29179a65b99fe59759ff561b9ff0a1440342000474b184d83e31889a67cb2ff86b785a6cb2ff9ef7655f36595bfa66581d2af0f56b8e9c2fb298a21b369b573e9baab218e587489f8506338e1d2fadbc6ccdfea5";
 
 /// P-384 leaf cert DER (/CN=EC384 Test User/O=Test/C=US).
-const EC384_CERT_HEX: &str = "308201a230820128021432f99512e37b7a6616098a951b3641eb035d169b300a06082a8648ce3d04030230343116301406035504030c0d45433338342054657374204341310d300b060355040a0c0454657374310b3009060355040613025553301e170d3236303530323134323334365a170d3236303432393134323334365a30363118301606035504030c0f454333383420546573742055736572310d300b060355040a0c0454657374310b30090603550406130255533076301006072a8648ce3d020106052b810400220362000428ce7fae32c8a6813744550a77c665e24c869f6d749491d2f7fa7e089627a3f520b219d59f1ec26b82a6f40467b5b821667cbb3d748d36010e6ad3dc2786a6d28457873c429bf8d25f9ee9aea1ea50943c017573e59adc3a6af90384d53bb0e2300a06082a8648ce3d0403020368003065023100d4ac7a6596f363febd9897c65436487a6c2cf564b18e6bb044552047744f6290f03964c4ad93be1937236d6dee8ddac3023050526515f93713ade4a96f1baa6b377d6784ee3ec038d5f2ad74f88be7cd30c4bd25e7cd55dcc3857fac6454da667e2f";
+///
+/// Regenerated 2026-05-02 — the previous cert had notBefore > notAfter (structurally invalid).
+/// notBefore=2026-05-02, notAfter=2036-04-29.
+const EC384_CERT_HEX: &str = "308201a23082012802141b63089f14bf39f4fe13e74c88efede74833b982300a06082a8648ce3d04030230343116301406035504030c0d45433338342054657374204341310d300b060355040a0c0454657374310b3009060355040613025553301e170d3236303530323135313835395a170d3336303432393135313835395a30363118301606035504030c0f454333383420546573742055736572310d300b060355040a0c0454657374310b30090603550406130255533076301006072a8648ce3d020106052b8104002203620004268c977a5d67e7be6b766317388cbd1efa6aec7bfd6969127b095f7e09835f3648a2b1bd5f93a72eff6e659c45f552551e742d78a0680f07220e0eb7db268db7c640a836d3dcb7a62b960efb127d8b7e5c3af2b0beedd1ee119806bd505ef474300a06082a8648ce3d0403020368003065023100eff3b261d400d48db794346d5a702d74073c61562b00430dda15d42153874a9148ac65091bd598c7dd5d58e4c27c9a42023040874bdab44339f403a2323a1a260aa413e25baf02d921564f3efeac59e584d89f5b71a04dfe86d6847a5491e8ad9f3b";
 
 /// P-384 private key DER (PKCS#8 unencrypted) — matches EC384_CERT_HEX above.
-const EC384_KEY_PKCS8_HEX: &str = "3081b6020100301006072a8648ce3d020106052b8104002204819e30819b02010104306829c1c9a18ad35668c8d939d70a78547a38b6d83e82c31dadefdf8bcf15db4125a35081c7e7d45f58b91665d8a6c481a1640362000428ce7fae32c8a6813744550a77c665e24c869f6d749491d2f7fa7e089627a3f520b219d59f1ec26b82a6f40467b5b821667cbb3d748d36010e6ad3dc2786a6d28457873c429bf8d25f9ee9aea1ea50943c017573e59adc3a6af90384d53bb0e2";
+const EC384_KEY_PKCS8_HEX: &str = "3081b6020100301006072a8648ce3d020106052b8104002204819e30819b02010104309c1fc92e9b0f8928b9919aea3cbdff59135b7502849ac927e3304f382e838c3a64b4f8d1dbdbd958c61a82550ce406cba16403620004268c977a5d67e7be6b766317388cbd1efa6aec7bfd6969127b095f7e09835f3648a2b1bd5f93a72eff6e659c45f552551e742d78a0680f07220e0eb7db268db7c640a836d3dcb7a62b960efb127d8b7e5c3af2b0beedd1ee119806bd505ef474";
 
 // ---------------------------------------------------------------------------
 // Helper: strip MIME headers from encrypt() output and base64-decode to DER
@@ -975,6 +979,151 @@ fn test_verify_three_cert_chain() {
         result.is_verified(),
         "3-cert chain (leaf → intermediate → root) must verify; signers: {:?}",
         result.signers
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test N: Python-generated P-256 KARI oracle decrypted correctly by agree_ecdh
+//
+// Oracle: Python pyca/cryptography builds a CMS EnvelopedData with
+// KARI P-256 / dhSinglePass-stdDH-sha256kdf-scheme / AES-128-KW / AES-128-CBC.
+// The fixture is deterministic (fixed ephemeral key, CEK, IV).
+// Our decrypt() dispatches to agree_ecdh, exercising the full KARI path.
+//
+// Generated with (smime-tree/tests/gen_kari_oracle.py):
+//   python3 gen_kari_oracle.py  # deterministic; seed = "smime-tree-test-kari-p256-oracle"
+//
+// Oracle cross-check:
+//   openssl cms -decrypt -inform DER -in py_kari.der \
+//     -recip ec256_cert.pem -inkey ec256_key.pem
+//   => "Oracle P-256 KARI plaintext"  (verified before committing)
+//
+// Note: `openssl cms -encrypt` uses dhSinglePass-stdDH-sha1kdf-scheme by default,
+// which our decrypt() does not support.  The Python oracle uses SHA-256 KDF,
+// matching what our encrypt() emits and what RFC 5753 §7.1.4 specifies.
+// ---------------------------------------------------------------------------
+
+/// CMS EnvelopedData DER built by Python pyca/cryptography (KARI P-256, AES-128-CBC).
+const KARI_P256_ORACLE_DER_HEX: &str = "3082014a06092a864886f70d010703a082013b308201370201023181e3a181e0020103a05ba159301306072a8648ce3d020106082a8648ce3d03010703420004569e4197d13155472f77ddab2ce6eb56fb6486ed95b3c8561500110836b0d2509b2afdaa4f7d931a987102c7af3ba1688acdfe9141a671999e0661a8f1051505301506062b8104010b01300b060960864801650304010530673065304930313113301106035504030c0a45432054657374204341310d300b060355040a0c0454657374310b3009060355040613025553021470f5150810906a5ae45ce460932b47d1e33dab3a04182f1b43eb1daefe5fd377e7b2589905d1db4ea3a4e3e9e51c304c06092a864886f70d010701301d060960864801650304010204100102030405060708090a0b0c0d0e0f108020174cafb427c57278614c85e200e540e35baf3d6e3406aed2619470d8806dcd9a";
+
+/// `agree_ecdh` implementation backed by a static P-256 private key.
+///
+/// Performs ECDH, X9.63 KDF (SHA-256), and AES-128-KW unwrap.
+/// Used in Test N to exercise the full KARI decrypt path end-to-end.
+struct TestEcP256DecryptionKey {
+    secret_key: p256::SecretKey,
+    cert: Certificate,
+}
+
+impl DecryptionKey for TestEcP256DecryptionKey {
+    fn decrypt_cek(
+        &self,
+        _encrypted_key: &[u8],
+        _algorithm: &KeyEncryptionAlgorithm,
+    ) -> Result<Vec<u8>, SmimeError> {
+        Err(SmimeError::UnsupportedAlgorithm(
+            "TestEcP256DecryptionKey: RSA path not applicable".into(),
+        ))
+    }
+
+    fn matches_recipient(&self, id: &RecipientIdentifier) -> bool {
+        match id {
+            RecipientIdentifier::IssuerAndSerialNumber { issuer_der, serial } => {
+                let issuer_ok = self
+                    .cert
+                    .tbs_certificate()
+                    .issuer()
+                    .to_der()
+                    .map(|a| a == *issuer_der)
+                    .unwrap_or(false);
+                let serial_ok =
+                    self.cert.tbs_certificate().serial_number().as_bytes() == serial.as_slice();
+                issuer_ok && serial_ok
+            }
+            _ => false,
+        }
+    }
+
+    fn agree_ecdh(
+        &self,
+        ephemeral_public_key_bytes: &[u8],
+        ukm: Option<&[u8]>,
+        enc_cek: &[u8],
+        alg: &KariAlgorithm,
+    ) -> Result<Vec<u8>, SmimeError> {
+        // Step 1: parse the sender's ephemeral public key.
+        let eph_pub = p256::PublicKey::from_sec1_bytes(ephemeral_public_key_bytes)
+            .map_err(|e| SmimeError::Other(format!("ephemeral key parse: {e}")))?;
+
+        // Step 2: ECDH — static private key × ephemeral public key → shared secret Z.
+        let shared =
+            elliptic_curve::ecdh::diffie_hellman(self.secret_key.to_nonzero_scalar(), eph_pub.as_affine());
+        let z = shared.raw_secret_bytes();
+
+        // Step 3: X9.63 KDF with EccCmsSharedInfo (RFC 5753 §7.2).
+        // This test only handles StdDhSha256Kdf (P-256) with no UKM.
+        if !matches!(alg.key_agreement, KariKeyAgreement::StdDhSha256Kdf) {
+            return Err(SmimeError::UnsupportedAlgorithm(
+                "TestEcP256DecryptionKey only supports StdDhSha256Kdf".into(),
+            ));
+        }
+        if ukm.is_some() {
+            return Err(SmimeError::UnsupportedAlgorithm(
+                "TestEcP256DecryptionKey does not support UKM".into(),
+            ));
+        }
+        // EccCmsSharedInfo DER for id-aes128-Wrap (2.16.840.1.101.3.4.1.5), 128-bit key, no UKM:
+        //   SEQUENCE { AlgorithmIdentifier { id-aes128-Wrap }, [2] EXPLICIT OCTET STRING(0x00000080) }
+        const AES128_SHARED_INFO: &[u8] = &[
+            0x30, 0x15, 0x30, 0x0b, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01,
+            0x05, 0xa2, 0x06, 0x04, 0x04, 0x00, 0x00, 0x00, 0x80,
+        ];
+        let mut kek = [0u8; 16];
+        ansi_x963_kdf::derive_key_into::<sha2::Sha256>(z.as_ref(), AES128_SHARED_INFO, &mut kek)
+            .map_err(|_| SmimeError::Other("X9.63 KDF failed".into()))?;
+
+        // Step 4: AES-128-KW unwrap → raw CEK.
+        use aes_kw::cipher::KeyInit as _;
+        let unwrapper = aes_kw::KwAes128::new(&kek.into());
+        let mut cek = vec![
+            0u8;
+            enc_cek
+                .len()
+                .checked_sub(8)
+                .ok_or_else(|| SmimeError::Other("enc_cek too short for AES-KW".into()))?
+        ];
+        unwrapper
+            .unwrap_key(enc_cek, &mut cek)
+            .map_err(|e| SmimeError::Other(format!("AES-128-KW unwrap: {e}")))?;
+
+        Ok(cek)
+    }
+}
+
+/// Test N: OpenSSL-encrypted P-256 KARI oracle.
+///
+/// OpenSSL encrypts to the EC256 cert; our decrypt() exercises the full KARI
+/// path (ECDH → X9.63 KDF → AES-128-KW unwrap → AES-128-CBC content decrypt).
+/// This is the reverse direction of Tests I and J, which proved our encryption
+/// can be decrypted by OpenSSL.
+#[test]
+fn test_decrypt_openssl_kari_p256() {
+    let ec256_cert_der = from_hex(EC256_CERT_HEX);
+    let cert = Certificate::from_der(&ec256_cert_der).expect("parse P-256 cert");
+
+    let ec256_key_der = from_hex(EC256_KEY_PKCS8_HEX);
+    let secret_key =
+        p256::SecretKey::from_pkcs8_der(&ec256_key_der).expect("parse P-256 private key");
+
+    let key = TestEcP256DecryptionKey { secret_key, cert };
+
+    let enveloped_der = from_hex(KARI_P256_ORACLE_DER_HEX);
+    let plaintext = decrypt(&enveloped_der, &key).expect("decrypt() must succeed for P-256 KARI");
+
+    assert_eq!(
+        plaintext,
+        b"Oracle P-256 KARI plaintext",
+        "decrypted P-256 KARI must match oracle plaintext"
     );
 }
 
