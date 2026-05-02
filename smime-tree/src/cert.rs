@@ -66,16 +66,28 @@ pub(crate) fn validate_chain(
         // Step 1b — revocation check (no-op unless caller injects OCSP/CRL).
         revocation.check(current)?;
 
+        // Pre-encode the current cert's issuer DN once per loop iteration.
+        // Both Step 2 (trust anchor filter) and Step 3 (bag search) need to
+        // compare against this DN; encoding it inline would allocate once per
+        // candidate, totalling O(N) allocations where N is the store/bag size.
+        let issuer_der = match current.tbs_certificate().issuer().to_der() {
+            Ok(d) => d,
+            Err(_) => {
+                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer))
+            }
+        };
+
         // Step 2 — look for the issuer among the trust anchors first.
         // Collect all anchors whose subject DN matches the current cert's issuer.
         // There may be more than one (CA renewal: same DN, different key/validity).
         let candidates: Vec<&Certificate> = trust_anchors
             .iter()
             .filter(|a| {
-                names_equal(
-                    current.tbs_certificate().issuer(),
-                    a.tbs_certificate().subject(),
-                )
+                a.tbs_certificate()
+                    .subject()
+                    .to_der()
+                    .map(|s| s == issuer_der)
+                    .unwrap_or(false)
             })
             .collect();
         if !candidates.is_empty() {
@@ -120,10 +132,13 @@ pub(crate) fn validate_chain(
 
         // Step 3 — look for the issuer in the certificate bag.
         let parent = bag.iter().find(|candidate| {
-            names_equal(
-                current.tbs_certificate().issuer(),
-                candidate.tbs_certificate().subject(),
-            ) && verify_signature(current, candidate).is_ok()
+            candidate
+                .tbs_certificate()
+                .subject()
+                .to_der()
+                .map(|s| s == issuer_der)
+                .unwrap_or(false)
+                && verify_signature(current, candidate).is_ok()
         });
 
         match parent {
@@ -226,22 +241,6 @@ fn get_path_len(cert: &Certificate) -> Option<u8> {
         .ok()
         .flatten()
         .and_then(|(_, bc)| bc.path_len_constraint)
-}
-
-/// Return `true` if the DER encodings of two `Name` values are identical.
-///
-/// RFC 5280 §7.1 technically permits case-insensitive, whitespace-folding
-/// comparison of distinguished names.  We use byte-exact DER comparison
-/// instead: it is simpler, avoids string normalisation edge cases, and is
-/// correct for any certificate chain produced by a conformant CA — a
-/// conformant CA encodes the same DN identically in issuer and subject fields.
-/// Chains where the names are logically equivalent but differ in case or
-/// whitespace will be rejected; such chains are themselves non-conformant.
-fn names_equal(a: &x509_cert::name::Name, b: &x509_cert::name::Name) -> bool {
-    match (a.to_der(), b.to_der()) {
-        (Ok(a_der), Ok(b_der)) => a_der == b_der,
-        _ => false,
-    }
 }
 
 /// Verify `cert`'s signature using `issuer`'s public key.

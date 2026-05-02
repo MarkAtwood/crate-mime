@@ -103,7 +103,7 @@ struct EccCmsSharedInfo {
 /// fallible RNG path and return `Err` instead of panicking.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError> {
     if recipients.is_empty() {
-        return Err(SmimeError::Other("no recipients".into()));
+        return Err(SmimeError::NoRecipients);
     }
 
     // Pre-scan recipients: if any uses P-384, upgrade content encryption to
@@ -125,49 +125,21 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
 
     // Encrypt the content and derive per-algorithm values; recipient loop runs once below.
     let (content_enc_alg, encrypted_content, cek_bytes) = if use_aes256 {
-        // AES-256-CBC: 32-byte key, 16-byte IV.
-        let mut cek_buf = [0u8; 32];
-        let mut iv_buf = [0u8; 16];
-        getrandom::fill(&mut cek_buf)
-            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
-        getrandom::fill(&mut iv_buf)
-            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
-        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(cek_buf.as_slice())
-            .expect("cek_buf is exactly 32 bytes = AES-256 key size");
-        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv_buf.as_slice())
-            .expect("iv_buf is exactly 16 bytes = AES block size");
-        let ct =
-            cbc::Encryptor::<aes::Aes256>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes = Zeroizing::new(cek_buf.to_vec());
-        let iv_oct = OctetString::new(iv_buf.as_slice())?;
-        let iv_any = Any::encode_from(&iv_oct)?;
-        let alg = AlgorithmIdentifierOwned {
-            oid: ID_AES_256_CBC,
-            parameters: Some(iv_any),
-        };
-        (alg, ct, cek_bytes)
+        encrypt_aes_cbc(32, ID_AES_256_CBC, |key, iv| {
+            let k = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(key)
+                .expect("key is exactly 32 bytes = AES-256 key size");
+            let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv)
+                .expect("iv is exactly 16 bytes = AES block size");
+            cbc::Encryptor::<aes::Aes256>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
+        })?
     } else {
-        // AES-128-CBC: 16-byte key, 16-byte IV.
-        let mut cek_buf = [0u8; 16];
-        let mut iv_buf = [0u8; 16];
-        getrandom::fill(&mut cek_buf)
-            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
-        getrandom::fill(&mut iv_buf)
-            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
-        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(cek_buf.as_slice())
-            .expect("cek_buf is exactly 16 bytes = AES-128 key size");
-        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv_buf.as_slice())
-            .expect("iv_buf is exactly 16 bytes = AES block size");
-        let ct =
-            cbc::Encryptor::<aes::Aes128>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes = Zeroizing::new(cek_buf.to_vec());
-        let iv_oct = OctetString::new(iv_buf.as_slice())?;
-        let iv_any = Any::encode_from(&iv_oct)?;
-        let alg = AlgorithmIdentifierOwned {
-            oid: ID_AES_128_CBC,
-            parameters: Some(iv_any),
-        };
-        (alg, ct, cek_bytes)
+        encrypt_aes_cbc(16, ID_AES_128_CBC, |key, iv| {
+            let k = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(key)
+                .expect("key is exactly 16 bytes = AES-128 key size");
+            let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv)
+                .expect("iv is exactly 16 bytes = AES block size");
+            cbc::Encryptor::<aes::Aes128>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
+        })?
     };
 
     // Build recipient infos. All recipients use the same CEK regardless of algorithm.
@@ -216,6 +188,38 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     let ci_der = ci.to_der()?;
 
     Ok(build_mime(&ci_der))
+}
+
+/// Generate a random CEK and IV, encrypt content using the provided
+/// type-specific closure, and assemble the `AlgorithmIdentifier`.
+///
+/// `key_len` must be 16 (AES-128) or 32 (AES-256).  `do_encrypt` receives the
+/// raw key and IV bytes and returns the padded ciphertext.  The CEK bytes are
+/// returned as `Zeroizing<Vec<u8>>` so they are scrubbed on drop.
+#[allow(clippy::type_complexity)]
+fn encrypt_aes_cbc<F>(
+    key_len: usize,
+    cek_oid: ObjectIdentifier,
+    do_encrypt: F,
+) -> Result<(AlgorithmIdentifierOwned, Vec<u8>, Zeroizing<Vec<u8>>), SmimeError>
+where
+    F: FnOnce(&[u8], &[u8]) -> Vec<u8>,
+{
+    let mut cek_buf = vec![0u8; key_len];
+    let mut iv_buf = [0u8; 16];
+    getrandom::fill(&mut cek_buf)
+        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    getrandom::fill(&mut iv_buf)
+        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    let ct = do_encrypt(&cek_buf, &iv_buf);
+    let cek_bytes = Zeroizing::new(cek_buf);
+    let iv_oct = OctetString::new(iv_buf.as_slice())?;
+    let iv_any = Any::encode_from(&iv_oct)?;
+    let alg = AlgorithmIdentifierOwned {
+        oid: cek_oid,
+        parameters: Some(iv_any),
+    };
+    Ok((alg, ct, cek_bytes))
 }
 
 /// Inspect a certificate's SPKI and return the appropriate `RecipientInfo`.
@@ -280,7 +284,7 @@ fn build_rsa_recipient(
     // than a panic.  A TOCTOU window remains but covers only catastrophic
     // system-level RNG failure, not normal operation.
     let mut preflight = [0u8; 4];
-    getrandom::fill(&mut preflight).map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+    getrandom::fill(&mut preflight).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
 
     let spki_der = cert
         .tbs_certificate()
@@ -329,7 +333,7 @@ fn build_p256_recipient(
         p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
     let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
-        .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
 
@@ -370,7 +374,7 @@ fn build_p384_recipient(
         p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
     let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
-        .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
 

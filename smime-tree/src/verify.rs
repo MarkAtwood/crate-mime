@@ -317,34 +317,42 @@ fn verify_sig(
     tbs_bytes: &[u8],
     sig_bytes: &[u8],
 ) -> Result<(), SmimeError> {
+    // `ObjectIdentifier` constants cannot be used as const patterns in `match`
+    // arms (they are runtime values, not compile-time literals).  The guard
+    // form `x if x == CONST` is idiomatic and consistent with `compute_digest`.
     let e = |msg: String| SmimeError::Other(msg);
-    if *sig_alg_oid == SHA_256_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
-    } else if *sig_alg_oid == SHA_384_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
-    } else if *sig_alg_oid == SHA_512_WITH_RSA_ENCRYPTION {
-        sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
-    } else if *sig_alg_oid == RSA_ENCRYPTION {
-        // RFC 5652 §5.4 + RFC 5751 §2.1: implementations MAY use rsaEncryption
-        // in SignerInfo.signatureAlgorithm (rather than sha*WithRSAEncryption).
-        // When they do, the digest is determined by SignerInfo.digestAlgorithm.
-        if *digest_alg_oid == ID_SHA_256 {
+    match *sig_alg_oid {
+        x if x == SHA_256_WITH_RSA_ENCRYPTION => {
             sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
-        } else if *digest_alg_oid == ID_SHA_384 {
-            sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
-        } else if *digest_alg_oid == ID_SHA_512 {
-            sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
-        } else {
-            Err(SmimeError::UnsupportedAlgorithm(format!(
-                "rsaEncryption with digest OID {digest_alg_oid}"
-            )))
         }
-    } else if *sig_alg_oid == ECDSA_WITH_SHA_256 {
-        sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e)
-    } else if *sig_alg_oid == ECDSA_WITH_SHA_384 {
-        sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e)
-    } else {
-        Err(SmimeError::UnsupportedAlgorithm(format!(
+        x if x == SHA_384_WITH_RSA_ENCRYPTION => {
+            sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
+        }
+        x if x == SHA_512_WITH_RSA_ENCRYPTION => {
+            sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
+        }
+        x if x == RSA_ENCRYPTION => {
+            // RFC 5652 §5.4 + RFC 5751 §2.1: implementations MAY use rsaEncryption
+            // in SignerInfo.signatureAlgorithm (rather than sha*WithRSAEncryption).
+            // When they do, the digest is determined by SignerInfo.digestAlgorithm.
+            match *digest_alg_oid {
+                d if d == ID_SHA_256 => {
+                    sig_verify::verify_rsa_pkcs1::<Sha256, _>(cert, tbs_bytes, sig_bytes, e)
+                }
+                d if d == ID_SHA_384 => {
+                    sig_verify::verify_rsa_pkcs1::<Sha384, _>(cert, tbs_bytes, sig_bytes, e)
+                }
+                d if d == ID_SHA_512 => {
+                    sig_verify::verify_rsa_pkcs1::<Sha512, _>(cert, tbs_bytes, sig_bytes, e)
+                }
+                _ => Err(SmimeError::UnsupportedAlgorithm(format!(
+                    "rsaEncryption with digest OID {digest_alg_oid}"
+                ))),
+            }
+        }
+        x if x == ECDSA_WITH_SHA_256 => sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e),
+        x if x == ECDSA_WITH_SHA_384 => sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e),
+        _ => Err(SmimeError::UnsupportedAlgorithm(format!(
             "signature algorithm OID {sig_alg_oid}"
         )))
     }

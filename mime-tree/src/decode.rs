@@ -57,7 +57,7 @@ pub fn decode_body_value(
 
             // Strip CR/LF line wrapping, collect up to max_b64_chars bytes,
             // and detect truncation — all in a single pass.
-            let mut stripped = Vec::new();
+            let mut stripped = Vec::with_capacity(body_bytes.len());
             for &b in body_bytes {
                 if b == b'\r' || b == b'\n' {
                     continue;

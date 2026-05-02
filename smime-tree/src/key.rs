@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::SmimeError;
@@ -24,6 +26,35 @@ pub enum RecipientIdentifier {
     /// Obtain from the cert's Subject Key Identifier extension:
     /// `cert.tbs_certificate().get_extension::<SubjectKeyIdentifier>()`.
     SubjectKeyIdentifier(Vec<u8>),
+}
+
+impl fmt::Display for RecipientIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RecipientIdentifier::IssuerAndSerialNumber { issuer_der, serial } => {
+                write!(
+                    f,
+                    "IssuerAndSerial(issuer={} bytes, serial={})",
+                    issuer_der.len(),
+                    serial
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<_>>()
+                        .join(":")
+                )
+            }
+            RecipientIdentifier::SubjectKeyIdentifier(ski) => {
+                write!(
+                    f,
+                    "SubjectKeyIdentifier({})",
+                    ski.iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<_>>()
+                        .join(":")
+                )
+            }
+        }
+    }
 }
 
 /// Elliptic curve selection for ECDH key agreement.

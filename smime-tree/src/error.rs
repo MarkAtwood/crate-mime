@@ -125,6 +125,11 @@ pub enum SmimeError {
     CertChain(CertChainError),
     /// Input is structurally malformed (e.g. missing required CMS fields).
     MalformedInput(String),
+    /// `encrypt()` was called with an empty recipients slice.
+    NoRecipients,
+    /// OS random number generator failed during a crypto operation.
+    /// This indicates a catastrophic system-level failure.
+    RngFailure(String),
     /// Catch-all for operation errors not covered by a more specific variant.
     Other(String),
     /// All signers in the CMS SignedData failed verification.
@@ -148,6 +153,8 @@ impl fmt::Display for SmimeError {
             SmimeError::SignatureVerification => write!(f, "signature verification failed"),
             SmimeError::CertChain(e) => write!(f, "certificate chain error: {e}"),
             SmimeError::MalformedInput(msg) => write!(f, "malformed CMS input: {msg}"),
+            SmimeError::NoRecipients => write!(f, "encrypt() called with no recipients"),
+            SmimeError::RngFailure(msg) => write!(f, "RNG failure: {msg}"),
             SmimeError::Other(msg) => write!(f, "error: {msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
             SmimeError::AllSignersFailed(signers) => {
