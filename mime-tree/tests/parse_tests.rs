@@ -310,3 +310,38 @@ fn test_smime_parts_are_opaque_leaves() {
         "S/MIME part must not appear in html_body"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Test 8 — RFC 2045 §5.2 default Content-Type
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 2045 §5.2 — a MIME body part with no Content-Type header is
+/// treated as "text/plain; charset=us-ascii". Such a part must appear in
+/// text_body (isInline=true per RFC 8621 §4.1.4 algorithm).
+#[test]
+fn test_no_content_type_defaults_to_text_plain() {
+    let raw = b"From: alice@example.com\r\n\
+                MIME-Version: 1.0\r\n\
+                \r\n\
+                Hello, this is a bare body with no Content-Type header.\r\n";
+
+    let msg = parse(raw).expect("parse must succeed");
+
+    // RFC 2045 §5.2: no Content-Type defaults to text/plain.
+    assert_eq!(
+        msg.part_index.content_type, "text/plain",
+        "missing Content-Type must default to text/plain per RFC 2045 §5.2"
+    );
+    assert_eq!(
+        msg.part_index.charset,
+        Some("us-ascii".to_owned()),
+        "missing Content-Type must default to charset=us-ascii per RFC 2045 §5.2"
+    );
+
+    // RFC 8621 §4.1.4: text/plain is inline — must appear in text_body and html_body.
+    assert!(
+        msg.text_body.contains(&msg.part_index.part_id),
+        "bare-body part must appear in text_body; text_body={:?}",
+        msg.text_body
+    );
+}

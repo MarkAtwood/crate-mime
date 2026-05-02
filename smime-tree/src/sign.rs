@@ -155,7 +155,7 @@ pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeE
 
     // --- Step 9: build multipart/signed MIME output ---
     let micalg = micalg_param(&digest_alg);
-    let boundary = boundary_from_content(content_mime)?;
+    let boundary = random_boundary(content_mime)?;
     let p7s_b64 = BASE64.encode(&p7s_der);
     let p7s_b64_wrapped = wrap_base64(&p7s_b64, 76);
 
@@ -340,7 +340,7 @@ fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
 /// The random boundary prevents adversarial content from causing a deterministic
 /// signing failure (which was possible when the boundary was derived from the
 /// SHA-256 of the content).
-fn boundary_from_content(content: &[u8]) -> Result<String, SmimeError> {
+fn random_boundary(content: &[u8]) -> Result<String, SmimeError> {
     for _ in 0..8 {
         let mut rand_bytes = [0u8; 16];
         getrandom::fill(&mut rand_bytes)

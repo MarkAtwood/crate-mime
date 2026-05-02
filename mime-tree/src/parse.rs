@@ -128,18 +128,20 @@ fn build_part(
         part.offset_end.saturating_sub(part.offset_body),
     );
 
+    let no_content_type = part.content_type().is_none();
     let content_type = part
         .content_type()
         .map(|ct| {
-            let subtype = ct.subtype().unwrap_or("octet-stream");
+            let subtype = ct.subtype().unwrap_or("plain");
             format!("{}/{}", ct.ctype(), subtype)
         })
-        .unwrap_or_else(|| "application/octet-stream".to_owned());
+        .unwrap_or_else(|| "text/plain".to_owned());
 
     let charset = part
         .content_type()
         .and_then(|ct| ct.attribute("charset"))
-        .map(str::to_owned);
+        .map(str::to_owned)
+        .or_else(|| if no_content_type { Some("us-ascii".to_owned()) } else { None });
 
     let transfer_encoding = map_encoding(part);
 

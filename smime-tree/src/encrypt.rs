@@ -137,8 +137,8 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         let ct =
             cbc::Encryptor::<aes::Aes256>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
         let cek_bytes: Vec<u8> = cek_buf.to_vec();
-        let iv_oct = OctetString::new(iv_buf.as_slice()).map_err(SmimeError::Der)?;
-        let iv_any = Any::encode_from(&iv_oct).map_err(SmimeError::Der)?;
+        let iv_oct = OctetString::new(iv_buf.as_slice())?;
+        let iv_any = Any::encode_from(&iv_oct)?;
         let alg = AlgorithmIdentifierOwned {
             oid: ID_AES_256_CBC,
             parameters: Some(iv_any),
@@ -159,8 +159,8 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         let ct =
             cbc::Encryptor::<aes::Aes128>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
         let cek_bytes: Vec<u8> = cek_buf.to_vec();
-        let iv_oct = OctetString::new(iv_buf.as_slice()).map_err(SmimeError::Der)?;
-        let iv_any = Any::encode_from(&iv_oct).map_err(SmimeError::Der)?;
+        let iv_oct = OctetString::new(iv_buf.as_slice())?;
+        let iv_any = Any::encode_from(&iv_oct)?;
         let alg = AlgorithmIdentifierOwned {
             oid: ID_AES_128_CBC,
             parameters: Some(iv_any),
@@ -185,11 +185,11 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         CmsVersion::V2
     };
 
-    let enc_content = OctetString::new(encrypted_content).map_err(SmimeError::Der)?;
+    let enc_content = OctetString::new(encrypted_content)?;
 
     // RecipientInfos is a newtype over SetOfVec.
     let set: SetOfVec<RecipientInfo> =
-        SetOfVec::try_from(recipient_infos).map_err(SmimeError::Der)?;
+        SetOfVec::try_from(recipient_infos)?;
     let recip_infos = RecipientInfos::from(set);
 
     let env_data = EnvelopedData {
@@ -205,13 +205,13 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     };
 
     // Wrap in ContentInfo and DER-encode.
-    let env_der = env_data.to_der().map_err(SmimeError::Der)?;
-    let content = AnyRef::try_from(env_der.as_slice()).map_err(SmimeError::Der)?;
+    let env_der = env_data.to_der()?;
+    let content = AnyRef::try_from(env_der.as_slice())?;
     let ci = ContentInfo {
         content_type: ID_ENVELOPED_DATA,
         content: Any::from(content),
     };
-    let ci_der = ci.to_der().map_err(SmimeError::Der)?;
+    let ci_der = ci.to_der()?;
 
     Ok(build_mime(&ci_der))
 }
@@ -276,7 +276,7 @@ fn build_rsa_recipient(
         .tbs_certificate()
         .subject_public_key_info()
         .to_der()
-        .map_err(SmimeError::Der)?;
+        ?;
     let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
         .map_err(|e| SmimeError::Other(e.to_string()))?;
 
@@ -299,7 +299,7 @@ fn build_rsa_recipient(
             oid: rfc5912::RSA_ENCRYPTION,
             parameters: Some(Any::null()),
         },
-        enc_key: EncryptedKey::new(encrypted_key).map_err(SmimeError::Der)?,
+        enc_key: EncryptedKey::new(encrypted_key)?,
     }))
 }
 
@@ -405,7 +405,7 @@ fn build_kari_recipient(
             oid: rfc5912::ID_EC_PUBLIC_KEY,
             parameters: Some(Any::from(&curve_oid)),
         },
-        public_key: BitString::from_bytes(ephemeral_pub_bytes).map_err(SmimeError::Der)?,
+        public_key: BitString::from_bytes(ephemeral_pub_bytes)?,
     };
 
     let ias = IssuerAndSerialNumber {
@@ -423,7 +423,7 @@ fn build_kari_recipient(
         },
         recipient_enc_keys: vec![RecipientEncryptedKey {
             rid: KeyAgreeRecipientIdentifier::IssuerAndSerialNumber(ias),
-            enc_key: EncryptedKey::new(wrapped_cek).map_err(SmimeError::Der)?,
+            enc_key: EncryptedKey::new(wrapped_cek)?,
         }],
     }))
 }
@@ -452,9 +452,9 @@ where
     let shared_info = EccCmsSharedInfo {
         key_info: key_wrap_alg,
         entity_u_info: None,
-        supp_pub_info: OctetString::new(supp_bytes.as_slice()).map_err(SmimeError::Der)?,
+        supp_pub_info: OctetString::new(supp_bytes.as_slice())?,
     };
-    let shared_info_der = shared_info.to_der().map_err(SmimeError::Der)?;
+    let shared_info_der = shared_info.to_der()?;
 
     // Derive the KEK: kek_len = wrap_key_bits / 8 bytes.
     let kek_len = (wrap_key_bits / 8) as usize;

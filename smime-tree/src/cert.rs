@@ -57,7 +57,7 @@ pub(crate) fn validate_chain(
 
     // Count of non-self-issued intermediate CA certs accumulated below the
     // current position in the chain (RFC 5280 §4.2.1.9 pathLen semantics).
-    let mut chain_depth: usize = 0;
+    let mut intermediate_count: usize = 0;
 
     for _depth in 0..MAX_CHAIN_DEPTH {
         // Step 1 — validity period.
@@ -103,10 +103,10 @@ pub(crate) fn validate_chain(
                     // pathLen constraint.  A root CA with pathLen=0 may not
                     // have any intermediate CAs below it in the path.
                     if let Some(path_len) = get_path_len(anchor) {
-                        if chain_depth > path_len as usize {
+                        if intermediate_count > path_len as usize {
                             return Err(SmimeError::CertChain(
                                 CertChainError::PathLenViolated {
-                                    intermediate_count: chain_depth,
+                                    intermediate_count,
                                     path_len,
                                 },
                             ));
@@ -133,14 +133,14 @@ pub(crate) fn validate_chain(
                     return Err(SmimeError::CertChain(CertChainError::NotACa));
                 }
                 // RFC 5280 §4.2.1.9: check the pathLen constraint of the parent CA.
-                // chain_depth is the count of CA certs already accumulated below p
-                // in this chain.  If p's pathLen (if present) < chain_depth, this
+                // intermediate_count is the count of CA certs already accumulated below p
+                // in this chain.  If p's pathLen (if present) < intermediate_count, this
                 // violates the constraint.
                 if let Some(path_len) = get_path_len(p) {
-                    if chain_depth > path_len as usize {
+                    if intermediate_count > path_len as usize {
                         return Err(SmimeError::CertChain(
                             CertChainError::PathLenViolated {
-                                intermediate_count: chain_depth,
+                                intermediate_count,
                                 path_len,
                             },
                         ));
@@ -163,7 +163,7 @@ pub(crate) fn validate_chain(
                     return Err(SmimeError::CertChain(CertChainError::Cycle));
                 }
                 current = p;
-                chain_depth += 1;
+                intermediate_count += 1;
             }
             None => {
                 return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer));

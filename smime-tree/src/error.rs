@@ -11,6 +11,7 @@ use std::fmt;
 /// verified successfully.  Per-signer detail (including failures for other
 /// signers) is available in the `signers` vec.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct VerificationResult {
     /// One entry per `SignerInfo` found in the `SignedData`.
     pub signers: Vec<SignerResult>,
@@ -25,6 +26,7 @@ impl VerificationResult {
 
 /// Result for a single `SignerInfo` within a `SignedData`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SignerResult {
     /// `true` iff all of the following succeeded:
     /// message-digest check, signature verification, and cert-chain validation.
@@ -108,7 +110,7 @@ impl fmt::Display for CertChainError {
 }
 
 /// Error type for S/MIME operations.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SmimeError {
     /// DER encoding/decoding failure.
