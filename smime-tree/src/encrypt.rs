@@ -472,7 +472,7 @@ where
 
     // Derive the KEK: kek_len = wrap_key_bits / 8 bytes.
     let kek_len = (wrap_key_bits / 8) as usize;
-    let mut kek = vec![0u8; kek_len];
+    let mut kek = Zeroizing::new(vec![0u8; kek_len]);
     ansi_x963_kdf::derive_key_into::<D>(shared_secret_bytes, &shared_info_der, &mut kek)
         .map_err(|_| SmimeError::Other("ANSI X9.63 KDF failed".into()))?;
 
