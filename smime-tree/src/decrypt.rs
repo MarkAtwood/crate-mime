@@ -98,6 +98,13 @@ fn find_and_decrypt_cek(
     env_data: &EnvelopedData,
     key: &dyn DecryptionKey,
 ) -> Result<Zeroizing<Vec<u8>>, SmimeError> {
+    // Preserve the last UnsupportedAlgorithm error from a KARI with a matching
+    // recipient but unsupported originator type (e.g. static originator).  We
+    // continue trying subsequent RecipientInfo entries so that a valid KTRI or
+    // ephemeral KARI that follows can still succeed.  If nothing else matches,
+    // UnsupportedAlgorithm is more helpful than NoMatchingRecipient.
+    let mut unsupported: Option<SmimeError> = None;
+
     for ri in env_data.recip_infos.0.iter() {
         match ri {
             RecipientInfo::Ktri(ktri) => {
@@ -112,8 +119,13 @@ fn find_and_decrypt_cek(
             }
 
             RecipientInfo::Kari(kari) => {
-                if let Some(cek) = try_decrypt_kari(kari, key)? {
-                    return Ok(cek);
+                match try_decrypt_kari(kari, key) {
+                    Ok(Some(cek)) => return Ok(cek),
+                    Ok(None) => {}
+                    // Matched but unsupported originator type: record and keep
+                    // trying subsequent RecipientInfo entries.
+                    Err(e @ SmimeError::UnsupportedAlgorithm(_)) => unsupported = Some(e),
+                    Err(e) => return Err(e),
                 }
             }
 
@@ -123,7 +135,7 @@ fn find_and_decrypt_cek(
         }
     }
 
-    Err(SmimeError::NoMatchingRecipient)
+    Err(unsupported.unwrap_or(SmimeError::NoMatchingRecipient))
 }
 
 /// Map a KTRI key-encryption algorithm OID to our `KeyEncryptionAlgorithm` enum.
@@ -198,7 +210,7 @@ fn try_decrypt_kari(
     kari: &KeyAgreeRecipientInfo,
     key: &dyn DecryptionKey,
 ) -> Result<Option<Zeroizing<Vec<u8>>>, SmimeError> {
-    let ukm: Option<Vec<u8>> = kari.ukm.as_ref().map(|u| u.as_bytes().to_vec());
+    let ukm: Option<&[u8]> = kari.ukm.as_ref().map(|u| u.as_bytes());
 
     // Check whether any recipient in this KARI entry matches our key FIRST.
     // If no recipient matches, this KARI isn't for us regardless of originator type.
@@ -233,12 +245,7 @@ fn try_decrypt_kari(
     // one but the crate cannot handle the algorithm.
     let kari_alg = map_kari_alg(kari)?;
 
-    let cek = key.agree_ecdh(
-        &ephemeral_bytes,
-        ukm.as_deref(),
-        rek.enc_key.as_bytes(),
-        &kari_alg,
-    )?;
+    let cek = key.agree_ecdh(&ephemeral_bytes, ukm, rek.enc_key.as_bytes(), &kari_alg)?;
     Ok(Some(Zeroizing::new(cek)))
 }
 

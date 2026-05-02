@@ -923,8 +923,8 @@ fn test_encrypt_p384_decrypted_by_openssl() {
 // A DecryptionKey that matches the P-256 cert's issuer+serial but declines to
 // perform ECDH (agree_ecdh returns UnsupportedAlgorithm) is used to probe the
 // KARI dispatch path.  The expected result is UnsupportedAlgorithm with a
-// message containing "KARI" (specifically "KARI (ECDH key agreement) not
-// supported by this key") — NOT a DER parse error.  This confirms:
+// message containing "KARI" (specifically "KARI not supported by this key")
+// — NOT a DER parse error.  This confirms:
 //   (a) encrypt() emits a parseable, structurally valid KARI RecipientInfo, and
 //   (b) decrypt() correctly dispatches to agree_ecdh for matching KARI entries.
 // ---------------------------------------------------------------------------
