@@ -57,6 +57,7 @@ pub enum CertChainError {
         not_after: String,
     },
     /// All trust anchors matching the issuer DN are outside their validity period.
+    #[deprecated = "never produced by the current pkix-chain-based validator; match TooDeep or CertificateExpired instead"]
     AllTrustAnchorsExpired {
         /// Issuer DN for which all matching trust anchors were expired.
         issuer: String,
@@ -67,6 +68,7 @@ pub enum CertChainError {
         subject: String,
     },
     /// A `pathLen` constraint in a CA certificate was violated.
+    #[deprecated = "never produced by the current pkix-chain-based validator; match TooDeep instead"]
     PathLenViolated {
         /// Number of intermediate CA certificates below the constrained issuer.
         intermediate_count: usize,
@@ -94,6 +96,7 @@ pub enum CertChainError {
     Other(String),
 }
 
+#[allow(deprecated)]
 impl fmt::Display for CertChainError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

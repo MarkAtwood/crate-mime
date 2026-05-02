@@ -81,11 +81,10 @@ impl fmt::Display for EcCurve {
 /// # ECDH / KARI
 ///
 /// ECDH key agreement (`KeyAgreeRecipientInfo`, RFC 5753) uses a *separate*
-/// trait method: [`DecryptionKey::agree_ecdh`].  The `EcdhEs` variant here is
-/// **not** produced by the current `decrypt()` implementation; it is reserved
-/// for future direct-ECDH key transport scenarios (if any).  Implementors of
-/// `DecryptionKey::decrypt_cek` do not need to handle `EcdhEs` today — ECDH
-/// decryption is dispatched via `agree_ecdh()`.
+/// trait method: [`DecryptionKey::agree_ecdh`].  ECDH key agreement for
+/// decryption uses `DecryptionKey::agree_ecdh()` directly, not `decrypt_cek()`.
+/// The `EcdhEs` variant exists for completeness but `decrypt_cek()` implementations
+/// do not need to handle it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum KeyEncryptionAlgorithm {
@@ -231,8 +230,12 @@ pub trait DecryptionKey {
     ///    `ephemeral_public_key_bytes` (SEC1 uncompressed EC point) to obtain
     ///    the shared secret *Z*.
     /// 2. Apply the X9.63 KDF (RFC 5753 §3.6.1): hash *Z* concatenated with a
-    ///    counter and the `SharedInfo` structure (which encodes `alg.key_wrap`
-    ///    OID and `ukm`) to derive the key-encryption key (KEK).
+    ///    counter and the `EccCmsSharedInfo` structure to derive the
+    ///    key-encryption key (KEK).  `SharedInfo` encodes `alg.key_wrap` OID in
+    ///    `keyInfo` and, when `ukm` is `Some`, the UKM bytes in
+    ///    `entityUInfo [0] EXPLICIT`.  When `ukm` is `None` (which is always
+    ///    the case when this crate's `encrypt()` produced the message, as this
+    ///    crate never generates UKM), omit `entityUInfo`.
     /// 3. Unwrap `enc_cek` with AES-128-KW or AES-256-KW (per `alg.key_wrap`)
     ///    using the derived KEK.
     /// 4. Return the raw CEK bytes.

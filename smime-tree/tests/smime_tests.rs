@@ -100,11 +100,6 @@ const ENCRYPTED_RSA_DER_HEX: &str = "308201ca06092a864886f70d010703a08201bb30820
 /// Root CA cert DER (self-signed, /CN=Chain Root CA/O=Test/C=US).
 const CHAIN_ROOT_CERT_HEX: &str = "3082034930820231a00302010202141b519c38e31faf9dacd26e12e40744773fdddacb300d06092a864886f70d01010b050030343116301406035504030c0d436861696e20526f6f74204341310d300b060355040a0c0454657374310b3009060355040613025553301e170d3236303530323134323431305a170d3336303432393134323431305a30343116301406035504030c0d436861696e20526f6f74204341310d300b060355040a0c0454657374310b300906035504061302555330820122300d06092a864886f70d01010105000382010f003082010a0282010100c4f086d98462959528763e738483abf89847a19b9ea76d263c555e5676ed174d79b059ef9e8fa58dc068a8a58021c179dce41fa9243ae8b4b010b48049724108618f00c0728b2a57d9777cd9508b4f81837b07c4ad168cde5eb4fa46fd1e330ce5d65eabd71196f3c61661f29a04af43f6f2f276401acddf782fdb32cfa8ab9eb131f6764a786f07061b22df342ea1140dda154f155d717a71acc69d52171d1435596561b37c20fe65b661b81a807d60a271779d2a406e30f5e42e04822db2790a2f3b6290e982138ff9152eec4c96f008d344dde4a3b14256eba71ffd23210f348b9510fb8976cb5ddceea024ae26eb251718c20eff3dc4dc1d2250a6e10b750203010001a3533051301d0603551d0e041604141110735a6ae8e4a1007ebba869246a12fcc937b2301f0603551d230418301680141110735a6ae8e4a1007ebba869246a12fcc937b2300f0603551d130101ff040530030101ff300d06092a864886f70d01010b05000382010100306253ea21487adcaed9a4437636a025061f0229185c63fc9161344c289f1e89e4f040e94c84b646fb5d256ac80e8ed53a9f824a449ea1da949ce931b1fd6909e5173c9ba5f14750789ec649a94116e21b6f104d47916c197bb864953e9644d3fc9681840dd2227fc14aab9ad899ed69113dbeb6f454e288e62a59c115916306d462bd555b2310bcb220775ea9dcf88fa57295b2ba96db897b9ce62361c81c77bee3d43097dce8ba12fa7594d365d5591a723893394075c745ba9f6a165cb0ecf5a7d33d211ba44b8be73ffe29720ce504bbac891f000a5954bbf77309e489b19bcf651e53d271392976b61e8ae41de7fb806a3e88a0fde36878d434622ed7b6";
 
-/// Intermediate CA cert DER (/CN=Chain Intermediate CA/O=Test/C=US, signed by root).
-/// Present in the CHAIN_SIG_HEX certificate bag; included here for completeness.
-#[allow(dead_code)]
-const CHAIN_INT_CERT_HEX: &str = "3082036130820249a0030201020214245de0fb3deefbecdbc83365db7c98bce821dc03300d06092a864886f70d01010b050030343116301406035504030c0d436861696e20526f6f74204341310d300b060355040a0c0454657374310b3009060355040613025553301e170d3236303530323134323431345a170d3336303432393134323431345a303c311e301c06035504030c15436861696e20496e7465726d656469617465204341310d300b060355040a0c0454657374310b300906035504061302555330820122300d06092a864886f70d01010105000382010f003082010a0282010100bfe1006c27a9259d4c9d3dff5108e0401ceac89cd6b4e1e4cc269470cd8b6db8e2b351dbddbcae331d7865956766a54ac8acb723f67cd585e3cfa0366392bd7decbccbef3907a72f2670dc4285af52e2c1180a2dcbd8536eeb23001bf7aceddebb6c251e7d17210b37d5954ec6fa818244e665d71f1574ab01e56a5b645a0a1a82c633e984200cf35cfe361fc4100d5899d0c0893330e2d179b9354391943731035b0e74d9c6fb440d037faddbc32c32453fc988c6c3e54ded87726a8f17cc7dd224ecbb1c402b98b600f2994a237f36a314d9fb68dea6b092bd40cd722d6e48a2f9e307ec040c8c7e965e762be86cb7d1848e728653947eb581d313ab2938610203010001a3633061300f0603551d130101ff040530030101ff300e0603551d0f0101ff040403020106301d0603551d0e04160414a83405b53838c0e804f80520f79b526a333cdbc7301f0603551d230418301680141110735a6ae8e4a1007ebba869246a12fcc937b2300d06092a864886f70d01010b05000382010100161904f581b4895563897cb7173fe70327b1ae27d0268d54c4adca76c60644a265451095e2b4c41847cdd90977954d88ad62ca154b496fac098616910b7974ed548294a4437882fb006ecec096dd2c7fa0487f9b86b0e862a3d6f3d9903deb1c01a46e53f282eafe5d404d4550732d009cc8e0b3e3bf52313a7c5e160f0501d5dec7df4c2622e50e97fe4a425bef96e6f39793b7bc4e808ac576e98ce59421d1734e18a7a41cf5f99c6211eb36a29765ca19c45a64ccbffdc7277482a1761c446ab8a1ac91b9d4d5deeb299903c3d8e571b3139c36bfaa76892dede0320fbfb34dc8515f97fd7eda1c1b607eb57586bc381d5b9ce879e6e9f8d95d0008baf46a";
-
 /// Leaf cert DER (/CN=Chain Leaf User/O=Test/C=US, signed by intermediate CA).
 const CHAIN_LEAF_CERT_HEX: &str = "308202f9308201e10214474dd37a0dab22f2921cc510ab9b90403a812584300d06092a864886f70d01010b0500303c311e301c06035504030c15436861696e20496e7465726d656469617465204341310d300b060355040a0c0454657374310b3009060355040613025553301e170d3236303530323134323431395a170d3336303432393134323431395a30363118301606035504030c0f436861696e204c6561662055736572310d300b060355040a0c0454657374310b300906035504061302555330820122300d06092a864886f70d01010105000382010f003082010a0282010100c16ae1252c4e80dc5f5b244313cc975bb8543382624488722968d50fcb5666f08516f12db9a97b8ac50704ccae2de5076ad2a27d3462bf13ac9a23eae3c44d5a20252b1a2ddd1c1ba9259d0f7562cfca8e01416a734564bd5ffa6633f1c5905a40a11d7c21767589fa709c2a6e990fa2766325133671384f041c9542a86791badd889d785fe8f55a954efb39df8e9e822d079659b69e865a08732b66ce83113917ffc67e83ce316a4223c100090ea40d0b4ee8e4ff1cf0f2a18c23f05333aabaadd7c91cdcad733fbd791ab55670b392b3c5df862c691d392bd09ab77d79d2a20f393b155b381c757ebd1a68e85a164c085220dc6d8e806173b5284fd60f36a90203010001300d06092a864886f70d01010b0500038201010076bd8147c88f223888d61f851db6d46107151de57760c098015244c3e8ab5fef48bdb30d8092f53d4bdef635d4716ed8c737f47f9ea4afa01b8de28b194dfb0320a8eaa0aa32410d044ee01ad3ee4c718d8abc231312ba1c82c88239c335a916ec3f626affa80891a833c7a9b2fe9e4090704fd935ef8f4bfd9ae0d96ace90c5436e7495ca7fe5c1291a7f89ae9c628f5c235d20a7617e72e966e97c9d9affd993c3cf1f73dc73d219b9a4500e99ea7a93e52d30eca051089d24bb1604e6c6da06a00258d6df95515b724744be3c8aa4ad9c1a21ee33cc8ce6a9b2e9615f91b5db3f973a6185b036b74163792d2986b66cfe3d4cb310e801ddc646db8da22b7b";
 
@@ -120,6 +115,11 @@ const CHAIN_SIG_HEX: &str = "3082090406092a864886f70d010702a08208f5308208f102010
 // ---------------------------------------------------------------------------
 
 fn from_hex(s: &str) -> Vec<u8> {
+    assert!(
+        s.len() % 2 == 0,
+        "from_hex: hex string must have even length, got {}",
+        s.len()
+    );
     (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).expect("invalid hex"))
@@ -545,6 +545,59 @@ fn test_sign_verify_roundtrip_via_mime_tree() {
          signers: {:?}",
         result.signers
     );
+
+    // Independent oracle: verify the same signed output with OpenSSL.
+    // If openssl is not installed, skip only this step — the smime-tree
+    // verify above already ran unconditionally.
+    if !openssl_available() {
+        eprintln!(
+            "SKIP openssl oracle step in test_sign_verify_roundtrip_via_mime_tree: \
+             openssl not found in PATH"
+        );
+        return;
+    }
+
+    use std::io::Write;
+    use std::process::Command;
+
+    let mut signed_file = tempfile::NamedTempFile::new().expect("create temp signed file");
+    signed_file
+        .write_all(&signed_bytes)
+        .expect("write signed bytes");
+    let signed_path = signed_file.path().to_path_buf();
+
+    let ca_pem = format!(
+        "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
+        base64_encode_pem(&ca_cert_der)
+    );
+    let mut ca_file = tempfile::NamedTempFile::new().expect("create temp CA file");
+    ca_file.write_all(ca_pem.as_bytes()).expect("write CA cert");
+    let ca_path = ca_file.path().to_path_buf();
+
+    // -noverify is intentionally omitted so OpenSSL validates the full chain.
+    let output = Command::new("openssl")
+        .args([
+            "smime",
+            "-verify",
+            "-in",
+            signed_path.to_str().unwrap(),
+            "-CAfile",
+            ca_path.to_str().unwrap(),
+            "-out",
+            "/dev/null",
+        ])
+        .output()
+        .expect("openssl invocation failed");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "openssl smime -verify must exit 0 (independent oracle); stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("Verification successful"),
+        "openssl must report 'Verification successful' (independent oracle); stderr: {stderr}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -869,8 +922,9 @@ fn test_encrypt_p384_decrypted_by_openssl() {
 //
 // A DecryptionKey that matches the P-256 cert's issuer+serial but declines to
 // perform ECDH (agree_ecdh returns UnsupportedAlgorithm) is used to probe the
-// KARI dispatch path.  The expected result is UnsupportedAlgorithm — NOT a
-// DER parse error.  This confirms:
+// KARI dispatch path.  The expected result is UnsupportedAlgorithm with a
+// message containing "KARI" (specifically "KARI (ECDH key agreement) not
+// supported by this key") — NOT a DER parse error.  This confirms:
 //   (a) encrypt() emits a parseable, structurally valid KARI RecipientInfo, and
 //   (b) decrypt() correctly dispatches to agree_ecdh for matching KARI entries.
 // ---------------------------------------------------------------------------

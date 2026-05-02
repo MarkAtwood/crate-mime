@@ -66,6 +66,13 @@ pub struct ParsedPart {
     pub body_range: (u32, u32),
     /// Child parts. Non-empty only for `multipart/*` content types.
     pub children: Vec<ParsedPart>,
+    /// True if mail-parser flagged this part as having a structural encoding
+    /// problem (e.g., invalid base64 padding in the raw transfer encoding).
+    ///
+    /// This is a parse-time flag, distinct from
+    /// [`DecodedBodyValue::is_encoding_problem`] which is set during
+    /// charset conversion in `decode_body_value()`.
+    pub is_encoding_problem: bool,
 }
 
 impl ParsedPart {

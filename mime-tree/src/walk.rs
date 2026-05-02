@@ -52,7 +52,7 @@ fn is_inline_media_type(media_type: &str) -> bool {
 /// further pushes to that list are suppressed and inline media goes to
 /// attachments instead.
 ///
-/// The `part_index` parameter (`i` in the RFC) is the 0-based position of
+/// The loop variable `i` (index into `parts`) is the 0-based position of
 /// each part within its sibling list, used for the `multipart/related` rule.
 fn parse_structure<'a>(
     parts: &[ParsedPart],
