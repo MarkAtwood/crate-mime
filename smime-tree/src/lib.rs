@@ -28,7 +28,7 @@ mod verify;
 
 pub use decrypt::decrypt;
 pub use encrypt::encrypt;
-pub use error::{SignerResult, SmimeError, VerificationResult};
+pub use error::{CertChainError, SignerResult, SmimeError, VerificationResult};
 pub use key::{
     DecryptionKey, DigestAlgorithm, EcCurve, KariAlgorithm, KariKeyAgreement,
     KeyEncryptionAlgorithm, KeyWrapAlgorithm, NoRevocationCheck, RecipientIdentifier,

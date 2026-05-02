@@ -37,6 +37,76 @@ pub struct SignerResult {
 
 // ---------------------------------------------------------------------------
 
+/// Structured failure reason for certificate chain validation.
+///
+/// Returned inside [`SmimeError::CertChain`].  Callers can match on this enum
+/// to distinguish specific failure modes (e.g. expired certificate vs. missing
+/// trust anchor) without parsing error strings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum CertChainError {
+    /// No trust anchors were provided.
+    NoTrustAnchors,
+    /// Certificate validity period does not contain the check time.
+    CertificateExpired,
+    /// All trust anchors matching the issuer DN are outside their validity period.
+    AllTrustAnchorsExpired,
+    /// Certificate signature does not match the issuer's public key.
+    SignatureVerification,
+    /// A `pathLen` constraint in a CA certificate was violated.
+    PathLenViolated {
+        /// Number of intermediate CA certificates below the constrained issuer.
+        intermediate_count: usize,
+        /// The `pathLen` value from the `BasicConstraints` extension.
+        path_len: u8,
+    },
+    /// An intermediate certificate lacks the CA flag (`BasicConstraints.cA = false`).
+    NotACa,
+    /// The certificate chain contains a cycle (A signed by B, B signed by A).
+    Cycle,
+    /// No trust anchor or intermediate certificate matches the issuer DN.
+    NoMatchingIssuer,
+    /// Certificate chain exceeds the maximum allowed depth.
+    TooDeep,
+    /// Other chain validation error (DER encoding failures, etc.).
+    Other(String),
+}
+
+impl fmt::Display for CertChainError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CertChainError::NoTrustAnchors => write!(f, "no trust anchors provided"),
+            CertChainError::CertificateExpired => {
+                write!(f, "certificate expired or not yet valid")
+            }
+            CertChainError::AllTrustAnchorsExpired => {
+                write!(f, "all matching trust anchors are expired or not yet valid")
+            }
+            CertChainError::SignatureVerification => {
+                write!(f, "issuer signature does not match")
+            }
+            CertChainError::PathLenViolated {
+                intermediate_count,
+                path_len,
+            } => write!(
+                f,
+                "pathLen constraint violated: {intermediate_count} intermediate CA(s) \
+                 but pathLen is {path_len}"
+            ),
+            CertChainError::NotACa => write!(f, "intermediate certificate is not a CA"),
+            CertChainError::Cycle => write!(f, "certificate chain contains a cycle"),
+            CertChainError::NoMatchingIssuer => write!(
+                f,
+                "no trust anchor matches issuer (add the CA root cert to trust_anchors)"
+            ),
+            CertChainError::TooDeep => {
+                write!(f, "certificate chain exceeds maximum depth of 10")
+            }
+            CertChainError::Other(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
 /// Error type for S/MIME operations.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -50,7 +120,7 @@ pub enum SmimeError {
     /// Signature verification failed.
     SignatureVerification,
     /// Certificate chain validation failed.
-    CertChain(String),
+    CertChain(CertChainError),
     /// Input is structurally malformed (e.g. missing required CMS fields).
     MalformedInput(String),
     /// Catch-all for operation errors not covered by a more specific variant.
@@ -74,7 +144,7 @@ impl fmt::Display for SmimeError {
                 write!(f, "no decryption key matches any recipient")
             }
             SmimeError::SignatureVerification => write!(f, "signature verification failed"),
-            SmimeError::CertChain(msg) => write!(f, "certificate chain error: {msg}"),
+            SmimeError::CertChain(e) => write!(f, "certificate chain error: {e}"),
             SmimeError::MalformedInput(msg) => write!(f, "malformed CMS input: {msg}"),
             SmimeError::Other(msg) => write!(f, "error: {msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),

@@ -35,7 +35,8 @@ use const_oid::db::rfc5912::{
 /// The CMS `SignedData` blob is base64-encoded into the second MIME part.
 ///
 /// The digest algorithm is selected based on the signing key's certificate:
-/// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384; EC P-521 uses SHA-512.
+/// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384.
+/// P-521 keys are not supported and will return `SmimeError::UnsupportedAlgorithm`.
 /// The key may override this via [`SigningKey::preferred_digest_algorithm`].
 ///
 /// # Output format
@@ -288,14 +289,10 @@ fn signature_algorithm_oid(
         return match digest_alg {
             DigestAlgorithm::Sha256 => Ok(ECDSA_WITH_SHA_256),
             DigestAlgorithm::Sha384 => Ok(ECDSA_WITH_SHA_384),
-            // ECDSA with SHA-512 (P-521) is not supported: verify() has no
-            // P-521 verifier, so a message signed this way cannot be verified
-            // by this crate.  Callers using P-521 keys must override
-            // preferred_digest_algorithm() to return Sha384 or avoid P-521.
+            // P-521 (SHA-512) is not supported: neither sign() nor verify() has
+            // a P-521 implementation.  P-521 keys must not be used with this crate.
             DigestAlgorithm::Sha512 => Err(SmimeError::UnsupportedAlgorithm(
-                "ECDSA with SHA-512 (P-521) is not supported; \
-                 use P-256 (SHA-256) or P-384 (SHA-384)"
-                    .into(),
+                "P-521 keys are not supported; use P-256 or P-384".into(),
             )),
         };
     }
@@ -308,8 +305,10 @@ fn signature_algorithm_oid(
 /// Select the appropriate digest algorithm for the certificate's key type.
 ///
 /// RFC 5753 §7.1 recommends matching the hash strength to the EC curve:
-/// P-256 → SHA-256, P-384 → SHA-384, P-521 → SHA-512.
+/// P-256 → SHA-256, P-384 → SHA-384.
 /// RSA keys default to SHA-256.  Unknown key types fall back to SHA-256.
+/// P-521 keys select SHA-512, which causes `signature_algorithm_oid` to return
+/// `UnsupportedAlgorithm` — P-521 is not supported by this crate.
 fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
     use const_oid::db::rfc5912::{SECP_384_R_1, SECP_521_R_1};
     let spki = cert.tbs_certificate().subject_public_key_info();

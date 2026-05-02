@@ -229,6 +229,11 @@ fn test_decrypt_openssl_encrypted() {
 
 #[test]
 fn test_sign_output_accepted_by_openssl() {
+    if !openssl_available() {
+        eprintln!("SKIP test_sign_output_accepted_by_openssl: openssl not found in PATH");
+        return;
+    }
+
     use std::io::Write;
     use std::process::Command;
 
@@ -299,6 +304,11 @@ fn test_sign_output_accepted_by_openssl() {
 
 #[test]
 fn test_encrypt_output_decrypted_by_openssl() {
+    if !openssl_available() {
+        eprintln!("SKIP test_encrypt_output_decrypted_by_openssl: openssl not found in PATH");
+        return;
+    }
+
     use std::io::Write;
     use std::process::Command;
 
@@ -381,6 +391,18 @@ fn base64_encode_pem(bytes: &[u8]) -> String {
         out.pop();
     }
     out
+}
+
+/// Returns `true` if the `openssl` binary is available in PATH.
+///
+/// Tests that shell out to openssl call this first and return early if the
+/// binary is absent, rather than panicking with a confusing error message.
+fn openssl_available() -> bool {
+    std::process::Command::new("openssl")
+        .arg("version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 fn base64_encode(bytes: &[u8]) -> String {

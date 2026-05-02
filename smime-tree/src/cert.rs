@@ -15,6 +15,7 @@ use std::time::SystemTime;
 use x509_cert::ext::pkix::{BasicConstraints, KeyUsage, KeyUsages};
 use x509_cert::Certificate;
 
+use crate::error::CertChainError;
 use crate::key::RevocationChecker;
 use crate::sig_verify;
 use crate::SmimeError;
@@ -43,7 +44,7 @@ pub(crate) fn validate_chain(
     revocation: &dyn RevocationChecker,
 ) -> Result<(), SmimeError> {
     if trust_anchors.is_empty() {
-        return Err(SmimeError::CertChain("no trust anchors provided".into()));
+        return Err(SmimeError::CertChain(CertChainError::NoTrustAnchors));
     }
 
     let mut current: &Certificate = signer_cert;
@@ -89,7 +90,7 @@ pub(crate) fn validate_chain(
                 .collect();
             if valid_candidates.is_empty() {
                 return Err(SmimeError::CertChain(
-                    "all matching trust anchors are expired or not yet valid".into(),
+                    CertChainError::AllTrustAnchorsExpired,
                 ));
             }
             // Try each valid anchor for signature verification — the CA renewal case
@@ -102,19 +103,18 @@ pub(crate) fn validate_chain(
                     // have any intermediate CAs below it in the path.
                     if let Some(path_len) = get_path_len(anchor) {
                         if chain_depth > path_len as usize {
-                            return Err(SmimeError::CertChain(format!(
-                                "trust anchor pathLen constraint violated: \
-                                 {} intermediate CA(s) but pathLen is {}",
-                                chain_depth, path_len
-                            )));
+                            return Err(SmimeError::CertChain(
+                                CertChainError::PathLenViolated {
+                                    intermediate_count: chain_depth,
+                                    path_len,
+                                },
+                            ));
                         }
                     }
                     return Ok(());
                 }
             }
-            return Err(SmimeError::CertChain(
-                "certificate chain: issuer signature does not match any trust anchor".into(),
-            ));
+            return Err(SmimeError::CertChain(CertChainError::SignatureVerification));
         }
 
         // Step 3 — look for the issuer in the certificate bag.
@@ -129,9 +129,7 @@ pub(crate) fn validate_chain(
             Some(p) => {
                 // The parent must be a CA (BasicConstraints.cA = true).
                 if !is_ca_cert(p) {
-                    return Err(SmimeError::CertChain(
-                        "intermediate cert is not a CA".into(),
-                    ));
+                    return Err(SmimeError::CertChain(CertChainError::NotACa));
                 }
                 // RFC 5280 §4.2.1.9: check the pathLen constraint of the parent CA.
                 // chain_depth is the count of CA certs already accumulated below p
@@ -139,11 +137,12 @@ pub(crate) fn validate_chain(
                 // violates the constraint.
                 if let Some(path_len) = get_path_len(p) {
                     if chain_depth > path_len as usize {
-                        return Err(SmimeError::CertChain(format!(
-                            "certificate chain violates pathLen constraint: \
-                             {} intermediate CA(s) below issuer, but pathLen is {}",
-                            chain_depth, path_len
-                        )));
+                        return Err(SmimeError::CertChain(
+                            CertChainError::PathLenViolated {
+                                intermediate_count: chain_depth,
+                                path_len,
+                            },
+                        ));
                     }
                 }
                 // Cycle detection: if this subject was already visited, the bag
@@ -154,28 +153,24 @@ pub(crate) fn validate_chain(
                     .tbs_certificate()
                     .subject()
                     .to_der()
-                    .map_err(|e| SmimeError::CertChain(format!("subject DER encode: {e}")))?;
+                    .map_err(|e| {
+                        SmimeError::CertChain(CertChainError::Other(format!(
+                            "subject DER encode: {e}"
+                        )))
+                    })?;
                 if !visited.insert(subj_der) {
-                    return Err(SmimeError::CertChain(
-                        "certificate chain contains a cycle".into(),
-                    ));
+                    return Err(SmimeError::CertChain(CertChainError::Cycle));
                 }
                 current = p;
                 chain_depth += 1;
             }
             None => {
-                return Err(SmimeError::CertChain(
-                    "certificate chain: no trust anchor matches issuer \
-                     (add the CA root cert to trust_anchors)"
-                        .into(),
-                ));
+                return Err(SmimeError::CertChain(CertChainError::NoMatchingIssuer));
             }
         }
     }
 
-    Err(SmimeError::CertChain(
-        "certificate chain exceeds maximum depth of 10".into(),
-    ))
+    Err(SmimeError::CertChain(CertChainError::TooDeep))
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +182,7 @@ fn check_validity(cert: &Certificate, now: SystemTime) -> Result<(), SmimeError>
     let not_before = SystemTime::from(&cert.tbs_certificate().validity().not_before);
     let not_after = SystemTime::from(&cert.tbs_certificate().validity().not_after);
     if now < not_before || now > not_after {
-        return Err(SmimeError::CertChain(
-            "certificate expired or not yet valid".into(),
-        ));
+        return Err(SmimeError::CertChain(CertChainError::CertificateExpired));
     }
     Ok(())
 }
@@ -258,11 +251,13 @@ fn verify_signature(cert: &Certificate, issuer: &Certificate) -> Result<(), Smim
     let tbs_der = cert
         .tbs_certificate()
         .to_der()
-        .map_err(|e| SmimeError::CertChain(format!("TBS DER encode: {e}")))?;
+        .map_err(|e| {
+            SmimeError::CertChain(CertChainError::Other(format!("TBS DER encode: {e}")))
+        })?;
     let sig_bytes = cert.signature().raw_bytes();
     let oid = &cert.signature_algorithm().oid;
 
-    let e = |msg: String| SmimeError::CertChain(msg);
+    let e = |msg: String| SmimeError::CertChain(CertChainError::Other(msg));
     if *oid == SHA_256_WITH_RSA_ENCRYPTION {
         sig_verify::verify_rsa_pkcs1::<Sha256, _>(issuer, &tbs_der, sig_bytes, e)
     } else if *oid == SHA_384_WITH_RSA_ENCRYPTION {

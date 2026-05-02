@@ -16,11 +16,11 @@ use cms::{
     },
 };
 use const_oid::db::{rfc5753, rfc5911, rfc5912};
-use crypto_common::Generate;
 use der::{
     asn1::{BitString, ObjectIdentifier, OctetString, SetOfVec},
     Any, AnyRef, Encode, Sequence,
 };
+use crypto_common::Generate as _;
 use elliptic_curve::ecdh::EphemeralSecret;
 use elliptic_curve::sec1::ToSec1Point;
 use getrandom::{rand_core::UnwrapErr, SysRng};
@@ -96,8 +96,6 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         return Err(SmimeError::Other("no recipients".into()));
     }
 
-    let mut rng = UnwrapErr(SysRng);
-
     // Pre-scan recipients: if any uses P-384, upgrade content encryption to
     // AES-256-CBC so the security level matches the key agreement strength.
     let use_aes256 = recipients.iter().any(|cert| {
@@ -118,12 +116,20 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     // Encrypt the content and derive per-algorithm values; recipient loop runs once below.
     let (content_enc_alg, encrypted_content, cek_bytes) = if use_aes256 {
         // AES-256-CBC: 32-byte key, 16-byte IV.
-        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::generate_from_rng(&mut rng);
-        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::generate_from_rng(&mut rng);
+        let mut cek_buf = [0u8; 32];
+        let mut iv_buf = [0u8; 16];
+        getrandom::fill(&mut cek_buf)
+            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        getrandom::fill(&mut iv_buf)
+            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(cek_buf.as_slice())
+            .expect("cek_buf is exactly 32 bytes = AES-256 key size");
+        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv_buf.as_slice())
+            .expect("iv_buf is exactly 16 bytes = AES block size");
         let ct =
             cbc::Encryptor::<aes::Aes256>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes: Vec<u8> = (cek.as_ref() as &[u8]).to_vec();
-        let iv_oct = OctetString::new(iv.as_ref()).map_err(SmimeError::Der)?;
+        let cek_bytes: Vec<u8> = cek_buf.to_vec();
+        let iv_oct = OctetString::new(iv_buf.as_slice()).map_err(SmimeError::Der)?;
         let iv_any = Any::encode_from(&iv_oct).map_err(SmimeError::Der)?;
         let alg = AlgorithmIdentifierOwned {
             oid: ID_AES_256_CBC,
@@ -132,12 +138,20 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         (alg, ct, cek_bytes)
     } else {
         // AES-128-CBC: 16-byte key, 16-byte IV.
-        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::generate_from_rng(&mut rng);
-        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::generate_from_rng(&mut rng);
+        let mut cek_buf = [0u8; 16];
+        let mut iv_buf = [0u8; 16];
+        getrandom::fill(&mut cek_buf)
+            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        getrandom::fill(&mut iv_buf)
+            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        let cek = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(cek_buf.as_slice())
+            .expect("cek_buf is exactly 16 bytes = AES-128 key size");
+        let iv = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv_buf.as_slice())
+            .expect("iv_buf is exactly 16 bytes = AES block size");
         let ct =
             cbc::Encryptor::<aes::Aes128>::new(&cek, &iv).encrypt_padded_vec::<Pkcs7>(inner_mime);
-        let cek_bytes: Vec<u8> = (cek.as_ref() as &[u8]).to_vec();
-        let iv_oct = OctetString::new(iv.as_ref()).map_err(SmimeError::Der)?;
+        let cek_bytes: Vec<u8> = cek_buf.to_vec();
+        let iv_oct = OctetString::new(iv_buf.as_slice()).map_err(SmimeError::Der)?;
         let iv_any = Any::encode_from(&iv_oct).map_err(SmimeError::Der)?;
         let alg = AlgorithmIdentifierOwned {
             oid: ID_AES_128_CBC,
@@ -149,7 +163,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     // Build recipient infos. All recipients use the same CEK regardless of algorithm.
     let mut recipient_infos: Vec<RecipientInfo> = Vec::with_capacity(recipients.len());
     for cert in recipients {
-        recipient_infos.push(build_recipient_info(cert, &cek_bytes, &mut rng)?);
+        recipient_infos.push(build_recipient_info(cert, &cek_bytes)?);
     }
 
     // RFC 5652 §6.1: version is V0 when all recipients are KTRI; V2 when any
@@ -198,13 +212,12 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
 fn build_recipient_info(
     cert: &Certificate,
     cek: &[u8],
-    rng: &mut UnwrapErr<SysRng>,
 ) -> Result<RecipientInfo, SmimeError> {
     let spki = cert.tbs_certificate().subject_public_key_info();
     let alg_oid = spki.algorithm.oid;
 
     if alg_oid == rfc5912::RSA_ENCRYPTION {
-        build_rsa_recipient(cert, cek, rng)
+        build_rsa_recipient(cert, cek)
     } else if alg_oid == rfc5912::ID_RSAES_OAEP {
         // id-RSAES-OAEP in the SPKI field is not the same as RSA + PKCS#1v15.
         // Routing to build_rsa_recipient() here would produce a PKCS#1v15-wrapped
@@ -227,9 +240,9 @@ fn build_recipient_info(
             })?;
 
         if curve_oid == rfc5912::SECP_256_R_1 {
-            build_p256_recipient(cert, cek, rng)
+            build_p256_recipient(cert, cek)
         } else if curve_oid == rfc5912::SECP_384_R_1 {
-            build_p384_recipient(cert, cek, rng)
+            build_p384_recipient(cert, cek)
         } else {
             Err(SmimeError::UnsupportedAlgorithm(format!(
                 "EC curve {} not supported",
@@ -248,7 +261,6 @@ fn build_recipient_info(
 fn build_rsa_recipient(
     cert: &Certificate,
     cek: &[u8],
-    rng: &mut UnwrapErr<SysRng>,
 ) -> Result<RecipientInfo, SmimeError> {
     use rsa::Pkcs1v15Encrypt;
 
@@ -260,8 +272,11 @@ fn build_rsa_recipient(
     let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der)
         .map_err(|e| SmimeError::Other(e.to_string()))?;
 
+    // UnwrapErr wraps SysRng so it implements CryptoRng as required by the rsa
+    // crate. A panic here would only occur if the OS RNG is broken.
+    let mut rng = UnwrapErr(SysRng);
     let encrypted_key = rsa_pub
-        .encrypt(rng, Pkcs1v15Encrypt, cek)
+        .encrypt(&mut rng, Pkcs1v15Encrypt, cek)
         .map_err(|e| SmimeError::Other(e.to_string()))?;
 
     let ias = IssuerAndSerialNumber {
@@ -284,7 +299,6 @@ fn build_rsa_recipient(
 fn build_p256_recipient(
     cert: &Certificate,
     cek: &[u8],
-    rng: &mut UnwrapErr<SysRng>,
 ) -> Result<RecipientInfo, SmimeError> {
     use p256::NistP256;
 
@@ -296,7 +310,8 @@ fn build_p256_recipient(
     let recipient_pub =
         p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
-    let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::generate_from_rng(rng);
+    let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
+        .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
 
@@ -325,7 +340,6 @@ fn build_p256_recipient(
 fn build_p384_recipient(
     cert: &Certificate,
     cek: &[u8],
-    rng: &mut UnwrapErr<SysRng>,
 ) -> Result<RecipientInfo, SmimeError> {
     use p384::NistP384;
 
@@ -337,7 +351,8 @@ fn build_p384_recipient(
     let recipient_pub =
         p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| SmimeError::Other(e.to_string()))?;
 
-    let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::generate_from_rng(rng);
+    let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
+        .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
 
