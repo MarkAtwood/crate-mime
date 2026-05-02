@@ -28,11 +28,11 @@ mod verify;
 
 pub use decrypt::decrypt;
 pub use encrypt::encrypt;
-pub use error::SmimeError;
+pub use error::{SignerResult, SmimeError, VerificationResult};
 pub use key::{
     DecryptionKey, DigestAlgorithm, EcCurve, KariAlgorithm, KariKeyAgreement,
     KeyEncryptionAlgorithm, KeyWrapAlgorithm, NoRevocationCheck, RecipientIdentifier,
     RevocationChecker, SigningKey,
 };
 pub use sign::sign;
-pub use verify::{verify, SignerResult, VerificationResult};
+pub use verify::verify;

@@ -54,6 +54,10 @@ pub(crate) fn validate_chain(
         visited.insert(subj);
     }
 
+    // Count of non-self-issued intermediate CA certs accumulated below the
+    // current position in the chain (RFC 5280 §4.2.1.9 pathLen semantics).
+    let mut chain_depth: usize = 0;
+
     for _depth in 0..MAX_CHAIN_DEPTH {
         // Step 1 — validity period.
         check_validity(current, now)?;
@@ -117,6 +121,19 @@ pub(crate) fn validate_chain(
                         "intermediate cert is not a CA".into(),
                     ));
                 }
+                // RFC 5280 §4.2.1.9: check the pathLen constraint of the parent CA.
+                // chain_depth is the count of CA certs already accumulated below p
+                // in this chain.  If p's pathLen (if present) < chain_depth, this
+                // violates the constraint.
+                if let Some(path_len) = get_path_len(p) {
+                    if chain_depth > path_len as usize {
+                        return Err(SmimeError::CertChain(format!(
+                            "certificate chain violates pathLen constraint: \
+                             {} intermediate CA(s) below issuer, but pathLen is {}",
+                            chain_depth, path_len
+                        )));
+                    }
+                }
                 // Cycle detection: if this subject was already visited, the bag
                 // contains a cycle (e.g. A signed by B, B signed by A).  The
                 // chain is still rejected, but we surface the real cause rather
@@ -132,6 +149,7 @@ pub(crate) fn validate_chain(
                     ));
                 }
                 current = p;
+                chain_depth += 1;
             }
             None => {
                 return Err(SmimeError::CertChain(
@@ -192,6 +210,16 @@ fn is_ca_cert(cert: &Certificate) -> bool {
     }
 
     true
+}
+
+/// Return the pathLen constraint from a certificate's BasicConstraints extension,
+/// if present.
+fn get_path_len(cert: &Certificate) -> Option<u8> {
+    cert.tbs_certificate()
+        .get_extension::<BasicConstraints>()
+        .ok()
+        .flatten()
+        .and_then(|(_, bc)| bc.path_len_constraint)
 }
 
 /// Return `true` if the DER encodings of two `Name` values are identical.

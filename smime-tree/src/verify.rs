@@ -18,45 +18,15 @@ use const_oid::db::{
     },
 };
 use der::{asn1::OctetString, Decode, Encode};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use x509_cert::Certificate;
 
-use crate::{cert::validate_chain, key::RevocationChecker, sig_verify, SmimeError};
-
-// ---------------------------------------------------------------------------
-// Public result types
-// ---------------------------------------------------------------------------
-
-/// Overall result from verifying a `multipart/signed` S/MIME message.
-///
-/// `Ok(VerificationResult)` is returned only when at least one signer
-/// verified successfully.  Per-signer detail (including failures for other
-/// signers) is available in the `signers` vec.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerificationResult {
-    /// One entry per `SignerInfo` found in the `SignedData`.
-    pub signers: Vec<SignerResult>,
-}
-
-/// Result for a single `SignerInfo` within a `SignedData`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SignerResult {
-    /// `true` iff all of the following succeeded:
-    /// message-digest check, signature verification, and cert-chain validation.
-    pub verified: bool,
-    /// Distinguished name of the signer's certificate subject, if found.
-    pub subject: Option<String>,
-    /// Human-readable error string when `verified == false`.
-    pub error: Option<String>,
-}
-
-impl VerificationResult {
-    /// Returns `true` if at least one signer verified successfully.
-    pub fn is_verified(&self) -> bool {
-        self.signers.iter().any(|s| s.verified)
-    }
-}
+use crate::{
+    cert::validate_chain,
+    error::{SignerResult, VerificationResult},
+    key::RevocationChecker,
+    sig_verify, SmimeError,
+};
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -78,6 +48,12 @@ impl VerificationResult {
 /// * `revocation`     — revocation checker invoked for each certificate in the
 ///   chain.  Pass `&NoRevocationCheck` to skip revocation checking.  Implement
 ///   [`RevocationChecker`] to inject OCSP or CRL validation.
+///
+/// # Certificate name matching
+///
+/// Distinguished Name (DN) matching uses byte-exact DER comparison.
+/// Certificate chains from CAs that encode the same DN inconsistently
+/// between issuer and subject fields (non-conformant CAs) will be rejected.
 ///
 /// # Errors
 ///
@@ -300,13 +276,18 @@ fn check_message_digest(
         .ok_or_else(|| SmimeError::Other("messageDigest attribute not found".into()))?;
 
     // The attribute value is encoded as an OctetString DER blob inside the Any.
-    let expected_bytes: Vec<u8> = md_attr
+    let attr_value = md_attr
         .values
         .iter()
         .next()
-        .and_then(|v| OctetString::from_der(v.to_der().ok()?.as_slice()).ok())
-        .map(|os| os.as_bytes().to_vec())
-        .ok_or_else(|| SmimeError::Other("cannot decode messageDigest attribute value".into()))?;
+        .ok_or_else(|| SmimeError::Other("messageDigest attribute has no value".into()))?;
+    let attr_der = attr_value.to_der()?;
+    let expected_bytes = OctetString::from_der(&attr_der)
+        .map_err(|_| {
+            SmimeError::Other("cannot decode messageDigest attribute value as OctetString".into())
+        })?
+        .as_bytes()
+        .to_vec();
 
     if expected_bytes != content_hash {
         return Err(SmimeError::Other("message digest mismatch".into()));

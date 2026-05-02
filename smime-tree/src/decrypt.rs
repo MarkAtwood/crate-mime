@@ -160,7 +160,7 @@ fn decrypt_aes128_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, Smime
         .map_err(|_| SmimeError::Other("AES-128-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes128>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|_| SmimeError::Other("AES-128-CBC unpad error".into()))
+        .map_err(|e| SmimeError::Other(format!("AES-128-CBC unpad: {e}")))
 }
 
 /// Convert a CMS `RecipientIdentifier` (from the `cms` crate's ASN.1 types) into the
@@ -296,5 +296,5 @@ fn decrypt_aes256_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, Smime
         .map_err(|_| SmimeError::Other("AES-256-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes256>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|_| SmimeError::Other("AES-256-CBC unpad error".into()))
+        .map_err(|e| SmimeError::Other(format!("AES-256-CBC unpad: {e}")))
 }

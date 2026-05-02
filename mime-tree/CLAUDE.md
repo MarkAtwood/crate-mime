@@ -33,7 +33,7 @@ Do not relitigate without explicit user approval.
    headers at all) returns `Err`.
 5. **Owned, lifetime-free public types.** `ParsedPart` and `ParsedMessage` carry no
    lifetime parameters. Both implement `Serialize + Deserialize`.
-6. **Byte ranges are indices, not slices.** `(usize, usize)` — offset and length into the
+6. **Byte ranges are indices, not slices.** `(u32, u32)` — offset and length into the
    caller's `&[u8]`. The crate never stores the raw bytes internally.
 7. **`decode_body_value` is the only decode path.** Transfer-encoding decode and charset
    conversion happen on demand, not at parse time.
@@ -63,8 +63,8 @@ decode_body_value(raw: &[u8], part: &ParsedPart, max_bytes: Option<usize>)
 - `content_type: String`, `charset: Option<String>`
 - `transfer_encoding: TransferEncoding` — `Identity | QuotedPrintable | Base64 | SevenBit | EightBit | Binary`
 - `disposition: Option<String>`, `filename: Option<String>`, `cid: Option<String>`
-- `header_range: (usize, usize)` — offset/len of part headers in raw bytes
-- `body_range: (usize, usize)` — offset/len of body before transfer-decode
+- `header_range: (u32, u32)` — offset/len of part headers in raw bytes
+- `body_range: (u32, u32)` — offset/len of body before transfer-decode
 - `children: Vec<ParsedPart>` — non-empty only for `multipart/*`
 
 ## Dependencies

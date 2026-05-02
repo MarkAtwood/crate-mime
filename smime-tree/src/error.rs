@@ -1,4 +1,41 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
+
+// ---------------------------------------------------------------------------
+// Public result types (live here so error.rs does not depend on verify.rs)
+// ---------------------------------------------------------------------------
+
+/// Overall result from verifying a `multipart/signed` S/MIME message.
+///
+/// `Ok(VerificationResult)` is returned only when at least one signer
+/// verified successfully.  Per-signer detail (including failures for other
+/// signers) is available in the `signers` vec.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VerificationResult {
+    /// One entry per `SignerInfo` found in the `SignedData`.
+    pub signers: Vec<SignerResult>,
+}
+
+impl VerificationResult {
+    /// Returns `true` if at least one signer verified successfully.
+    pub fn is_verified(&self) -> bool {
+        self.signers.iter().any(|s| s.verified)
+    }
+}
+
+/// Result for a single `SignerInfo` within a `SignedData`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignerResult {
+    /// `true` iff all of the following succeeded:
+    /// message-digest check, signature verification, and cert-chain validation.
+    pub verified: bool,
+    /// Distinguished name of the signer's certificate subject, if found.
+    pub subject: Option<String>,
+    /// Human-readable error string when `verified == false`.
+    pub error: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 
 /// Error type for S/MIME operations.
 #[derive(Debug)]
@@ -18,7 +55,7 @@ pub enum SmimeError {
     Other(String),
     /// All signers in the CMS SignedData failed verification.
     /// The `signers` vec contains per-signer error details.
-    AllSignersFailed(Vec<crate::verify::SignerResult>),
+    AllSignersFailed(Vec<SignerResult>),
     /// The `ContentInfo` content type is not what this operation expects.
     /// For example, passing a `SignedData` blob to `decrypt()`.
     WrongContentType(String),

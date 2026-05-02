@@ -25,7 +25,11 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     let mut warnings: Vec<String> = Vec::new();
 
     // Extract top-level headers from parts[0].
-    let headers = extract_headers(&message.parts[0], raw);
+    let headers = message
+        .parts
+        .first()
+        .map(|p| extract_headers(p, raw))
+        .unwrap_or_default();
 
     // Build the part tree.
     let part_index = build_root(&message, 0, &mut warnings).ok_or(ParseError::NoHeaders)?;

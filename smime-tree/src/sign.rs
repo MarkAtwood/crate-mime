@@ -320,21 +320,14 @@ fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
 /// Uses the first 16 bytes of the SHA-256 of the content (hex-encoded) so that
 /// tests produce reproducible boundaries.
 ///
-/// # Security rationale for determinism
+/// # Security note
 ///
-/// A deterministic boundary is safe here for two independent reasons:
-///
-/// 1. **Collision impossibility by construction.** The boundary is derived from a
-///    cryptographic hash of the content, so the boundary string cannot appear as a
-///    substring of the content it was derived from — any content that contained the
-///    boundary string would hash to a different value, producing a different boundary.
-///    The `Err` path below is a belt-and-suspenders defence against future algorithmic
-///    changes or hash truncation edge cases, not a realistic collision path.
-///
-/// 2. **No oracle attack surface.** An attacker cannot manipulate the boundary
-///    independently of the content: changing the content changes the hash, which changes
-///    the boundary. There is no chosen-boundary attack because the boundary is not
-///    caller-controlled.
+/// The deterministic boundary is safe in practice: finding content that both
+/// hashes to a prefix matching the boundary AND contains that boundary string
+/// requires approximately 2^64 hash evaluations (birthday-attack level effort).
+/// The collision check at the end of this function is the authoritative guard —
+/// if the derived boundary appears in the content, we return `Err` rather than
+/// produce a malformed MIME message.
 ///
 /// Returns `Err` if the derived boundary string appears as a substring of `content`,
 /// which would violate RFC 2046 §5.1.1.

@@ -42,6 +42,7 @@ pub fn decode_body_value(
 
     // Step 1: transfer-decode.
     let mut is_encoding_problem = false;
+    let mut b64_input_was_limited = false;
     let decoded: Vec<u8> = match part.transfer_encoding {
         TransferEncoding::Base64 => {
             // Limit base64 input to avoid allocating a full decode buffer when
@@ -60,6 +61,15 @@ pub fn decode_body_value(
                 .filter(|&b| b != b'\r' && b != b'\n')
                 .take(max_b64_chars)
                 .collect();
+            // Detect pre-truncation only when we hit the limit (stripped.len() == max_b64_chars).
+            // Check if there's one more non-CRLF byte beyond the limit.
+            b64_input_was_limited = stripped.len() == max_b64_chars
+                && max_b64_chars < usize::MAX
+                && body_bytes
+                    .iter()
+                    .filter(|&&b| b != b'\r' && b != b'\n')
+                    .nth(max_b64_chars)
+                    .is_some();
             match BASE64_STANDARD.decode(&stripped) {
                 Ok(v) => v,
                 Err(_) => {
@@ -69,11 +79,20 @@ pub fn decode_body_value(
             }
         }
         TransferEncoding::QuotedPrintable => {
-            match quoted_printable::decode(body_bytes, quoted_printable::ParseMode::Robust) {
+            // Pre-truncate the QP input when only a preview is needed.
+            // Decoded bytes ≤ encoded bytes always (=XX is 3 encoded → 1 decoded;
+            // soft-line-break =\r\n is 3 encoded → 0 decoded).  A 4× multiplier
+            // comfortably bounds the worst case of all-=XX content.  Truncation
+            // mid-escape is handled gracefully by Robust mode.
+            let qp_input = max_bytes.map_or(body_bytes, |n| {
+                let limit = n.saturating_mul(4).min(body_bytes.len());
+                &body_bytes[..limit]
+            });
+            match quoted_printable::decode(qp_input, quoted_printable::ParseMode::Robust) {
                 Ok(v) => v,
                 Err(_) => {
                     is_encoding_problem = true;
-                    body_bytes.to_vec()
+                    qp_input.to_vec()
                 }
             }
         }
@@ -92,6 +111,7 @@ pub fn decode_body_value(
     // (The identity path already truncated above; this handles Base64/QP.)
     let (truncated_bytes, is_truncated) = match max_bytes {
         Some(n) if decoded.len() > n => (decoded[..n].to_vec(), true),
+        Some(_) if b64_input_was_limited => (decoded, true),
         _ => {
             let is_truncated = matches!(
                 part.transfer_encoding,
@@ -198,6 +218,44 @@ mod tests {
         assert_eq!(result.value, "Hello");
         assert!(result.is_truncated);
         assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_base64_is_truncated_multiple_of_3() {
+        // Oracle: base64("Hello, World!") == "SGVsbG8sIFdvcmxkIQ=="
+        // "Hello, World!" is 13 bytes. For max_bytes that are multiples of 3
+        // AND less than 13, the body is truncated and is_truncated must be true.
+        // For max_bytes = 13 (exact body length), is_truncated must be false.
+        let b64 = b"SGVsbG8sIFdvcmxkIQ==";
+        let (raw, part) = make_part(b64, TransferEncoding::Base64, Some("utf-8"));
+
+        // max_bytes = 3: multiple of 3, body is 13 bytes, must be truncated
+        let result = decode_body_value(&raw, &part, Some(3)).unwrap();
+        assert!(
+            result.is_truncated,
+            "max_bytes=3 (multiple of 3) on 13-byte body: is_truncated must be true"
+        );
+
+        // max_bytes = 6: multiple of 3, body is 13 bytes, must be truncated
+        let result = decode_body_value(&raw, &part, Some(6)).unwrap();
+        assert!(
+            result.is_truncated,
+            "max_bytes=6 (multiple of 3) on 13-byte body: is_truncated must be true"
+        );
+
+        // max_bytes = 9: multiple of 3, body is 13 bytes, must be truncated
+        let result = decode_body_value(&raw, &part, Some(9)).unwrap();
+        assert!(
+            result.is_truncated,
+            "max_bytes=9 (multiple of 3) on 13-byte body: is_truncated must be true"
+        );
+
+        // max_bytes = 13: exact body length — NOT truncated
+        let result = decode_body_value(&raw, &part, Some(13)).unwrap();
+        assert!(
+            !result.is_truncated,
+            "max_bytes=13 (exact body length): is_truncated must be false"
+        );
     }
 
     #[test]

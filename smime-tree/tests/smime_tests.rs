@@ -173,7 +173,9 @@ fn test_verify_openssl_rsa_signed() {
         signed_content,
         &sig_der,
         &[ca_cert],
-        std::time::SystemTime::now(),
+        // Fixed time within cert validity window (2026-05-02 to 2036-04-29).
+        // Using SystemTime::now() would create a time-bomb when the certs expire.
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
         &NoRevocationCheck,
     )
     .expect("verify() must not return a DER parse error");
