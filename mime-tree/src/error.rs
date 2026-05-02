@@ -5,6 +5,7 @@ use std::fmt;
 /// Best-effort parsing: malformed-but-parseable input yields a `ParsedMessage`
 /// with `warnings` populated. Only truly unrecoverable input returns `Err`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ParseError {
     /// The input byte slice is empty.
     EmptyInput,

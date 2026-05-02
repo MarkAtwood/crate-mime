@@ -2,7 +2,7 @@
 //! validation) and `verify` (CMS SignerInfo signature verification).
 //!
 //! Each function accepts an error-constructor closure so the caller can map
-//! failures to the appropriate `SmimeError` variant (`CertChain` or `Io`).
+//! failures to the appropriate `SmimeError` variant (`CertChain` or `Other`).
 
 use const_oid::AssociatedOid;
 use der::Encode;

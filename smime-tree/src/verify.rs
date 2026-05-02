@@ -248,20 +248,25 @@ fn find_cert(
     let mut all_certs = bag.iter().chain(trust_anchors.iter());
 
     match sid {
-        SignerIdentifier::IssuerAndSerialNumber(ias) => all_certs
-            .find(|cert| {
-                let issuer_ok = cert
-                    .tbs_certificate()
-                    .issuer()
-                    .to_der()
-                    .ok()
-                    .zip(ias.issuer.to_der().ok())
-                    .map(|(a, b)| a == b)
-                    .unwrap_or(false);
-                let serial_ok = cert.tbs_certificate().serial_number() == &ias.serial_number;
-                issuer_ok && serial_ok
-            })
-            .cloned(),
+        SignerIdentifier::IssuerAndSerialNumber(ias) => {
+            // Pre-compute the SID issuer DER once; comparing inside the closure
+            // would allocate once per certificate in the bag.
+            let sid_issuer_der = ias.issuer.to_der().ok();
+            all_certs
+                .find(|cert| {
+                    let issuer_ok = cert
+                        .tbs_certificate()
+                        .issuer()
+                        .to_der()
+                        .ok()
+                        .zip(sid_issuer_der.as_deref())
+                        .map(|(a, b)| a == b)
+                        .unwrap_or(false);
+                    let serial_ok = cert.tbs_certificate().serial_number() == &ias.serial_number;
+                    issuer_ok && serial_ok
+                })
+                .cloned()
+        }
 
         SignerIdentifier::SubjectKeyIdentifier(sid_ski) => {
             // sid_ski is an x509_cert SubjectKeyIdentifier (newtype over OctetString).

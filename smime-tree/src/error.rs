@@ -2,6 +2,7 @@ use std::fmt;
 
 /// Error type for S/MIME operations.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum SmimeError {
     /// DER encoding/decoding failure.
     Der(der::Error),

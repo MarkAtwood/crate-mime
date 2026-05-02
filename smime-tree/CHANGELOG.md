@@ -42,6 +42,20 @@ All notable changes to `smime-tree` will be documented here.
 - `EnvelopedData.version` is now correctly computed per RFC 5652 §6.1 (V0 for KTRI-only, V2 for KARI).
 - P-384 recipients now use AES-256-CBC content encryption and AES-256-KW key wrap per NIST SP 800-57
   security level matching.
+- `sign()` now selects the digest algorithm from the signing key's certificate rather than always
+  using SHA-256: EC P-256 → SHA-256, EC P-384 → SHA-384, EC P-521 → SHA-512, RSA → SHA-256.
+  The key may override this via `SigningKey::preferred_digest_algorithm()`.
+  Previously `sign()` always used SHA-256, which produced the wrong `ECDSA_WITH_SHA_256` OID for
+  P-384 signing keys (strict receivers would reject the resulting SignedData).
+
+### Added (this release)
+
+- `#[non_exhaustive]` added to all public enums (`SmimeError`, `KeyEncryptionAlgorithm`,
+  `KeyWrapAlgorithm`, `KariKeyAgreement`, `DigestAlgorithm`, `EcCurve`, `RecipientIdentifier`)
+  and `mime-tree`'s `TransferEncoding` and `ParseError`. Future variants are no longer
+  breaking changes.
+- Certificate chain validation now checks `KeyUsage::keyCertSign` when the `KeyUsage` extension
+  is present, per RFC 5280 §4.2.1.3.
 
 ### Fixed
 

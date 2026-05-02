@@ -33,7 +33,10 @@ const ID_ENVELOPED_DATA: der::asn1::ObjectIdentifier = const_oid::db::rfc5911::I
 /// `enveloped_der` must be a DER-encoded `ContentInfo` wrapping an
 /// `EnvelopedData` (RFC 5652 section 6).  Returns the inner plaintext bytes.
 ///
-/// KARI (ECDH key agreement, `KeyAgreeRecipientInfo`) is not yet implemented.
+/// Supported recipient types:
+/// - **KTRI** (`KeyTransRecipientInfo`): RSA PKCS#1 v1.5 and RSA-OAEP.
+/// - **KARI** (`KeyAgreeRecipientInfo`): ECDH P-256 and P-384 via [`DecryptionKey::agree_ecdh`].
+///
 /// KEKRI, PWRI, and ORI recipient types are not supported.
 pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>, SmimeError> {
     // Step 1: Parse the outer ContentInfo.

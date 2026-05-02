@@ -12,7 +12,7 @@ use der::Encode;
 use sha2::{Sha256, Sha384, Sha512};
 use std::collections::HashSet;
 use std::time::SystemTime;
-use x509_cert::ext::pkix::BasicConstraints;
+use x509_cert::ext::pkix::{BasicConstraints, KeyUsage, KeyUsages};
 use x509_cert::Certificate;
 
 use crate::key::RevocationChecker;
@@ -164,14 +164,34 @@ fn check_validity(cert: &Certificate, now: SystemTime) -> Result<(), SmimeError>
     Ok(())
 }
 
-/// Return `true` if `cert` has BasicConstraints with `cA = true`.
+/// Return `true` if `cert` may act as a CA.
+///
+/// Per RFC 5280 §4.2.1.9, a CA cert must have `BasicConstraints.cA = true`.
+/// Per RFC 5280 §4.2.1.3, if `KeyUsage` is present it must include
+/// `keyCertSign`; a cert that explicitly excludes `keyCertSign` must not be
+/// used to verify certificate signatures even if `BasicConstraints.cA = true`.
 fn is_ca_cert(cert: &Certificate) -> bool {
-    cert.tbs_certificate()
+    let tbs = cert.tbs_certificate();
+
+    // BasicConstraints.cA must be true.
+    let has_ca_flag = tbs
         .get_extension::<BasicConstraints>()
         .ok()
         .flatten()
         .map(|(_critical, bc)| bc.ca)
-        .unwrap_or(false)
+        .unwrap_or(false);
+    if !has_ca_flag {
+        return false;
+    }
+
+    // If KeyUsage is present, keyCertSign must be asserted (RFC 5280 §4.2.1.3).
+    if let Some((_critical, ku)) = tbs.get_extension::<KeyUsage>().ok().flatten() {
+        if !ku.0.contains(KeyUsages::KeyCertSign) {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Return `true` if the DER encodings of two `Name` values are identical.

@@ -64,9 +64,10 @@ fn parse_structure<'a>(
 ) {
     // Snapshot lengths at entry — used at the end of multipart/alternative
     // to cross-populate: if only html was found, mirror it into textBody,
-    // and vice versa.
-    let text_length_at_entry: usize = text_body.as_ref().map_or(usize::MAX, |v| v.len());
-    let html_length_at_entry: usize = html_body.as_ref().map_or(usize::MAX, |v| v.len());
+    // and vice versa.  These are only consulted inside `if tb_active &&
+    // hb_active`, so they are always Some(len) at the point of comparison.
+    let text_length_at_entry: usize = text_body.as_ref().map_or(0, |v| v.len());
+    let html_length_at_entry: usize = html_body.as_ref().map_or(0, |v| v.len());
 
     for (i, part) in parts.iter().enumerate() {
         let is_multipart = part.content_type.starts_with("multipart/");

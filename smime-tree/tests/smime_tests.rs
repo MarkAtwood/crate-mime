@@ -118,6 +118,7 @@ impl DecryptionKey for TestRsaDecryptionKey {
                 issuer_ok && serial_ok
             }
             RecipientIdentifier::SubjectKeyIdentifier(_) => false,
+            _ => false,
         }
     }
 }

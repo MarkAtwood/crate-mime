@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Transfer encoding of a MIME body part.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum TransferEncoding {
     Identity,
     QuotedPrintable,

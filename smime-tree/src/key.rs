@@ -8,6 +8,7 @@ use crate::error::SmimeError;
 /// The CMS standard defines two ways to identify a recipient certificate.
 /// Your `matches_recipient` implementation should handle both variants.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RecipientIdentifier {
     /// Identified by certificate issuer name and serial number (PKCS #7 compatibility).
     IssuerAndSerialNumber {
@@ -27,24 +28,37 @@ pub enum RecipientIdentifier {
 
 /// Elliptic curve selection for ECDH key agreement.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum EcCurve {
     P256,
     P384,
 }
 
 /// Algorithm used to encrypt (wrap) the content-encryption key.
+///
+/// # ECDH / KARI
+///
+/// ECDH key agreement (`KeyAgreeRecipientInfo`, RFC 5753) uses a *separate*
+/// trait method: [`DecryptionKey::agree_ecdh`].  The `EcdhEs` variant here is
+/// **not** produced by the current `decrypt()` implementation; it is reserved
+/// for future direct-ECDH key transport scenarios (if any).  Implementors of
+/// `DecryptionKey::decrypt_cek` do not need to handle `EcdhEs` today — ECDH
+/// decryption is dispatched via `agree_ecdh()`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum KeyEncryptionAlgorithm {
     /// RSA PKCS#1 v1.5 key transport (RFC 8017).
     RsaPkcs1v15,
     /// RSA-OAEP key transport (RFC 8017).
     RsaOaep,
     /// ECDH-ES key agreement (RFC 5753) with the specified curve.
+    /// Reserved; currently not produced by `decrypt()`. See type-level doc.
     EcdhEs { curve: EcCurve },
 }
 
 /// AES key wrap algorithm used to protect the content-encryption key in KARI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum KeyWrapAlgorithm {
     /// AES-128 key wrap (`id-aes128-Wrap`, RFC 3394).
     Aes128Kw,
@@ -54,6 +68,7 @@ pub enum KeyWrapAlgorithm {
 
 /// ECDH key derivation scheme used in `KeyAgreeRecipientInfo` (RFC 5753 §7.1.4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum KariKeyAgreement {
     /// `dhSinglePass-stdDH-sha256kdf-scheme` — P-256 with X9.63 KDF using SHA-256.
     StdDhSha256Kdf,
@@ -75,6 +90,7 @@ pub struct KariAlgorithm {
 
 /// Digest algorithm used when creating or verifying a signature.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum DigestAlgorithm {
     Sha256,
     Sha384,
@@ -154,13 +170,12 @@ pub trait DecryptionKey {
 
     /// Returns a hint about which key encryption algorithms this key supports.
     ///
-    /// This crate does not currently consult this hint internally. It is provided
-    /// as an extension point for callers that coordinate multiple operations
-    /// (e.g., selecting an algorithm before calling `decrypt_cek()`). Override to
-    /// communicate your key's capabilities to higher-level code.
+    /// This crate does **not** consult this hint internally — `decrypt()` always
+    /// tries all recipients and lets `decrypt_cek()` / `agree_ecdh()` reject
+    /// unsupported algorithms.  This method is provided as an extension point for
+    /// callers that want to pre-screen or log algorithm capabilities.
     ///
-    /// Default: returns `None` (accept any algorithm; let `decrypt_cek()` reject
-    /// unsupported ones).
+    /// Default: returns `None` (no hint; let `decrypt_cek()` reject unsupported ones).
     fn supported_key_enc_algorithm(&self) -> Option<KeyEncryptionAlgorithm> {
         None
     }
@@ -207,14 +222,16 @@ pub trait SigningKey {
     /// The signer's X.509 certificate, included in `SignedData`.
     fn certificate(&self) -> &x509_cert::Certificate;
 
-    /// Returns a hint about the preferred digest algorithm for this key.
+    /// Returns the preferred digest algorithm for this key.
     ///
-    /// This crate does not currently consult this hint internally. It is provided
-    /// as an extension point for callers that coordinate multiple operations
-    /// (e.g., selecting a digest algorithm before calling `sign()`). Override to
-    /// communicate your key's capabilities to higher-level code.
+    /// [`crate::sign`] consults this method when selecting the digest algorithm:
+    /// if `Some(alg)` is returned, that algorithm is used; otherwise the default
+    /// is derived from the key's certificate (P-256 → SHA-256, P-384 → SHA-384,
+    /// P-521 → SHA-512, RSA → SHA-256).
     ///
-    /// Default: returns `None` (use caller's default, currently SHA-256).
+    /// Override to force a specific algorithm regardless of the certificate's key type.
+    ///
+    /// Default: returns `None` (let `sign()` derive the algorithm from the cert).
     fn preferred_digest_algorithm(&self) -> Option<DigestAlgorithm> {
         None
     }

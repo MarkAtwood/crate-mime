@@ -34,13 +34,22 @@ use const_oid::db::rfc5912::{
 /// The `content_mime` bytes are placed verbatim as the first MIME part.
 /// The CMS `SignedData` blob is base64-encoded into the second MIME part.
 ///
-/// The digest algorithm is hardcoded to SHA-256 in the current implementation.
-/// The `DigestAlgorithm` parameter of `SigningKey::sign` will be `Sha256`.
+/// The digest algorithm is selected based on the signing key's certificate:
+/// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384; EC P-521 uses SHA-512.
+/// The key may override this via [`SigningKey::preferred_digest_algorithm`].
 pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeError> {
     let cert = key.certificate();
 
-    // Always use SHA-256 digest.
-    let digest_alg = DigestAlgorithm::Sha256;
+    // Select the digest algorithm based on the key type so that the algorithm
+    // OID in SignerInfo matches the key's security level:
+    //   RSA → SHA-256 (standard for 2048/4096-bit RSA)
+    //   EC P-256 → SHA-256  (RFC 5753 §7.1 recommendation)
+    //   EC P-384 → SHA-384  (RFC 5753 §7.1 recommendation; P-384 requires SHA-384)
+    //   EC P-521 → SHA-512  (RFC 5753 §7.1 recommendation)
+    // The key may override via preferred_digest_algorithm().
+    let digest_alg = key
+        .preferred_digest_algorithm()
+        .unwrap_or_else(|| select_digest_for_cert(cert));
 
     // --- Step 1: build EncapsulatedContentInfo ---
     // RFC 5751 §3.4 / RFC 5652 §5.2: for multipart/signed (detached signature),
@@ -89,6 +98,9 @@ pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeE
         SignerIdentifier::SubjectKeyIdentifier(_) => CmsVersion::V3,
     };
     // RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1.
+    // sign() produces exactly one SignerInfo, so the SignedData version equals it.
+    // If multi-signer support is added later, iterate all signers: use V3 if any
+    // uses SubjectKeyIdentifier, else V1.
     let signed_data_version = signer_info_version;
     let signature_value = SignatureValue::new(raw_sig)?;
 
@@ -275,6 +287,32 @@ fn signature_algorithm_oid(
     Err(SmimeError::UnsupportedAlgorithm(format!(
         "SPKI OID {spki_oid} not supported for signing"
     )))
+}
+
+/// Select the appropriate digest algorithm for the certificate's key type.
+///
+/// RFC 5753 §7.1 recommends matching the hash strength to the EC curve:
+/// P-256 → SHA-256, P-384 → SHA-384, P-521 → SHA-512.
+/// RSA keys default to SHA-256.  Unknown key types fall back to SHA-256.
+fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
+    use const_oid::db::rfc5912::{SECP_384_R_1, SECP_521_R_1};
+    let spki = cert.tbs_certificate().subject_public_key_info();
+    if spki.algorithm.oid == ID_EC_PUBLIC_KEY {
+        let curve = spki
+            .algorithm
+            .parameters
+            .as_ref()
+            .and_then(|p| p.decode_as::<der::asn1::ObjectIdentifier>().ok());
+        if let Some(c) = curve {
+            if c == SECP_384_R_1 {
+                return DigestAlgorithm::Sha384;
+            }
+            if c == SECP_521_R_1 {
+                return DigestAlgorithm::Sha512;
+            }
+        }
+    }
+    DigestAlgorithm::Sha256
 }
 
 /// Derive a deterministic MIME boundary string from the content.

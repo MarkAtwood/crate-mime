@@ -66,9 +66,14 @@ struct EccCmsSharedInfo {
 
 /// Encrypt `inner_mime` bytes to all `recipients`.
 ///
-/// Returns a complete `application/pkcs7-mime; smime-type=enveloped-data` MIME
-/// message as UTF-8 bytes. The body is the base64-encoded DER of the CMS
+/// Returns a MIME body part (`application/pkcs7-mime; smime-type=enveloped-data`)
+/// as UTF-8 bytes: the Content-Type, Content-Transfer-Encoding,
+/// Content-Disposition headers, blank line, and base64-encoded DER of the CMS
 /// `ContentInfo` wrapping an `EnvelopedData`.
+///
+/// This is the encrypted body part, not a complete RFC 5322 message. The caller
+/// must add message-level headers (`From`, `To`, `Subject`, etc.) when assembling
+/// the full outgoing message.
 ///
 /// # Content encryption algorithm selection
 ///
@@ -294,7 +299,7 @@ fn build_p256_recipient(
 
     build_kari_recipient(
         cert,
-        ephemeral_pub.to_sec1_point(false).as_bytes().to_vec(),
+        ephemeral_pub.to_sec1_point(false).as_bytes(),
         rfc5912::SECP_256_R_1,
         DH_SHA256_KDF,
         ID_AES_128_WRAP,
@@ -335,7 +340,7 @@ fn build_p384_recipient(
 
     build_kari_recipient(
         cert,
-        ephemeral_pub.to_sec1_point(false).as_bytes().to_vec(),
+        ephemeral_pub.to_sec1_point(false).as_bytes(),
         rfc5912::SECP_384_R_1,
         DH_SHA384_KDF,
         ID_AES_256_WRAP,
@@ -355,7 +360,7 @@ fn build_p384_recipient(
 /// `wrapped_cek`         — CEK after AES-KW, ready to place in RecipientEncryptedKey.
 fn build_kari_recipient(
     cert: &Certificate,
-    ephemeral_pub_bytes: Vec<u8>,
+    ephemeral_pub_bytes: &[u8],
     curve_oid: ObjectIdentifier,
     kdf_oid: ObjectIdentifier,
     wrap_oid: ObjectIdentifier,
@@ -366,7 +371,7 @@ fn build_kari_recipient(
             oid: rfc5912::ID_EC_PUBLIC_KEY,
             parameters: Some(Any::from(&curve_oid)),
         },
-        public_key: BitString::from_bytes(&ephemeral_pub_bytes).map_err(SmimeError::Der)?,
+        public_key: BitString::from_bytes(ephemeral_pub_bytes).map_err(SmimeError::Der)?,
     };
 
     let ias = IssuerAndSerialNumber {
