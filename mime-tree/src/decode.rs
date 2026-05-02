@@ -54,22 +54,19 @@ pub fn decode_body_value(
                 .map(|n| n.saturating_mul(4).div_ceil(3).next_multiple_of(4))
                 .unwrap_or(usize::MAX);
 
-            // Strip CR/LF line wrapping before decoding.
-            let stripped: Vec<u8> = body_bytes
-                .iter()
-                .copied()
-                .filter(|&b| b != b'\r' && b != b'\n')
-                .take(max_b64_chars)
-                .collect();
-            // Detect pre-truncation only when we hit the limit (stripped.len() == max_b64_chars).
-            // Check if there's one more non-CRLF byte beyond the limit.
-            b64_input_was_limited = stripped.len() == max_b64_chars
-                && max_b64_chars < usize::MAX
-                && body_bytes
-                    .iter()
-                    .filter(|&&b| b != b'\r' && b != b'\n')
-                    .nth(max_b64_chars)
-                    .is_some();
+            // Strip CR/LF line wrapping, collect up to max_b64_chars bytes,
+            // and detect truncation — all in a single pass.
+            let mut stripped = Vec::new();
+            for &b in body_bytes {
+                if b == b'\r' || b == b'\n' {
+                    continue;
+                }
+                if stripped.len() >= max_b64_chars {
+                    b64_input_was_limited = true;
+                    break;
+                }
+                stripped.push(b);
+            }
             match BASE64_STANDARD.decode(&stripped) {
                 Ok(v) => v,
                 Err(_) => {

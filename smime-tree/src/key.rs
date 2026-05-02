@@ -114,6 +114,10 @@ pub trait DecryptionKey {
     ///
     /// # Example
     ///
+    /// `RecipientIdentifier` is `#[non_exhaustive]`, so your implementation
+    /// **must** include a catch-all arm (`_ => false`) to remain forward-compatible
+    /// with future identifier variants.
+    ///
     /// ```ignore
     /// fn matches_recipient(&self, id: &RecipientIdentifier) -> bool {
     ///     match id {
@@ -131,6 +135,7 @@ pub trait DecryptionKey {
     ///             //       .get_extension::<SubjectKeyIdentifier>()
     ///             self.cert_ski() == ski
     ///         }
+    ///         _ => false, // required: RecipientIdentifier is #[non_exhaustive]
     ///     }
     /// }
     /// ```

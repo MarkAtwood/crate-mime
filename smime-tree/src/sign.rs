@@ -348,7 +348,7 @@ fn boundary_from_content(content: &[u8]) -> Result<String, SmimeError> {
         .windows(boundary.len())
         .any(|w| w == boundary.as_bytes())
     {
-        return Err(SmimeError::Other(
+        return Err(SmimeError::MalformedInput(
             "MIME boundary collision: content contains boundary string".into(),
         ));
     }

@@ -387,3 +387,87 @@ fn base64_encode(bytes: &[u8]) -> String {
     use base64::Engine as _;
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
+
+// ---------------------------------------------------------------------------
+// Test E: sign() → mime_tree::parse() → verify() round-trip
+//
+// Exercises MIME-6uo.3: verifies that when a caller extracts the signed
+// content bytes using mime-tree body/header ranges and feeds them to verify(),
+// the digest matches what sign() computed.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_sign_verify_roundtrip_via_mime_tree() {
+    use base64::Engine as _;
+
+    let rsa_key_der = from_hex(RSA_KEY_PKCS8_HEX);
+    let private_key = RsaPrivateKey::from_pkcs8_der(&rsa_key_der).expect("parse RSA private key");
+    let signing_key = rsa::pkcs1v15::SigningKey::<Sha256>::new(private_key);
+
+    let rsa_cert_der = from_hex(RSA_CERT_HEX);
+    let cert = Certificate::from_der(&rsa_cert_der).expect("parse RSA cert");
+
+    let ca_cert_der = from_hex(CA_CERT_HEX);
+    let ca_cert = Certificate::from_der(&ca_cert_der).expect("parse CA cert");
+
+    let test_key = TestRsaSigningKey {
+        private_key: signing_key,
+        cert,
+    };
+
+    let content_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nHello roundtrip\r\n";
+    let signed_bytes = sign(content_mime, &test_key).expect("sign() must succeed");
+
+    // Parse the multipart/signed output with mime-tree.
+    // The root is multipart, so children get IDs "1" (signed content) and
+    // "2" (application/pkcs7-signature) per IMAP dotted-path rules.
+    let parsed = mime_tree::parse(&signed_bytes).expect("mime_tree::parse must succeed");
+
+    // Part "1": the signed MIME content.
+    let part1 = parsed
+        .part_index
+        .find_by_id("1")
+        .expect("part '1' (signed content) must exist");
+
+    // The signed content is the full MIME part: headers + blank line + body.
+    // header_range covers the headers (including the trailing blank line);
+    // body_range covers the body text.  Spanning from header_range start to
+    // body_range end reconstructs the exact bytes sign() hashed.
+    let content_start = part1.header_range.0 as usize;
+    let content_end = (part1.body_range.0 + part1.body_range.1) as usize;
+    let extracted_content = &signed_bytes[content_start..content_end];
+
+    // Part "2": application/pkcs7-signature (base64-encoded CMS blob).
+    let part2 = parsed
+        .part_index
+        .find_by_id("2")
+        .expect("part '2' (pkcs7-signature) must exist");
+
+    let sig_start = part2.body_range.0 as usize;
+    let sig_end = (part2.body_range.0 + part2.body_range.1) as usize;
+    let sig_b64: Vec<u8> = signed_bytes[sig_start..sig_end]
+        .iter()
+        .copied()
+        .filter(|&b| b != b'\r' && b != b'\n')
+        .collect();
+    let signature_der = base64::engine::general_purpose::STANDARD
+        .decode(&sig_b64)
+        .expect("pkcs7-signature part must be valid base64");
+
+    let result = verify(
+        extracted_content,
+        &signature_der,
+        &[ca_cert],
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
+        &NoRevocationCheck,
+    )
+    .expect("verify() must not return a parse error");
+
+    let verified = result.signers.iter().any(|s| s.verified);
+    assert!(
+        verified,
+        "sign() → mime_tree::parse() → verify() round-trip must succeed; \
+         signers: {:?}",
+        result.signers
+    );
+}

@@ -38,7 +38,7 @@ pub struct SignerResult {
 // ---------------------------------------------------------------------------
 
 /// Error type for S/MIME operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SmimeError {
     /// DER encoding/decoding failure.
