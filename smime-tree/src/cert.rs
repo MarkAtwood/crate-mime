@@ -84,8 +84,9 @@ pub(crate) fn validate_chain(
             // the validity interval of every certificate in the certification
             // path, including trust anchors.  Skipping this check would allow
             // an expired root to validate a still-valid end-entity certificate.
-            let valid_candidates: Vec<&&Certificate> = candidates
+            let valid_candidates: Vec<&Certificate> = candidates
                 .iter()
+                .copied()
                 .filter(|a| check_validity(a, now).is_ok())
                 .collect();
             if valid_candidates.is_empty() {

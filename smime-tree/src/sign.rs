@@ -330,47 +330,50 @@ fn select_digest_for_cert(cert: &Certificate) -> DigestAlgorithm {
     DigestAlgorithm::Sha256
 }
 
-/// Derive a deterministic MIME boundary string from the content.
+/// Generate a random MIME boundary string that does not appear in `content`.
 ///
-/// Uses the first 16 bytes of the SHA-256 of the content (hex-encoded) so that
-/// tests produce reproducible boundaries.
+/// Uses 16 random bytes (hex-encoded) to produce a 32-character token, prefixed
+/// with `"----=_Part_"`.  Retries up to 8 times on the astronomically unlikely
+/// event of a collision with `content`.  Returns `Err` only if all 8 attempts
+/// collide, which has probability less than 2^-448 for any fixed content.
 ///
-/// # Security note
-///
-/// The deterministic boundary is safe in practice: finding content that both
-/// hashes to a prefix matching the boundary AND contains that boundary string
-/// requires approximately 2^64 hash evaluations (birthday-attack level effort).
-/// The collision check at the end of this function is the authoritative guard —
-/// if the derived boundary appears in the content, we return `Err` rather than
-/// produce a malformed MIME message.
-///
-/// Returns `Err` if the derived boundary string appears as a substring of `content`,
-/// which would violate RFC 2046 §5.1.1.
+/// The random boundary prevents adversarial content from causing a deterministic
+/// signing failure (which was possible when the boundary was derived from the
+/// SHA-256 of the content).
 fn boundary_from_content(content: &[u8]) -> Result<String, SmimeError> {
-    let digest = Sha256::digest(content);
-    let hex: String = digest[..16].iter().map(|b| format!("{b:02x}")).collect();
-    let boundary = format!("----=_Part_{hex}");
-    // RFC 2046 §5.1.1: the boundary MUST NOT appear in the body of any encapsulated part.
-    if content
-        .windows(boundary.len())
-        .any(|w| w == boundary.as_bytes())
-    {
-        return Err(SmimeError::MalformedInput(
-            "MIME boundary collision: content contains boundary string".into(),
-        ));
+    for _ in 0..8 {
+        let mut rand_bytes = [0u8; 16];
+        getrandom::fill(&mut rand_bytes)
+            .map_err(|e| SmimeError::Other(format!("RNG failed: {e}")))?;
+        let mut hex = String::with_capacity(32);
+        for b in rand_bytes {
+            use std::fmt::Write as _;
+            write!(hex, "{b:02x}").expect("writing to String cannot fail");
+        }
+        let boundary = format!("----=_Part_{hex}");
+        // RFC 2046 §5.1.1: boundary MUST NOT appear in any encapsulated body.
+        if !content
+            .windows(boundary.len())
+            .any(|w| w == boundary.as_bytes())
+        {
+            return Ok(boundary);
+        }
     }
-    Ok(boundary)
+    Err(SmimeError::MalformedInput(
+        "MIME boundary collision: failed to generate a unique boundary after 8 attempts".into(),
+    ))
 }
 
 /// Wrap a base64 string at `width` characters per line using CRLF line endings.
 fn wrap_base64(b64: &str, width: usize) -> String {
-    b64.as_bytes()
-        .chunks(width)
-        .map(|chunk| {
-            // b64 is a &str, so its byte slices are always valid UTF-8.
-            std::str::from_utf8(chunk)
-                .expect("base64 output is a str slice — from_utf8 always succeeds")
-        })
-        .collect::<Vec<_>>()
-        .join("\r\n")
+    let mut out = String::with_capacity(b64.len() + (b64.len() / width + 1) * 2);
+    for chunk in b64.as_bytes().chunks(width) {
+        // b64 is a &str, so its byte slices are always valid UTF-8.
+        out.push_str(
+            core::str::from_utf8(chunk)
+                .expect("base64 output is a str — from_utf8 always succeeds"),
+        );
+        out.push_str("\r\n");
+    }
+    out
 }
