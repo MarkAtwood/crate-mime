@@ -100,7 +100,9 @@ let result = verify(
 )?;
 
 for signer in &result.signers {
-    println!("verified: {:?}", signer.certificate.tbs_certificate().subject());
+    if signer.verified {
+        println!("verified: {}", signer.subject.as_deref().unwrap_or("unknown"));
+    }
 }
 ```
 

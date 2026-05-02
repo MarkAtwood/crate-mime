@@ -37,6 +37,14 @@ use const_oid::db::rfc5912::{
 /// The digest algorithm is selected based on the signing key's certificate:
 /// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384; EC P-521 uses SHA-512.
 /// The key may override this via [`SigningKey::preferred_digest_algorithm`].
+///
+/// # Output format
+///
+/// The returned bytes are a `multipart/signed` **body part**, not a complete
+/// RFC 5322 message.  They begin with a `MIME-Version: 1.0` header and the
+/// `multipart/signed` Content-Type but have no `From:`, `Date:`, or other
+/// RFC 5322 message headers.  To send as email, wrap the output in a full
+/// RFC 5322 message envelope.
 pub fn sign(content_mime: &[u8], key: &dyn SigningKey) -> Result<Vec<u8>, SmimeError> {
     let cert = key.certificate();
 

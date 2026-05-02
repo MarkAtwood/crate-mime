@@ -38,7 +38,7 @@ pub struct SignerResult {
 // ---------------------------------------------------------------------------
 
 /// Error type for S/MIME operations.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum SmimeError {
     /// DER encoding/decoding failure.
@@ -51,6 +51,8 @@ pub enum SmimeError {
     SignatureVerification,
     /// Certificate chain validation failed.
     CertChain(String),
+    /// Input is structurally malformed (e.g. missing required CMS fields).
+    MalformedInput(String),
     /// Catch-all for operation errors not covered by a more specific variant.
     Other(String),
     /// All signers in the CMS SignedData failed verification.
@@ -73,6 +75,7 @@ impl fmt::Display for SmimeError {
             }
             SmimeError::SignatureVerification => write!(f, "signature verification failed"),
             SmimeError::CertChain(msg) => write!(f, "certificate chain error: {msg}"),
+            SmimeError::MalformedInput(msg) => write!(f, "malformed CMS input: {msg}"),
             SmimeError::Other(msg) => write!(f, "error: {msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
             SmimeError::AllSignersFailed(signers) => {

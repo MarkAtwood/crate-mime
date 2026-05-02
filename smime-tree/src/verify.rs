@@ -57,6 +57,16 @@ use crate::{
 ///
 /// # Errors
 ///
+/// # Limitations
+///
+/// `SignerInfo` entries that omit `signedAttrs` are always rejected as a
+/// per-signer failure.  RFC 5652 §5.4 technically permits absent
+/// `signedAttrs` when the content type is `id-data`, but the messageDigest
+/// check requires them.  Unsigned S/MIME messages produced by legacy
+/// implementations may fail as a result.
+///
+/// # Errors
+///
 /// Returns `Err` when:
 /// - The outer DER structure cannot be parsed (`SmimeError::Der`).
 /// - The `SignedData` contains no `SignerInfo` entries.
@@ -106,7 +116,7 @@ pub fn verify(
         .collect();
 
     if signers.is_empty() {
-        return Err(SmimeError::Other(
+        return Err(SmimeError::MalformedInput(
             "no SignerInfo entries in SignedData".into(),
         ));
     }
@@ -149,8 +159,9 @@ fn verify_one(
 
     // Step 2: find signer cert in the bag or trust anchors.
     let signer_cert = match find_cert(bag_certs, trust_anchors, &si.sid) {
-        Some(c) => c,
-        None => return fail(None, "signer cert not found in certificate bag"),
+        Ok(Some(c)) => c,
+        Ok(None) => return fail(None, "signer cert not found in certificate bag"),
+        Err(e) => return fail(None, format!("signer identifier DER encode: {e}")),
     };
 
     let subject_str = signer_cert.tbs_certificate().subject().to_string();
@@ -217,7 +228,7 @@ fn find_cert(
     bag: &[Certificate],
     trust_anchors: &[Certificate],
     sid: &SignerIdentifier,
-) -> Option<Certificate> {
+) -> Result<Option<Certificate>, SmimeError> {
     // Search first in the embedded certificate bag, then in the trust anchors.
     // RFC 5652 §5.1 permits the signer to omit their cert from the bag if the
     // receiver already has it (e.g. it is itself a trust anchor).
@@ -226,29 +237,29 @@ fn find_cert(
     match sid {
         SignerIdentifier::IssuerAndSerialNumber(ias) => {
             // Pre-compute the SID issuer DER once; comparing inside the closure
-            // would allocate once per certificate in the bag.
-            let sid_issuer_der = ias.issuer.to_der().ok();
-            all_certs
+            // would allocate once per certificate in the bag.  Fail loudly if the
+            // SID issuer cannot be encoded — silently returning "cert not found"
+            // when the real problem is a DER encoding error would mislead callers.
+            let sid_issuer_der = ias.issuer.to_der()?;
+            Ok(all_certs
                 .find(|cert| {
                     let issuer_ok = cert
                         .tbs_certificate()
                         .issuer()
                         .to_der()
-                        .ok()
-                        .zip(sid_issuer_der.as_deref())
-                        .map(|(a, b)| a == b)
+                        .map(|a| a == sid_issuer_der)
                         .unwrap_or(false);
                     let serial_ok = cert.tbs_certificate().serial_number() == &ias.serial_number;
                     issuer_ok && serial_ok
                 })
-                .cloned()
+                .cloned())
         }
 
         SignerIdentifier::SubjectKeyIdentifier(sid_ski) => {
             // sid_ski is an x509_cert SubjectKeyIdentifier (newtype over OctetString).
             // Compare its raw bytes against the cert's SKI extension value.
             let sid_bytes = sid_ski.0.as_bytes();
-            all_certs
+            Ok(all_certs
                 .find(|cert| {
                     cert.tbs_certificate()
                         .get_extension::<x509_cert::ext::pkix::SubjectKeyIdentifier>()
@@ -257,7 +268,7 @@ fn find_cert(
                         .map(|(_critical, ext_ski)| ext_ski.0.as_bytes() == sid_bytes)
                         .unwrap_or(false)
                 })
-                .cloned()
+                .cloned())
         }
     }
 }

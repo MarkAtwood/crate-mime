@@ -211,8 +211,8 @@ mod tests {
         let raw =
             b"From: a@b.com\r\nMIME-Version: 1.0\r\nContent-Type: text/plain\r\n\r\nHello\r\n";
         let msg = parse(raw).expect("parse failed");
-        assert_eq!(msg.text_body, vec!["1".to_string()]);
-        assert_eq!(msg.html_body, vec!["1".to_string()]);
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["1".to_owned()]);
         assert!(msg.attachments.is_empty(), "attachments should be empty");
     }
 
@@ -242,8 +242,8 @@ mod tests {
         .as_bytes();
 
         let msg = parse(raw).expect("parse failed");
-        assert_eq!(msg.text_body, vec!["1".to_string()]);
-        assert_eq!(msg.html_body, vec!["2".to_string()]);
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["2".to_owned()]);
         assert!(msg.attachments.is_empty(), "attachments should be empty");
     }
 
@@ -276,8 +276,8 @@ mod tests {
         .as_bytes();
 
         let msg = parse(raw).expect("parse failed");
-        assert_eq!(msg.text_body, vec!["1".to_string()]);
-        assert_eq!(msg.html_body, vec!["1".to_string()]);
-        assert_eq!(msg.attachments, vec!["2".to_string()]);
+        assert_eq!(msg.text_body, vec!["1".to_owned()]);
+        assert_eq!(msg.html_body, vec!["1".to_owned()]);
+        assert_eq!(msg.attachments, vec!["2".to_owned()]);
     }
 }

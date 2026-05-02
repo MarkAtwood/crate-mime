@@ -52,3 +52,24 @@ pub struct ParsedPart {
     /// Child parts. Non-empty only for `multipart/*` content types.
     pub children: Vec<ParsedPart>,
 }
+
+impl ParsedPart {
+    /// Find a descendant part by its dotted IMAP part ID.
+    ///
+    /// Searches this part and all descendants depth-first.  Returns `None` if
+    /// no part with the given ID exists in the tree.
+    ///
+    /// ```
+    /// # use mime_tree::parse;
+    /// let raw = b"Content-Type: text/plain\r\n\r\nHello\r\n";
+    /// let msg = parse(raw).unwrap();
+    /// let part = msg.part_index.find_by_id("1").unwrap();
+    /// assert_eq!(part.content_type, "text/plain");
+    /// ```
+    pub fn find_by_id(&self, id: &str) -> Option<&ParsedPart> {
+        if self.part_id == id {
+            return Some(self);
+        }
+        self.children.iter().find_map(|child| child.find_by_id(id))
+    }
+}

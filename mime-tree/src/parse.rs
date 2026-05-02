@@ -37,13 +37,25 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     // Compute RFC 8621 §4.1.4 body-view lists from the parsed part tree.
     let body = walk::compute_body_structure(&part_index);
 
+    // Compute preview: first 256 decoded characters from the first text_body part.
+    let preview = body.text_body.first().and_then(|id| {
+        let part = part_index.find_by_id(id)?;
+        let decoded = crate::decode::decode_body_value(raw, part, Some(256)).ok()?;
+        let s: String = decoded.value.chars().take(256).collect();
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    });
+
     Ok(ParsedMessage {
         part_index,
         text_body: body.text_body,
         html_body: body.html_body,
         attachments: body.attachments,
         headers,
-        preview: None,
+        preview,
         warnings,
     })
 }

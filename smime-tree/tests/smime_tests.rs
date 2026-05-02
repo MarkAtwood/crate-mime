@@ -264,6 +264,8 @@ fn test_sign_output_accepted_by_openssl() {
     ca_file.write_all(ca_pem.as_bytes()).expect("write CA cert");
     let ca_path = ca_file.path().to_path_buf();
 
+    // Verify against the CA cert. -noverify is intentionally omitted so that
+    // OpenSSL validates the full certificate chain, not just the signature bytes.
     let output = Command::new("openssl")
         .args([
             "smime",
@@ -274,7 +276,6 @@ fn test_sign_output_accepted_by_openssl() {
             ca_path.to_str().unwrap(),
             "-out",
             "/dev/null",
-            "-noverify",
         ])
         .output()
         .expect("openssl must be available");
