@@ -39,7 +39,8 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 ///
 /// A `Vec<u8>` containing the complete encoded article ready for posting.
 pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
-    let line_length = line_length.max(1) as usize; // guard against 0
+    // Clamp to at least 2: escape pairs are 2 bytes and must fit on one line.
+    let line_length = line_length.max(2) as usize;
     let mut out = Vec::with_capacity(data.len() * 11 / 10 + 128);
 
     // =ybegin header (single-part: no part= or total= fields)
@@ -76,7 +77,8 @@ pub fn encode_part(
     whole_file_crc32: u32,
     line_length: u8,
 ) -> Vec<u8> {
-    let line_length = line_length.max(1) as usize;
+    // Clamp to at least 2: escape pairs are 2 bytes and must fit on one line.
+    let line_length = line_length.max(2) as usize;
     let mut out = Vec::with_capacity(data.len() * 11 / 10 + 256);
 
     // =ybegin header (multi-part: includes part= and total= fields)
@@ -326,6 +328,40 @@ mod tests {
         let s = String::from_utf8_lossy(&out);
         assert!(s.contains("pcrc32=100ece8c"), "per-part CRC wrong: {s}");
         assert!(s.contains("crc32=24650d57"), "whole-file CRC wrong: {s}");
+    }
+
+    #[test]
+    fn encode_line_length_1_clamped_to_2() {
+        // line_length=1 would make escape pairs (2 bytes) overflow the column
+        // limit.  The encoder must clamp it to at least 2.
+        // Oracle: byte 214 encodes to NUL (needs escape), so we get "=@" which
+        // is 2 bytes — must fit on one line even though the caller asked for 1.
+        let out = encode(&[214], "t.bin", 1);
+        let s = String::from_utf8_lossy(&out);
+        for line in s.lines() {
+            if line.starts_with("=ybegin") || line.starts_with("=yend") || line.is_empty() {
+                continue;
+            }
+            assert!(
+                line.len() <= 2,
+                "line too long with clamped line_length=2: {:?}",
+                line
+            );
+        }
+        // Round-trip must succeed.
+        let decoded = decode(&out).expect("round-trip decode of line_length=1 input failed");
+        assert_eq!(decoded.data, &[214]);
+    }
+
+    #[test]
+    fn encode_line_length_2_does_not_panic() {
+        // line_length=2 is the minimum valid value; must not panic and must
+        // produce a decodable output.
+        // Oracle: bytes [0, 1] encode to '*' '+' — no escaping needed.
+        let data = &[0u8, 1u8];
+        let out = encode(data, "t.bin", 2);
+        let decoded = decode(&out).expect("round-trip decode of line_length=2 input failed");
+        assert_eq!(decoded.data, data);
     }
 
     #[test]

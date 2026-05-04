@@ -5,11 +5,11 @@
 /// acceptable.
 use uuencoding::{decode, encode, scan};
 
-/// Call `decode(input)` and `scan(input).count()`.  Either may return an error;
+/// Call `decode(input)` and `scan(input)`.  Either may return an error;
 /// neither must panic.
 fn must_not_panic(input: &[u8]) {
     let _ = decode(input);
-    let _ = scan(input).count();
+    let _ = scan(input).len();
 }
 
 #[test]

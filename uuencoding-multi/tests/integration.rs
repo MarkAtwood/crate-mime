@@ -111,9 +111,14 @@ fn missing_middle_part_is_truncated() {
     let result = reassemble(&c).unwrap();
     assert!(result.is_truncated, "missing a part must set is_truncated");
     assert_eq!(result.missing_parts, vec![2]);
-    // Data is part1-decoded ++ part3-decoded; no panics, no mixing of bytes.
-    // We don't assert exact content beyond it being non-empty.
-    assert!(!result.data.is_empty());
+    // Oracle: part1 decodes to FULL[0..15] = b"The quick brown"
+    //         part3 decodes to FULL[30..]  = b" the lazy dog."
+    // Concatenated in ascending part order: part1 ++ part3
+    // (part2 bytes b" fox jumps over" are absent — this is NOT a valid file)
+    assert_eq!(
+        result.data, b"The quick brown the lazy dog.",
+        "data must be the concatenation of present parts' decoded bytes"
+    );
 }
 
 // ---------------------------------------------------------------------------

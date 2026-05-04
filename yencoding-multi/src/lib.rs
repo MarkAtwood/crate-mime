@@ -72,5 +72,5 @@
 mod assembler;
 mod error;
 
-pub use assembler::Assembler;
+pub use assembler::{Assembler, MAX_TOTAL_SIZE};
 pub use error::AssemblyError;

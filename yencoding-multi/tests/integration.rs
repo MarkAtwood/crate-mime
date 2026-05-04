@@ -3,9 +3,13 @@
 //! # Oracle provenance
 //!
 //! All test payloads use known byte sequences. CRC32 values are computed
-//! from Python: `binascii.crc32(data) & 0xFFFFFFFF`. Round-trip tests
-//! use the yencoding crate's encode_part() to build articles, then decode()
-//! to recover parts — verifying the full pipeline.
+//! independently from Python: `binascii.crc32(data) & 0xFFFFFFFF` — NOT from
+//! `crc32fast::hash`, which is the crate under test. Round-trip tests use the
+//! yencoding crate's encode_part() to build articles, then decode() to recover
+//! parts — verifying the full pipeline.
+//!
+//! Independently-verified CRC32 values:
+//!   bytes(range(90)):  `python3 -c "import binascii; print(hex(binascii.crc32(bytes(range(90))) & 0xFFFFFFFF))"` → 0xb43b1251
 
 use yencoding::{decode, encode_part, EncodePartOptions, DEFAULT_LINE_LENGTH};
 use yencoding_multi::{Assembler, AssemblyError};
@@ -13,6 +17,12 @@ use yencoding_multi::{Assembler, AssemblyError};
 // ---------------------------------------------------------------------------
 // Helper: encode bytes(range(N)) into M equal parts, decode them, and add to
 // an Assembler. Returns the Assembler and the original data for comparison.
+//
+// IMPORTANT: The `whole_crc` returned here uses `crc32fast::hash` only for
+// the encode_part() API (which needs the value to write into the yEnc header).
+// The positive CRC correctness test (three_parts_in_order) does NOT rely on
+// this helper's CRC — it uses a hardcoded value from the independent Python
+// oracle instead.
 // ---------------------------------------------------------------------------
 fn encode_and_assemble(total_bytes: u8, num_parts: usize) -> (Assembler, Vec<u8>, u32) {
     let full: Vec<u8> = (0..total_bytes).collect();
@@ -57,7 +67,16 @@ fn encode_and_assemble(total_bytes: u8, num_parts: usize) -> (Assembler, Vec<u8>
 
 #[test]
 fn three_parts_in_order() {
-    let (assembler, full, _crc) = encode_and_assemble(90, 3); // 30 bytes each
+    // CRC32 oracle: independently computed via Python —
+    //   python3 -c "import binascii; print(hex(binascii.crc32(bytes(range(90))) & 0xFFFFFFFF))"
+    //   → 0xb43b1251
+    // This hardcoded value (not crc32fast::hash) is the independent correctness check.
+    const EXPECTED_CRC: u32 = 0xb43b1251;
+
+    let (mut assembler, full, _internal_crc) = encode_and_assemble(90, 3); // 30 bytes each
+                                                                           // Override the CRC set by encode_and_assemble with the independently-verified value.
+    assembler.set_expected_crc32(EXPECTED_CRC);
+
     assert!(assembler.is_complete(), "should be complete");
     let result = assembler.finish().expect("finish failed");
     assert_eq!(result, full);
@@ -174,7 +193,47 @@ fn duplicate_part_rejected() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. CRC mismatch on finish
+// 5. Overlapping (non-duplicate) byte ranges rejected
+// ---------------------------------------------------------------------------
+
+#[test]
+fn overlapping_part_rejected() {
+    // Part 1: bytes 0..59 (yEnc begin=1, end=60)
+    // Part 2: bytes 49..99 (yEnc begin=50, end=100) — overlaps part 1 by 10 bytes
+    // This is distinct from an exact duplicate: begin/end differ, but the ranges
+    // share bytes 49..59.
+    let full: Vec<u8> = (0u8..100).collect();
+    let whole_crc = crc32fast::hash(&full);
+
+    let make_enc = |start: usize, end: usize, part: u32| {
+        let opts = EncodePartOptions {
+            filename: "f.bin",
+            total_size: 100,
+            total_parts: 2,
+            part,
+            begin: (start + 1) as u64,
+            end: end as u64,
+            whole_file_crc32: whole_crc,
+            line_length: yencoding::DEFAULT_LINE_LENGTH,
+        };
+        decode(&encode_part(&full[start..end], &opts)).unwrap()
+    };
+
+    let p1 = make_enc(0, 60, 1); // bytes 0..59 (0-based)
+    let p2 = make_enc(49, 100, 2); // bytes 49..99 — overlaps p1 in bytes 49..59
+
+    let mut assembler = Assembler::new(100).unwrap();
+    assembler.add_part(&p1).unwrap();
+    let err = assembler.add_part(&p2).unwrap_err();
+    assert!(
+        matches!(err, AssemblyError::OverlappingPart { .. }),
+        "expected OverlappingPart for non-duplicate overlap, got: {:?}",
+        err
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 7. CRC mismatch on finish
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -202,6 +261,83 @@ fn crc_mismatch_on_finish() {
 }
 
 // ---------------------------------------------------------------------------
+// 6a. total_size mismatch: declared size larger than assembled data
+//     (parts cover fewer bytes than total_size claims)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn total_size_larger_than_assembled_data() {
+    // Declare total_size = 60, but only supply 30 bytes of data covering
+    // bytes 0..30. The assembler must not silently accept a "complete"
+    // result — is_complete() must be false and finish() must fail.
+    let full: Vec<u8> = (0u8..60).collect();
+    let whole_crc = crc32fast::hash(&full);
+
+    let opts = EncodePartOptions {
+        filename: "f.bin",
+        total_size: 60,
+        total_parts: 2,
+        part: 1,
+        begin: 1,
+        end: 30,
+        whole_file_crc32: whole_crc,
+        line_length: DEFAULT_LINE_LENGTH,
+    };
+    let p1 = decode(&encode_part(&full[..30], &opts)).unwrap();
+
+    // Assembler told to expect 60 bytes, but we only add 30.
+    let mut assembler = Assembler::new(60).unwrap();
+    assembler.add_part(&p1).unwrap();
+
+    assert!(
+        !assembler.is_complete(),
+        "should not be complete with only 30/60 bytes"
+    );
+    assert_eq!(assembler.missing_ranges(), vec![30u64..60]);
+
+    let err = assembler.finish().unwrap_err();
+    assert!(
+        matches!(err, AssemblyError::Incomplete { ref missing } if missing == &[30u64..60]),
+        "expected Incomplete, got: {:?}",
+        err
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 6b. total_size mismatch: declared size smaller than assembled data
+//     (a part's byte range extends beyond total_size)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn total_size_smaller_than_part_range() {
+    // Assembler declared for 20 bytes, but we hand it a part claiming bytes
+    // 1..30 (0-based 0..30). add_part must return OutOfRange.
+    let full: Vec<u8> = (0u8..30).collect();
+    let whole_crc = crc32fast::hash(&full);
+
+    let opts = EncodePartOptions {
+        filename: "f.bin",
+        total_size: 30, // encoder's declared size (correct for encode_part)
+        total_parts: 1,
+        part: 1,
+        begin: 1,
+        end: 30,
+        whole_file_crc32: whole_crc,
+        line_length: DEFAULT_LINE_LENGTH,
+    };
+    let part = decode(&encode_part(&full, &opts)).unwrap();
+
+    // But the assembler was initialised with only 20 bytes — mismatch.
+    let mut assembler = Assembler::new(20).unwrap();
+    let err = assembler.add_part(&part).unwrap_err();
+    assert!(
+        matches!(err, AssemblyError::OutOfRange { .. }),
+        "expected OutOfRange when part range exceeds total_size, got: {:?}",
+        err
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 6. Empty file (zero total_size)
 // ---------------------------------------------------------------------------
 
@@ -215,7 +351,7 @@ fn zero_byte_file() {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Large file: sweep of sizes
+// 9. Large file: sweep of sizes
 // ---------------------------------------------------------------------------
 
 #[test]

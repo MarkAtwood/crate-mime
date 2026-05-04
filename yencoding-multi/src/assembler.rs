@@ -51,6 +51,13 @@ pub struct Assembler {
     expected_crc32: Option<u32>,
 }
 
+/// Maximum `total_size` accepted by [`Assembler::new`].
+///
+/// Requests for a buffer larger than 512 MiB are rejected with
+/// [`AssemblyError::TotalSizeTooLarge`] to prevent a remote sender from
+/// forcing an arbitrarily large allocation via the `=ybegin size=` field.
+pub const MAX_TOTAL_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
+
 impl Assembler {
     /// Create a new assembler for a file of exactly `total_size` bytes.
     ///
@@ -59,10 +66,13 @@ impl Assembler {
     ///
     /// # Errors
     ///
-    /// Returns [`AssemblyError::TotalSizeTooLarge`] if `total_size` cannot be
-    /// represented as a `usize` on the current platform (e.g. > 4 GiB on
-    /// 32-bit targets).
+    /// Returns [`AssemblyError::TotalSizeTooLarge`] if `total_size` exceeds
+    /// [`MAX_TOTAL_SIZE`] (512 MiB) or cannot be represented as a `usize` on
+    /// the current platform (e.g. > 4 GiB on 32-bit targets).
     pub fn new(total_size: u64) -> Result<Self, AssemblyError> {
+        if total_size > MAX_TOTAL_SIZE {
+            return Err(AssemblyError::TotalSizeTooLarge { total_size });
+        }
         let size = usize::try_from(total_size)
             .map_err(|_| AssemblyError::TotalSizeTooLarge { total_size })?;
         Ok(Self {
@@ -100,6 +110,22 @@ impl Assembler {
     ///   a previously added part.
     /// - [`AssemblyError::DataLengthMismatch`] — the part's decoded data length
     ///   does not match its declared `begin`/`end` range.
+    ///
+    /// # Per-part CRC and `crc32_verified`
+    ///
+    /// `yencoding::decode()` performs per-part CRC verification itself: if a
+    /// `pcrc32=` field is present in `=yend` and the decoded bytes do not match,
+    /// `decode()` returns `Err(YencError::CrcMismatch)` and the corrupt part
+    /// never reaches this function. A `DecodedPart` that arrives here with
+    /// `crc32_verified = false` means only that **no per-part CRC was present**
+    /// in the article (e.g. an older encoder that omitted `pcrc32=`), not that a
+    /// CRC check failed silently.
+    ///
+    /// When no `pcrc32=` is present the only file-integrity safety net is the
+    /// whole-file CRC32 checked by [`finish`][Self::finish]. If you need
+    /// integrity guarantees for encoders that omit per-part CRCs, always call
+    /// [`set_expected_crc32`][Self::set_expected_crc32] with the whole-file CRC
+    /// before calling `finish()`.
     ///
     /// # Notes
     ///
@@ -210,6 +236,14 @@ impl Assembler {
     /// - [`AssemblyError::Incomplete`] — some byte ranges are not yet covered.
     /// - [`AssemblyError::CrcMismatch`] — CRC32 mismatch (only when an expected
     ///   CRC was set).
+    ///
+    /// # Integrity note
+    ///
+    /// If no expected CRC32 was set (via [`set_expected_crc32`][Self::set_expected_crc32]),
+    /// this function cannot detect corruption in parts whose articles lacked a
+    /// `pcrc32=` field — `yencoding::decode()` only verifies integrity when a
+    /// per-part CRC is present. For maximum reliability, always provide the
+    /// whole-file CRC32 from the `crc32=` field in the final part's `=yend` line.
     ///
     /// On success the assembler is consumed and the buffer is returned without
     /// copying.
@@ -487,6 +521,26 @@ mod tests {
     fn total_size_too_large_rejected() {
         let err = Assembler::new(u64::MAX).unwrap_err();
         assert!(matches!(err, AssemblyError::TotalSizeTooLarge { .. }));
+    }
+
+    #[test]
+    fn total_size_above_cap_rejected() {
+        // Any size > MAX_TOTAL_SIZE must be rejected, regardless of platform
+        // word size. Using cap+1 as the minimal over-limit value.
+        let cap = crate::MAX_TOTAL_SIZE;
+        let result = Assembler::new(cap + 1);
+        assert!(
+            matches!(result, Err(AssemblyError::TotalSizeTooLarge { .. })),
+            "expected TotalSizeTooLarge for size > 512 MiB"
+        );
+    }
+
+    #[test]
+    fn total_size_within_cap_accepted() {
+        // A small, well-within-cap size must still be accepted after adding
+        // the 512 MiB cap check.
+        let result = Assembler::new(1024);
+        assert!(result.is_ok(), "1 KiB assembler must be accepted");
     }
 
     // -----------------------------------------------------------------------

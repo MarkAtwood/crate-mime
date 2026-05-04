@@ -220,12 +220,28 @@ fn parse_line(line: &str) -> Option<TocEntry> {
     None
 }
 
-/// Heuristic gate: a bare word like "garbage" or "just" should not be
-/// treated as a filename.  We require at least one `.` in the name, or
-/// that it contains a path separator, which is a loose but practical signal
-/// that it is a real filename rather than a prose word.
+/// Heuristic gate: a bare word like `"garbage"` or `"just"` should not be
+/// treated as a filename.
+///
+/// We require either:
+/// - a path separator (`/` or `\`), which strongly implies a path, or
+/// - a `.` whose extension part (the text after the last `.`) contains at
+///   least one alphabetic character — this rejects bare decimal numbers like
+///   `"1.5"` or `"3.14"` while accepting `"file.bin"`, `"1.txt"`,
+///   `"archive.tar.gz"`, and Unicode filenames like `"日本語.tar.gz"`.
+///
+/// **Known limitation**: a string like `"foo.123"` (digits-only extension)
+/// is rejected. This is intentional: pure-numeric extensions are rare in
+/// real-world UU archive filenames and are more likely to be numeric tokens.
 fn looks_like_filename(s: &str) -> bool {
-    s.contains('.') || s.contains('/') || s.contains('\\')
+    if s.contains('/') || s.contains('\\') {
+        return true;
+    }
+    if let Some(dot_pos) = s.rfind('.') {
+        let ext = &s[dot_pos + 1..];
+        return ext.chars().any(|c| c.is_alphabetic());
+    }
+    false
 }
 
 // ---------------------------------------------------------------------------
@@ -506,5 +522,27 @@ mod tests {
         let body = b"file.tar.gz   100 bytes   part 3-6\n";
         let toc = parse_toc(body).expect("should parse");
         assert_eq!(toc.entries[0].parts, Some(3..=6));
+    }
+
+    // ------------------------------------------------------------------
+    // looks_like_filename — decimal numbers are not filenames (592.9)
+    // ------------------------------------------------------------------
+
+    /// Bare decimal numbers like "1.5" or "3.14" must not be accepted as
+    /// filenames; their extension is digits-only.
+    #[test]
+    fn decimal_number_is_not_a_filename() {
+        assert!(
+            !looks_like_filename("1.5"),
+            "\"1.5\" must not be treated as a filename"
+        );
+        assert!(
+            !looks_like_filename("3.14"),
+            "\"3.14\" must not be treated as a filename"
+        );
+        // Sanity-check: real filenames still pass.
+        assert!(looks_like_filename("file.bin"));
+        assert!(looks_like_filename("archive.tar.gz"));
+        assert!(looks_like_filename("1.txt"));
     }
 }

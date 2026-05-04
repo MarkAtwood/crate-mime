@@ -108,11 +108,11 @@ impl PartCollection {
     ///
     /// # Note: `total = 0`
     ///
-    /// Passing `total = 0` sets the expected part range to `1..=0`, which is
-    /// empty. As a result [`missing_parts`][Self::missing_parts] returns `[]`
-    /// and [`is_complete`][Self::is_complete] returns `true` immediately,
-    /// before any parts are added. If you do not yet know the total, use
-    /// [`new`][Self::new] instead.
+    /// Passing `total = 0` is treated the same as calling [`new`][Self::new]:
+    /// the total is considered unknown and will be inferred from the highest
+    /// part number added. A subject like `"file.bin (3/0)"` produces
+    /// `part_total = Some(0)`, which is nonsensical; passing that value here
+    /// is safe because `0` is silently normalised to "unknown".
     ///
     /// # Example
     ///
@@ -123,10 +123,19 @@ impl PartCollection {
     /// assert_eq!(coll.total(), Some(7));
     /// assert_eq!(coll.missing_parts().len(), 7); // parts 1–7 all missing
     /// ```
+    ///
+    /// ```
+    /// use uuencoding_multi::PartCollection;
+    ///
+    /// // total = 0 is treated as unknown, same as PartCollection::new().
+    /// let coll = PartCollection::with_total(0);
+    /// assert_eq!(coll.total(), None);
+    /// assert!(!coll.is_complete());
+    /// ```
     pub fn with_total(total: u32) -> Self {
         Self {
             parts: BTreeMap::new(),
-            total: Some(total),
+            total: if total == 0 { None } else { Some(total) },
         }
     }
 
@@ -410,19 +419,24 @@ mod tests {
         assert!(c.is_complete());
     }
 
+    /// `is_complete()` returns `false` when there is a gap: parts 1 and 3
+    /// are present (total inferred as 3) but part 2 is missing.
     #[test]
-    fn is_complete_false_when_total_unknown() {
+    fn is_complete_false_with_gap() {
         let mut c = PartCollection::new();
         c.add(part(1)).unwrap();
-        // total gets set to 1 automatically (highest seen), so we need to
-        // verify is_complete() returns true when total==1 and part 1 is present.
-        // The test intent from the bead: "false when total unknown" — but with
-        // our auto-bump logic total becomes known. Add a second part expectation
-        // to create a genuine gap instead.
-        let mut c2 = PartCollection::new();
-        c2.add(part(1)).unwrap();
-        c2.add(part(3)).unwrap(); // total bumps to 3; part 2 is missing
-        assert!(!c2.is_complete());
+        c.add(part(3)).unwrap(); // total bumps to 3; part 2 is missing
+        assert!(!c.is_complete());
+        assert_eq!(c.missing_parts(), vec![2]);
+    }
+
+    /// `is_complete()` returns `false` when the total is genuinely unknown
+    /// (empty collection with no declared total).
+    #[test]
+    fn is_complete_false_when_total_unknown() {
+        let c = PartCollection::new();
+        assert_eq!(c.total(), None, "empty collection has no total");
+        assert!(!c.is_complete(), "cannot be complete without a known total");
     }
 
     #[test]
@@ -457,6 +471,15 @@ mod tests {
     fn with_total_sets_total() {
         let c = PartCollection::with_total(5);
         assert_eq!(c.total(), Some(5));
+    }
+
+    #[test]
+    fn with_total_zero_treated_as_unknown() {
+        // with_total(0) must behave like new(): total unknown, is_complete false.
+        let c = PartCollection::with_total(0);
+        assert_eq!(c.total(), None);
+        assert!(!c.is_complete());
+        assert!(c.missing_parts().is_empty());
     }
 
     #[test]

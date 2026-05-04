@@ -14,19 +14,38 @@ use crate::{MultiUuError, PartCollection};
 pub struct ReassembledFile {
     /// Filename extracted from the `begin` line of the first UU part.
     ///
-    /// This is whatever filename appeared in the source message; it is not
-    /// sanitised. Callers that write this to disk should validate it against
-    /// path-traversal patterns.
+    /// **Security — path traversal**: the filename comes directly from the
+    /// email or Usenet message and is not sanitised. Real-world UU archives
+    /// have been observed with filenames containing `../` sequences. Sanitise
+    /// this value before using it as a filesystem path to prevent directory
+    /// traversal attacks (e.g. reject names containing `/`, `\`, or `..`
+    /// components, and resolve the final path against an allowed base
+    /// directory).
     pub filename: String,
     /// Unix permission mode (e.g. `0o644`) from the `begin` line of the first
     /// part. Subsequent parts may specify different modes; only the first
     /// part's value is used.
     pub mode: u32,
-    /// Decoded binary payload, formed by concatenating the decoded output of
-    /// each present part in ascending `part_number` order.
+    /// Decoded binary payload.
     ///
-    /// When `is_truncated` is `true` this slice is incomplete: it contains
-    /// only the bytes contributed by the parts that were present.
+    /// When [`is_truncated`][Self::is_truncated] is `false`, this is the
+    /// complete decoded file content, formed by concatenating the decoded
+    /// output of every part in ascending `part_number` order.
+    ///
+    /// # When `is_truncated` is `true`
+    ///
+    /// `data` contains **only the decoded bytes of the parts that were
+    /// present**, concatenated in ascending part-number order. This is **not**
+    /// a contiguous region of the reconstructed file: the bytes belonging to
+    /// the absent parts are simply missing from the middle (or start, or end).
+    /// The resulting byte sequence does **not** correspond to any valid file
+    /// offset range.
+    ///
+    /// **Do not write truncated data to disk as if it were a complete file.**
+    /// The bytes are provided for diagnostic inspection only (e.g. logging,
+    /// partial-content display). To obtain a usable file, wait until
+    /// [`is_complete()`][crate::PartCollection::is_complete] returns `true`
+    /// before calling [`reassemble`].
     pub data: Vec<u8>,
     /// `true` when one or more parts were absent from the collection, or when
     /// any individual part's UU body was missing its `end` line. The data is
@@ -63,8 +82,15 @@ pub struct ReassembledFile {
 ///
 /// When parts are missing the function still returns `Ok` rather than an
 /// error. The result has `is_truncated = true` and `missing_parts` listing
-/// the absent part numbers. `data` contains the concatenation of the parts
-/// that *were* present, which is useful for diagnostic inspection.
+/// the absent part numbers. `data` contains the decoded bytes of only the
+/// **present** parts concatenated in order.
+///
+/// **This is not a contiguous file region.** The bytes from the missing parts
+/// are absent, so the data does not correspond to a valid byte range within
+/// the original file. Do not write this to disk as a complete file. It is
+/// suitable for diagnostics only. Call
+/// [`PartCollection::is_complete()`][crate::PartCollection::is_complete]
+/// before reassembling if you require a usable result.
 ///
 /// # Never panics
 ///
@@ -78,6 +104,11 @@ pub struct ReassembledFile {
 /// decompression is the caller's responsibility and must be independently
 /// guarded against decompression-bomb attacks. This crate does not
 /// decompress.
+///
+/// The `filename` field of the returned [`ReassembledFile`] comes from the
+/// email subject or UU `begin` line and is **not sanitised**. Sanitise it
+/// before using it as a filesystem path to prevent directory traversal
+/// attacks.
 ///
 /// # Example
 ///

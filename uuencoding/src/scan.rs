@@ -134,8 +134,7 @@ fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
         .position(|b| !b.is_ascii_whitespace())
         .unwrap_or(after_mode.len());
     let filename_bytes = &after_mode[filename_skip..];
-    let filename = std::str::from_utf8(filename_bytes)
-        .ok()?
+    let filename = String::from_utf8_lossy(filename_bytes)
         .trim_end()
         .to_string();
 
@@ -163,7 +162,9 @@ fn handle_block(
 ) {
     if is_begin_base64(begin_line_trimmed) {
         // Emit the error, then skip past the ==== terminator.
-        results.push(Err(UuError::BeginBase64));
+        results.push(Err(UuError::BeginBase64 {
+            begin_offset: line_start,
+        }));
 
         // Advance past the begin-base64 line
         let begin_line_end = memchr(b'\n', &input[line_start..])
@@ -199,6 +200,7 @@ fn handle_block(
                 .unwrap_or(input.len());
             results.push(Err(UuError::InvalidBeginLine {
                 line: String::from_utf8_lossy(begin_line_trimmed).into_owned(),
+                begin_offset: line_start,
             }));
             *pos = line_end;
             return;
@@ -238,9 +240,14 @@ fn handle_block(
         let data_len_before = data.len();
         match decode_line(lt, &mut data) {
             Ok(0) => {
-                // Zero-length line: either the terminator or a blank line in
-                // the terminator look-ahead.  Keep saw_terminator=true so the
-                // next line is still checked for "end".
+                if saw_terminator {
+                    // A second zero-length line after the terminator: decode()
+                    // look-ahead stops here (non-empty, non-"end" line) and
+                    // returns is_truncated=true.  Match that behaviour.
+                    end_offset = ls;
+                    break;
+                }
+                // First zero-length line: this is the terminator.
                 saw_terminator = true;
                 scan_pos = le;
             }
@@ -414,7 +421,7 @@ mod tests {
         assert_eq!(results.len(), 2);
 
         // First: error for begin-base64
-        assert!(matches!(results[0], Err(UuError::BeginBase64)));
+        assert!(matches!(results[0], Err(UuError::BeginBase64 { .. })));
 
         // Second: the valid UU block
         let block = results[1].as_ref().unwrap();
@@ -574,6 +581,82 @@ mod tests {
         assert_eq!(block.begin_offset, 0);
         assert_eq!(block.end_offset, HELLO_BLOCK.len());
         assert_eq!(block.data, b"Hello");
+    }
+
+    // MIME-592.28: CRLF line endings must produce the same result as LF-only
+    // endings.  The scanner strips '\r' before processing each line, so the
+    // decoded blocks should be identical.
+    //
+    // Oracle: b"begin 644 file.bin\n%2&5L;&\\ \n \nend\n" decodes "Hello".
+    // CRLF variant: replace every '\n' with '\r\n'.
+    #[test]
+    fn crlf_line_endings_same_as_lf() {
+        // Build CRLF version of HELLO_BLOCK by replacing every \n with \r\n.
+        let crlf_block: Vec<u8> = HELLO_BLOCK
+            .iter()
+            .flat_map(|&b| {
+                if b == b'\n' {
+                    vec![b'\r', b'\n']
+                } else {
+                    vec![b]
+                }
+            })
+            .collect();
+
+        let lf_results = scan_impl(HELLO_BLOCK);
+        let crlf_results = scan_impl(&crlf_block);
+
+        assert_eq!(
+            lf_results.len(),
+            crlf_results.len(),
+            "CRLF and LF inputs must find the same number of blocks"
+        );
+        for (lf, crlf) in lf_results.iter().zip(crlf_results.iter()) {
+            let lf_block = lf.as_ref().unwrap();
+            let crlf_block = crlf.as_ref().unwrap();
+            assert_eq!(
+                lf_block.data, crlf_block.data,
+                "decoded data must match between LF and CRLF inputs"
+            );
+            assert_eq!(
+                lf_block.metadata.filename, crlf_block.metadata.filename,
+                "filename must match between LF and CRLF inputs"
+            );
+            assert_eq!(
+                lf_block.metadata.mode, crlf_block.metadata.mode,
+                "mode must match between LF and CRLF inputs"
+            );
+            assert_eq!(
+                lf_block.is_truncated, crlf_block.is_truncated,
+                "is_truncated must match between LF and CRLF inputs"
+            );
+        }
+    }
+
+    // MIME-592.29: a begin-base64 header with no ==== terminator must be
+    // handled gracefully.  The scanner should emit exactly one Err item
+    // (UuError::BeginBase64) and not panic or loop forever.  The result is
+    // treated as a truncated/incomplete block — there is no additional Ok item.
+    //
+    // Oracle: no external tool needed; the terminator is simply absent, so the
+    // scanner walks to EOF while looking for ====.
+    #[test]
+    fn begin_base64_truncated_no_terminator() {
+        // begin-base64 header followed by base64 data but no ==== terminator.
+        let input = b"begin-base64 644 file.txt\naGVsbG8=\nmore data\nno terminator here\n";
+
+        let results = scan_impl(input);
+
+        // Must return exactly one Err item for the begin-base64 line.
+        assert_eq!(
+            results.len(),
+            1,
+            "expected exactly one result for truncated begin-base64"
+        );
+        assert!(
+            matches!(results[0], Err(UuError::BeginBase64 { .. })),
+            "result must be Err(BeginBase64)"
+        );
     }
 
     #[test]

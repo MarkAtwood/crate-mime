@@ -69,6 +69,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         None => {
             return Err(UuError::InvalidBeginLine {
                 line: String::new(),
+                begin_offset: 0,
             })
         }
     };
@@ -84,7 +85,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         && begin_line[..12].eq_ignore_ascii_case(b"begin-base64")
         && (begin_line.len() == 12 || begin_line[12].is_ascii_whitespace());
     if is_begin_base64 {
-        return Err(UuError::BeginBase64);
+        return Err(UuError::BeginBase64 { begin_offset: 0 });
     }
 
     // --- Parse begin line ---
@@ -92,12 +93,6 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         .split(|b: &u8| b.is_ascii_whitespace())
         .filter(|t| !t.is_empty())
         .collect();
-
-    if tokens.is_empty() || !tokens[0].eq_ignore_ascii_case(b"begin") {
-        return Err(UuError::InvalidBeginLine {
-            line: String::from_utf8_lossy(begin_line).into_owned(),
-        });
-    }
 
     let mode: u32 = if tokens.len() >= 2 {
         let mode_str = std::str::from_utf8(tokens[1]).unwrap_or("");
@@ -501,7 +496,7 @@ mod tests {
     fn begin_base64_error() {
         let input = b"begin-base64 644 foo.txt\nSGVsbG8=\n====\nend\n";
         let err = decode_block(input).unwrap_err();
-        assert_eq!(err, UuError::BeginBase64);
+        assert!(matches!(err, UuError::BeginBase64 { .. }));
     }
 
     /// begin-base64 is case-insensitive
@@ -509,7 +504,7 @@ mod tests {
     fn begin_base64_case_insensitive() {
         let input = b"BEGIN-BASE64 644 foo.txt\nSGVsbG8=\n====\nend\n";
         let err = decode_block(input).unwrap_err();
-        assert_eq!(err, UuError::BeginBase64);
+        assert!(matches!(err, UuError::BeginBase64 { .. }));
     }
 
     /// Malformed begin line (just "begin", no mode or filename)
@@ -534,12 +529,10 @@ mod tests {
     fn no_begin_line() {
         let input = b"some random text\nM  $\"\n \nend\n";
         let err = decode_block(input).unwrap_err();
-        assert_eq!(
+        assert!(matches!(
             err,
-            UuError::InvalidBeginLine {
-                line: String::new()
-            }
-        );
+            UuError::InvalidBeginLine { line, .. } if line.is_empty()
+        ));
     }
 
     /// Missing end line → Ok with is_truncated=true

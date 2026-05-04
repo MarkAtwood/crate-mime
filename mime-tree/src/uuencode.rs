@@ -54,19 +54,20 @@ pub struct InlineUUBlock {
     /// complete UU block from the `begin` line through the `end` line
     /// (inclusive).
     ///
-    /// **Note:** When [`is_encoding_problem`] is `true` and the block boundary
-    /// could not be determined (e.g. for `begin-base64` detection errors),
-    /// this field is `0` and the slicing invariant does not hold.
-    /// Always check `is_encoding_problem` before using this field.
+    /// **Note:** When [`is_encoding_problem`] is `true`, the slicing invariant
+    /// (`begin_offset + begin_length` spans the full block) does not hold
+    /// because `begin_length` is `0` for error items.  `begin_offset` does
+    /// reflect the actual position of the offending `begin` or `begin-base64`
+    /// line within `raw`, so it can be used for diagnostic purposes.
     pub begin_offset: u32,
 
     /// Byte length of the entire UU block: from the start of the `begin` line
     /// through the end of the `end` line (inclusive of its newline).
     ///
-    /// **Note:** When [`is_encoding_problem`] is `true` and the block boundary
-    /// could not be determined (e.g. for `begin-base64` detection errors),
-    /// this field is `0` and the slicing invariant does not hold.
-    /// Always check `is_encoding_problem` before using this field.
+    /// **Note:** When [`is_encoding_problem`] is `true`, this field is `0`
+    /// because the block end boundary is not determined for error items
+    /// (`begin-base64` and malformed `begin` lines).  Always check
+    /// `is_encoding_problem` before relying on this field.
     pub begin_length: u32,
 
     /// File permission mode parsed from the `begin` line, e.g. `0o644`.
@@ -121,10 +122,10 @@ pub struct InlineUUBlock {
 /// * Byte offsets in the returned [`InlineUUBlock`]s are absolute — they are
 ///   relative to the start of `raw`, matching the coordinate space of
 ///   `part.body_range`.
-/// * For error items where [`InlineUUBlock::is_encoding_problem`] is `true`
-///   and the block could not be located (e.g. `begin-base64` detection
-///   errors), `begin_offset` and `begin_length` may both be `0` and the
-///   slicing invariant does not hold.
+/// * For error items where [`InlineUUBlock::is_encoding_problem`] is `true`,
+///   `begin_offset` is the position of the offending `begin` or `begin-base64`
+///   line within `raw` and `begin_length` is `0`.  The slicing invariant
+///   (`raw[begin_offset..begin_offset + begin_length]` == block) does not hold.
 /// * No panic occurs on any input (malformed, truncated, or adversarial).
 ///
 /// # Example
@@ -159,6 +160,7 @@ pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock>
     let body = &raw[offset..end];
 
     uuencoding::scan(body)
+        .into_iter()
         .map(|result| match result {
             Ok(block) => {
                 // Convert relative-to-body usize offsets to absolute u32 offsets.
@@ -175,15 +177,22 @@ pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock>
                     is_encoding_problem: block.is_truncated,
                 }
             }
-            Err(_) => {
+            Err(e) => {
                 // UuError::BeginBase64 or UuError::InvalidBeginLine.
-                // We have no offset info from an error item, so we emit a
-                // zero-offset sentinel with is_encoding_problem=true and no data.
-                // In practice scan() does not emit Err items for blocks that
-                // were successfully located — only for begin-base64 or
-                // completely unrecognised begin lines.
+                // Both variants now carry the byte offset of the offending
+                // begin line within the body slice.
+                let rel_begin = match &e {
+                    uuencoding::UuError::BeginBase64 { begin_offset } => *begin_offset,
+                    uuencoding::UuError::InvalidBeginLine { begin_offset, .. } => *begin_offset,
+                    // InvalidChar is never emitted by scan() — it is produced
+                    // only during decode_line() and is absorbed into the
+                    // ScannedBlock's is_truncated field.  Treat it as offset 0.
+                    _ => 0,
+                };
+                let abs_begin =
+                    offset_u32.saturating_add(u32::try_from(rel_begin).unwrap_or(u32::MAX));
                 InlineUUBlock {
-                    begin_offset: 0,
+                    begin_offset: abs_begin,
                     begin_length: 0,
                     mode: 0,
                     filename: String::new(),
@@ -493,7 +502,8 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // begin-base64 block is reported with is_encoding_problem=true
+    // begin-base64 block is reported with is_encoding_problem=true and
+    // begin_offset set to the actual position of the begin-base64 line.
     // -----------------------------------------------------------------------
     #[test]
     fn test_begin_base64_is_encoding_problem() {
@@ -514,11 +524,39 @@ mod tests {
             blocks[0].is_encoding_problem,
             "begin-base64 block must have is_encoding_problem=true"
         );
+        // begin_offset must be 0 (begin-base64 is at start of body, no prefix)
+        assert_eq!(
+            blocks[0].begin_offset, 0,
+            "begin-base64 at body start must have begin_offset=0"
+        );
         assert!(
             !blocks[1].is_encoding_problem,
             "valid UU block must not have is_encoding_problem"
         );
         assert_eq!(blocks[1].data, b"Hello");
+    }
+
+    // -----------------------------------------------------------------------
+    // begin-base64 with prefix: begin_offset reflects actual position
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_begin_base64_offset_with_prefix() {
+        // Prose before the begin-base64 block: begin_offset must not be 0.
+        let prefix = b"Some prose before.\n"; // 19 bytes
+        let b64_block = b"begin-base64 644 file.txt\naGVsbG8=\n====\n";
+        let mut body = Vec::new();
+        body.extend_from_slice(prefix);
+        body.extend_from_slice(b64_block);
+        let (raw, part) = make_part(b"", &body);
+
+        let blocks = scan_inline_uuencode(&raw, &part);
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].is_encoding_problem);
+        assert_eq!(
+            blocks[0].begin_offset,
+            prefix.len() as u32,
+            "begin_offset must equal the prefix length"
+        );
     }
 
     // -----------------------------------------------------------------------
