@@ -1,3 +1,3 @@
 [workspace]
-members = ["mime-tree", "smime-tree", "uuencoding", "uuencoding-multi"]
+members = ["mime-tree", "smime-tree", "uuencoding", "uuencoding-multi", "yencoding"]
 resolver = "2"
