@@ -1,0 +1,16 @@
+[package]
+name = "uuencoding-multi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+description = "Multi-part UUencoded Usenet/email post reassembly"
+
+[dependencies]
+uuencoding = { path = "../uuencoding" }
+regex = "1"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
