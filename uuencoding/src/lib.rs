@@ -193,6 +193,37 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
     decode::decode(input)
 }
 
+/// Decode a single UU block from `input`, stopping early once `max_bytes`
+/// decoded bytes have been produced.
+///
+/// This is a preview-efficient variant of [`decode`]: when only the first
+/// `N` bytes of a potentially large attachment are needed, it avoids
+/// allocating a decode buffer proportional to the full encoded input.
+/// Decoding halts as soon as the payload reaches `max_bytes`; the returned
+/// [`DecodedBlock`] will have `is_truncated = true` and at most `max_bytes`
+/// bytes in `data`.
+///
+/// Passing `None` is equivalent to calling [`decode`].
+///
+/// # Errors
+///
+/// Same as [`decode`].
+///
+/// # Examples
+///
+/// ```rust
+/// // Decode only the first 5 bytes of a 13-byte payload.
+/// let block = uuencoding::decode_limited(
+///     b"begin 644 hello.txt\n-2&5L;&\\L(%=O<FQD(0  \n \nend\n",
+///     Some(5),
+/// ).unwrap();
+/// assert_eq!(block.data, b"Hello");
+/// assert!(block.is_truncated);
+/// ```
+pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedBlock, UuError> {
+    decode::decode_limited(input, max_bytes)
+}
+
 /// Encode `data` as a UU block with the given `filename` and Unix `mode`.
 ///
 /// Returns the complete encoded block as a byte vector, including the

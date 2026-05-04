@@ -40,15 +40,24 @@ fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 }
 
 /// Returns true if `line` (already stripped of \r\n) starts with `begin`
-/// (case-insensitive ASCII), including bare `begin` with no trailing space.
+/// (case-insensitive ASCII) followed by whitespace, `-`, or end-of-line.
 ///
-/// This matches the detection behavior of `uuencoding::decode`, which accepts
-/// any line whose lowercased form starts with `b"begin"`.
+/// Requiring a delimiter after the 5-byte keyword prevents prose lines such as
+/// "beginners guide…" or "beginning of part 2" from triggering block handling
+/// and emitting spurious `InvalidBeginLine` errors.
 fn is_begin_line(line: &[u8]) -> bool {
     if line.len() < 5 {
         return false;
     }
-    line[..5].eq_ignore_ascii_case(b"begin")
+    if !line[..5].eq_ignore_ascii_case(b"begin") {
+        return false;
+    }
+    // Bare "begin" with nothing following is a valid (if unusual) begin line.
+    if line.len() == 5 {
+        return true;
+    }
+    let next = line[5];
+    next.is_ascii_whitespace() || next == b'-'
 }
 
 /// Returns true if the line (stripped) looks like `begin-base64 ...`
@@ -234,6 +243,12 @@ fn handle_block(
                 // which also stops at the first bad data line and returns a
                 // partial result with is_truncated=true. A single block never
                 // produces both Err and Ok items.
+                //
+                // Update end_offset to le (past the bad line) so that *pos
+                // advances past this block, allowing the outer loop to continue
+                // scanning for subsequent blocks.  Without this, end_offset
+                // stays at input.len() and all following blocks are dropped.
+                end_offset = le;
                 break;
             }
         }
@@ -431,6 +446,50 @@ mod tests {
             "bytes before bad line should be present"
         );
         assert!(block.is_truncated, "block should be truncated");
+    }
+
+    // MIME-gcz.19: after a decode error in one block, subsequent blocks must
+    // still be scanned.  Before the fix, *pos was set to input.len() on error,
+    // silently dropping everything after the first bad block.
+    #[test]
+    fn decode_error_in_block_does_not_drop_subsequent_blocks() {
+        // "!a   " has invalid char 0x61 ('a') — triggers Err from decode_line.
+        let bad_block = b"begin 644 bad.bin\n#0V%T\n!a   \n \nend\n";
+        let mut input = Vec::new();
+        input.extend_from_slice(bad_block);
+        input.extend_from_slice(b"between\n");
+        input.extend_from_slice(HELLO_BLOCK);
+
+        let results = scan_impl(&input);
+        // Must have two results: one truncated block (the bad one) and one good block.
+        assert_eq!(
+            results.len(),
+            2,
+            "subsequent block after decode error was dropped"
+        );
+
+        let bad = results[0].as_ref().unwrap();
+        assert!(bad.is_truncated, "first block should be truncated");
+        assert_eq!(bad.data, b"Cat", "bytes before bad line should be present");
+
+        let good = results[1].as_ref().unwrap();
+        assert!(!good.is_truncated, "second block should not be truncated");
+        assert_eq!(good.data, b"Hello", "second block data should be Hello");
+    }
+
+    // MIME-gcz.20: prose lines starting with "begin" but not followed by
+    // whitespace or '-' must not trigger InvalidBeginLine errors.
+    #[test]
+    fn prose_beginners_not_matched_as_begin_line() {
+        let input =
+            b"beginners guide to Linux\nbeginning of part 2\nbegin 644 real.bin\n#0V%T\n`\nend\n";
+        let results = scan_impl(input);
+        // No spurious InvalidBeginLine errors — only the real block.
+        assert_eq!(results.len(), 1, "spurious begin matches found");
+        let block = results[0].as_ref().unwrap();
+        assert_eq!(block.metadata.filename, "real.bin");
+        assert_eq!(block.data, b"Cat");
+        assert!(!block.is_truncated);
     }
 
     #[test]
