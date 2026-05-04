@@ -26,17 +26,16 @@ pub enum UuError {
     /// and the `====` terminator) to a Base64 decoder.
     BeginBase64,
 
-    /// The `end` line was never found.
+    /// Reserved for future use. **This variant is not returned by the current
+    /// implementation.**
     ///
-    /// Produced when [`decode`][crate::decode] reaches the end of input
-    /// without encountering a zero-length terminator line followed by `end`.
-    /// The [`DecodedBlock`][crate::DecodedBlock] returned in the `Ok` path
-    /// (when `decode` is used) will have `is_truncated = true` and `data`
-    /// containing bytes decoded so far.
+    /// [`decode`][crate::decode] and [`decode_limited`][crate::decode_limited]
+    /// represent a missing `end` line by returning
+    /// `Ok(`[`DecodedBlock`][crate::DecodedBlock]` { is_truncated: true, .. })`
+    /// rather than `Err(UnexpectedEof)`. This variant is retained in the public
+    /// API as a placeholder for a potential strict-mode in a future version.
     ///
-    /// **Caller action**: use the partial data if acceptable, or discard the
-    /// block and log a warning. Truncated blocks are common with aggressively
-    /// trimmed email archives.
+    /// Matching on this variant in a `match` arm today will produce dead code.
     UnexpectedEof,
 
     /// A byte outside the valid UU character range was encountered in a data
