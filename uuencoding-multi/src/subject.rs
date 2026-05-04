@@ -164,9 +164,20 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
     for pat in patterns() {
         if let Some(caps) = pat.re.captures(stripped) {
             // Capture group 1 is always the part index.
-            let part_index: u32 = caps[1].parse().ok()?;
+            // Use `continue` (not `?`) so that a failed parse on one pattern
+            // does not exit the function — we try the remaining patterns instead.
+            // In practice the regex limits captures to 6 digits (max 999999),
+            // which is always within u32 range, so parse failure is impossible
+            // with current regexes.
+            let part_index: u32 = match caps[1].parse() {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
             // Capture group 2 is always the total (all five patterns have it).
-            let part_total: u32 = caps[2].parse().ok()?;
+            let part_total: u32 = match caps[2].parse() {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
 
             // Build base_subject: remove the matched span from `stripped`.
             let m = caps.get(0).unwrap();

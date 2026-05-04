@@ -70,7 +70,14 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     let begin_line = lines[begin_idx];
 
     // Detect begin-base64 before further parsing.
-    if begin_line.len() >= 12 && begin_line[..12].eq_ignore_ascii_case(b"begin-base64") {
+    // Require that "begin-base64" is followed by whitespace or is the entire
+    // line (no trailing character at position 12), so that a hypothetical
+    // "begin-base64X …" is not silently misclassified.  Real encoders always
+    // emit "begin-base64 <mode> <filename>".
+    let is_begin_base64 = begin_line.len() >= 12
+        && begin_line[..12].eq_ignore_ascii_case(b"begin-base64")
+        && (begin_line.len() == 12 || begin_line[12].is_ascii_whitespace());
+    if is_begin_base64 {
         return Err(UuError::BeginBase64);
     }
 
@@ -216,7 +223,13 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate
     while decoded < n as usize {
         let base = group * 4;
 
-        // Fetch 4 encoded bytes, padding with 0x20 if line is short
+        // Fetch 4 encoded bytes, padding with 0x20 if line is short.
+        // Two independent guards:
+        //   idx < payload.len()     — prevents out-of-bounds on a truncated line
+        //   base + i < encoded_needed — prevents reading garbage chars that a
+        //                              mailer may have appended after the last
+        //                              encoded group (both must hold to use the
+        //                              real byte; either failing pads with 0x20).
         let get = |i: usize| -> u8 {
             let idx = base + i;
             if idx < payload.len() && base + i < encoded_needed {
