@@ -100,6 +100,14 @@ fn strip_prefixes(s: &str) -> &str {
 /// matches, `part_index` and `part_total` are both `None` and `base_subject`
 /// is the prefix-stripped, trimmed input.
 ///
+/// # Zero totals
+///
+/// A subject like `"file.bin (3/0)"` produces `part_total = Some(0)`. This is
+/// nonsensical but is passed through verbatim since the crate cannot know
+/// whether the source is malformed or intentional. Callers that pass
+/// `part_total` directly to [`PartCollection::with_total`][crate::PartCollection::with_total]
+/// should validate that the total is non-zero before doing so.
+///
 /// # Never panics
 ///
 /// This function never panics on any input, including strings containing
