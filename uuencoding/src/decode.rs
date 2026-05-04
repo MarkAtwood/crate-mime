@@ -129,6 +129,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     // --- Decode data lines, stopping at max_bytes ---
     let mut data: Vec<u8> = Vec::new();
     let mut is_truncated = true;
+    let mut was_limit_hit = false;
     let data_lines = &lines[begin_idx + 1..];
 
     'outer: for (rel_idx, &line) in data_lines.iter().enumerate() {
@@ -137,9 +138,10 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         // the terminator (decode_line returns Ok(0)) the look-ahead below will
         // find "end" and correctly set is_truncated=false.  If it is a data
         // line, decode_line will push more bytes and the post-loop truncation
-        // below) will clamp data to max and set is_truncated=true.
+        // below will clamp data to max and set is_truncated=true.
         if data.len() > max {
             is_truncated = true;
+            was_limit_hit = true;
             break;
         }
         match decode_line(line, &mut data) {
@@ -168,12 +170,14 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     if data.len() > max {
         data.truncate(max);
         is_truncated = true;
+        was_limit_hit = true;
     }
 
     Ok(DecodedBlock {
         data,
         metadata: BlockMetadata { filename, mode },
         is_truncated,
+        was_limit_hit,
     })
 }
 
@@ -716,5 +720,52 @@ mod tests {
         let block = decode_limited(input, Some(100)).unwrap();
         assert_eq!(block.data, b"Cat");
         assert!(!block.is_truncated);
+    }
+
+    // ---- was_limit_hit field tests ----
+
+    /// was_limit_hit = true when max_bytes fires during decoding.
+    #[test]
+    fn decode_limited_was_limit_hit_true_when_truncated_by_limit() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        // max_bytes=2 < 3 decoded bytes → limit fires
+        let block = decode_limited(input, Some(2)).unwrap();
+        assert!(block.is_truncated);
+        assert!(block.was_limit_hit, "limit hit must set was_limit_hit");
+    }
+
+    /// was_limit_hit = false when block truncated by missing end line (not limit).
+    #[test]
+    fn decode_limited_was_limit_hit_false_when_truncated_by_missing_end() {
+        // Missing end line — is_truncated=true but was_limit_hit=false.
+        let input = b"begin 644 f\n#0V%T\n";
+        let block = decode_limited(input, Some(100)).unwrap();
+        assert!(block.is_truncated);
+        assert!(
+            !block.was_limit_hit,
+            "missing-end truncation must not set was_limit_hit"
+        );
+    }
+
+    /// was_limit_hit = false on a complete block (no limit).
+    #[test]
+    fn decode_limited_was_limit_hit_false_when_complete() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, None).unwrap();
+        assert!(!block.is_truncated);
+        assert!(!block.was_limit_hit);
+    }
+
+    /// was_limit_hit = false on exact-limit complete block (limit == decoded size).
+    #[test]
+    fn decode_limited_was_limit_hit_false_on_exact_limit() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        // max_bytes == 3 (exact decoded size) → complete, limit never exceeded
+        let block = decode_limited(input, Some(3)).unwrap();
+        assert!(!block.is_truncated);
+        assert!(
+            !block.was_limit_hit,
+            "exact-limit complete block must not set was_limit_hit"
+        );
     }
 }
