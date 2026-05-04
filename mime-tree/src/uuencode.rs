@@ -71,7 +71,8 @@ pub struct InlineUUBlock {
     pub data: Vec<u8>,
 
     /// True if any decoding error was encountered (unknown/malformed line
-    /// length byte, wrong number of encoded characters, missing `end` line).
+    /// length byte, wrong number of encoded characters, missing `end` line,
+    /// or a `begin-base64` block was detected).
     /// A partial decode may still be present in `data`.
     pub is_encoding_problem: bool,
 }
@@ -81,6 +82,11 @@ pub struct InlineUUBlock {
 /// Slices `raw` using `part.body_range` to obtain the body bytes, then scans
 /// for one or more `begin NNN filename` / `end` UU blocks embedded anywhere
 /// in the body text.  Returns one [`InlineUUBlock`] per block found.
+///
+/// Delegates to [`uuencoding::scan()`] for all parsing and decoding, so all
+/// real-world tolerance built into that crate (CRLF line endings, space/backtick
+/// zero-value handling, `begin-base64` detection, data-after-terminator
+/// discarding, etc.) applies automatically.
 ///
 /// # Parameters
 ///
@@ -113,8 +119,9 @@ pub struct InlineUUBlock {
 /// use mime_tree::{parse, scan_inline_uuencode};
 ///
 /// // A text/plain message with an inline UU block.
-/// // Oracle: Python `binascii.b2a_uu(b"Hello")` == b'%2&5L;&\\ \n'
-/// let raw: &[u8] = b"Content-Type: text/plain\r\n\r\nbegin 644 hello.txt\n%2&5L;&\\ \nend\n";
+/// // Oracle (Python 3.12 `uu` module):
+/// //   uu.encode(b"Hello", ...) → b'begin 644 hello.txt\n%2&5L;&\\ \n \nend\n'
+/// let raw: &[u8] = b"Content-Type: text/plain\r\n\r\nbegin 644 hello.txt\n%2&5L;&\\ \n \nend\n";
 /// let msg = parse(raw).unwrap();
 /// let part = msg.part_index.find_by_id("1").unwrap();
 ///
@@ -137,220 +144,41 @@ pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock>
     };
     let body = &raw[offset..end];
 
-    scan_body(body, offset_u32)
-}
-
-/// Core scanner: operates on a body slice and returns blocks with absolute
-/// offsets (body_base_offset added to every relative position).
-fn scan_body(body: &[u8], body_base_offset: u32) -> Vec<InlineUUBlock> {
-    let mut blocks = Vec::new();
-    let mut pos = 0usize;
-
-    while pos < body.len() {
-        // Find next line.
-        let line_start = pos;
-        let line_end = next_line_end(body, pos);
-        let line = &body[line_start..line_end];
-        pos = line_end;
-
-        // Try to parse a "begin NNN filename" line.
-        if let Some((mode, filename)) = parse_begin_line(line) {
-            let block_start_abs =
-                body_base_offset.saturating_add(u32::try_from(line_start).unwrap_or(u32::MAX));
-
-            // Decode the UU data lines until "end" or end of body.
-            let (data, is_encoding_problem, block_body_end_rel) = decode_uu_block(body, pos);
-
-            // block_body_end_rel is the position in body after consuming through 'end\n'
-            // (or end of body if 'end' was missing).
-            let block_end = block_body_end_rel;
-            pos = block_end;
-
-            // begin_length: from start of 'begin' line to end of 'end' line.
-            let block_len_usize = block_end.saturating_sub(line_start);
-            let block_len = u32::try_from(block_len_usize).unwrap_or(u32::MAX);
-
-            blocks.push(InlineUUBlock {
-                begin_offset: block_start_abs,
-                begin_length: block_len,
-                mode,
-                filename,
-                data,
-                is_encoding_problem,
-            });
-        }
-        // else: not a begin line, advance to next line (pos already advanced above)
-    }
-
-    blocks
-}
-
-/// Decode UU data lines starting at `pos` within `body`.
-///
-/// Returns `(decoded_bytes, is_encoding_problem, new_pos)` where `new_pos`
-/// is the position in `body` after consuming through the `end` line (or end
-/// of body if no `end` was found).
-fn decode_uu_block(body: &[u8], start_pos: usize) -> (Vec<u8>, bool, usize) {
-    let mut data: Vec<u8> = Vec::new();
-    let mut is_encoding_problem = false;
-    let mut pos = start_pos;
-    let mut found_end = false;
-
-    while pos < body.len() {
-        let line_start = pos;
-        let line_end = next_line_end(body, pos);
-        let raw_line = &body[line_start..line_end];
-        pos = line_end;
-
-        // Strip CRLF and trailing spaces/tabs.
-        let line = strip_line_endings(raw_line);
-
-        // Empty line: skip (shouldn't happen normally but be defensive).
-        if line.is_empty() {
-            continue;
-        }
-
-        // Check for "end" terminator.
-        if line == b"end" {
-            found_end = true;
-            break;
-        }
-
-        // Check for backtick-only line (empty data marker, may precede "end").
-        if line == b"`" {
-            // This is a valid zero-length data line; continue to look for "end".
-            continue;
-        }
-
-        // Decode a UU data line.
-        // First byte: length field.
-        let length_char = line[0];
-        let byte_count = ((length_char as u32).wrapping_sub(32)) & 0x3F;
-
-        if byte_count == 0 {
-            // Zero-length line (space or backtick as length byte); continue looking for "end".
-            continue;
-        }
-
-        let encoded = &line[1..];
-
-        // Decode groups of 4 characters → 3 bytes.
-        let mut decoded_line: Vec<u8> = Vec::with_capacity(byte_count as usize);
-        let mut i = 0usize;
-
-        // We process ceil(byte_count / 3) groups of 4 encoded chars.
-        let groups_needed = (byte_count as usize).div_ceil(3);
-
-        for _ in 0..groups_needed {
-            // Read up to 4 chars, padding with 0x20 (space = 0) if the line is short.
-            let c0 = encoded_val(encoded, i);
-            let c1 = encoded_val(encoded, i + 1);
-            let c2 = encoded_val(encoded, i + 2);
-            let c3 = encoded_val(encoded, i + 3);
-            i += 4;
-
-            decoded_line.push((c0 << 2) | (c1 >> 4));
-            decoded_line.push(((c1 & 0x0F) << 4) | (c2 >> 2));
-            decoded_line.push(((c2 & 0x03) << 6) | c3);
-        }
-
-        // Truncate to the declared byte_count.
-        decoded_line.truncate(byte_count as usize);
-
-        // Validate: encoded must have enough characters to cover byte_count bytes.
-        // Each group of 4 encoded chars yields 3 decoded bytes.  The last group
-        // may have trailing spaces stripped (they encode as 0), so we only need
-        // enough chars to cover the first ceil(byte_count/3)-1 full groups plus
-        // at least 1 char from the final group.
-        //
-        // Minimum encoded chars needed = (byte_count - 1) / 3 * 4 + 1
-        // (We need at least 1 char from the last group to decode the first byte of it.)
-        let min_encoded_len = if byte_count == 0 {
-            0
-        } else {
-            ((byte_count as usize - 1) / 3) * 4 + 1
-        };
-        if encoded.len() < min_encoded_len {
-            is_encoding_problem = true;
-        }
-
-        data.extend_from_slice(&decoded_line);
-    }
-
-    if !found_end {
-        is_encoding_problem = true;
-    }
-
-    (data, is_encoding_problem, pos)
-}
-
-/// Return the 6-bit UU value for the character at `encoded[idx]`,
-/// or 0 if `idx` is out of bounds (padding).
-#[inline]
-fn encoded_val(encoded: &[u8], idx: usize) -> u8 {
-    if idx < encoded.len() {
-        ((encoded[idx] as u32).wrapping_sub(32) & 0x3F) as u8
-    } else {
-        0
-    }
-}
-
-/// Return the end position of the current line (past the newline character(s)).
-///
-/// Handles both `\n` and `\r\n`.  If no newline is found, returns `body.len()`
-/// (the line runs to end of body).
-fn next_line_end(body: &[u8], start: usize) -> usize {
-    let slice = &body[start..];
-    if let Some(nl) = slice.iter().position(|&b| b == b'\n') {
-        start + nl + 1
-    } else {
-        body.len()
-    }
-}
-
-/// Strip trailing `\r`, `\n`, space, and tab from a raw line slice.
-fn strip_line_endings(line: &[u8]) -> &[u8] {
-    let mut end = line.len();
-    while end > 0 && matches!(line[end - 1], b'\r' | b'\n' | b' ' | b'\t') {
-        end -= 1;
-    }
-    &line[..end]
-}
-
-/// Parse a `begin NNN filename` line.
-///
-/// Returns `Some((mode, filename))` on success, `None` if the line is not a
-/// valid begin line.
-///
-/// The mode must be 1–4 octal digits.  The filename may contain spaces.
-fn parse_begin_line(line: &[u8]) -> Option<(u32, String)> {
-    // Strip trailing CRLF/spaces for comparison.
-    let line = strip_line_endings(line);
-
-    // Must start with "begin ".
-    let rest = line.strip_prefix(b"begin ")?;
-
-    // Parse octal mode: one or more octal digits followed by a space.
-    let space_pos = rest.iter().position(|&b| b == b' ')?;
-    let mode_bytes = &rest[..space_pos];
-    if mode_bytes.is_empty() || mode_bytes.len() > 7 {
-        return None;
-    }
-    // All mode bytes must be ASCII octal digits.
-    if !mode_bytes.iter().all(|&b| (b'0'..=b'7').contains(&b)) {
-        return None;
-    }
-    let mode_str = std::str::from_utf8(mode_bytes).ok()?;
-    let mode = u32::from_str_radix(mode_str, 8).ok()?;
-
-    // Everything after the space is the filename (may contain spaces).
-    let filename_bytes = &rest[space_pos + 1..];
-    if filename_bytes.is_empty() {
-        return None;
-    }
-    let filename = String::from_utf8_lossy(filename_bytes).into_owned();
-
-    Some((mode, filename))
+    uuencoding::scan(body)
+        .map(|result| match result {
+            Ok(block) => {
+                // Convert relative-to-body usize offsets to absolute u32 offsets.
+                let abs_begin = offset_u32
+                    .saturating_add(u32::try_from(block.begin_offset).unwrap_or(u32::MAX));
+                let block_len = u32::try_from(block.end_offset.saturating_sub(block.begin_offset))
+                    .unwrap_or(u32::MAX);
+                InlineUUBlock {
+                    begin_offset: abs_begin,
+                    begin_length: block_len,
+                    mode: block.metadata.mode,
+                    filename: block.metadata.filename,
+                    data: block.data,
+                    is_encoding_problem: block.is_truncated,
+                }
+            }
+            Err(_) => {
+                // UuError::BeginBase64 or UuError::InvalidBeginLine.
+                // We have no offset info from an error item, so we emit a
+                // zero-offset sentinel with is_encoding_problem=true and no data.
+                // In practice scan() does not emit Err items for blocks that
+                // were successfully located — only for begin-base64 or
+                // completely unrecognised begin lines.
+                InlineUUBlock {
+                    begin_offset: 0,
+                    begin_length: 0,
+                    mode: 0,
+                    filename: String::new(),
+                    data: Vec::new(),
+                    is_encoding_problem: true,
+                }
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -383,14 +211,15 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // TV1: single block, "Hello"
-    // Oracle: python3 -c "import binascii; print(binascii.b2a_uu(b'Hello'))"
-    // -> b'%2&5L;&\\ \n'
+    // Oracle (Python 3.12 `uu` module):
+    //   uu.encode(io.BytesIO(b'Hello'), buf, 'hello.txt', 0o644)
+    //   → b'begin 644 hello.txt\n%2&5L;&\\ \n \nend\n'
     // -----------------------------------------------------------------------
     #[test]
     fn test_single_block_hello() {
-        // body hex: 626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a656e640a
+        // body hex: begin 644 hello.txt\n%2&5L;&\\ \n \nend\n
         let body =
-            hex_bytes("626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a656e640a");
+            hex_bytes("626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a200a656e640a");
         let (raw, part) = make_part(b"", &body);
 
         let blocks = scan_inline_uuencode(&raw, &part);
@@ -402,7 +231,7 @@ mod tests {
         // expected decoded: 48656c6c6f = "Hello"
         assert_eq!(b.data, hex_bytes("48656c6c6f"));
         assert!(!b.is_encoding_problem);
-        // begin_offset = 0 (no prefix), begin_length = body.len() = 34
+        // begin_offset = 0 (no prefix), begin_length = body.len() = 36
         assert_eq!(b.begin_offset, 0);
         assert_eq!(b.begin_length, body.len() as u32);
         // Verify by slicing raw
@@ -412,17 +241,22 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // TV2: two blocks with interleaved text
-    // Oracle: python3 -c "import binascii; print(binascii.b2a_uu(b'The quick brown fox'))"
-    // -> b'3 5&AE(\'%U:6-K(&)R;W=N(&9O>  \n'  (no, let's use the generated hex)
+    // Oracle (Python 3.12 `uu` module):
+    //   hello = uu.encode(b'Hello', 'hello.txt', 0o644)
+    //           → b'begin 644 hello.txt\n%2&5L;&\\ \n \nend\n'  (36 bytes)
+    //   fox   = uu.encode(b'The quick brown fox', 'fox.bin', 0o600)
+    //           → b"begin 600 fox.bin\n35&AE('%U:6-K(&)R;W=N(&9O>   \n \nend\n"  (54 bytes)
+    //   interleaved = hello + b'Some text in between\n' + fox
+    //   fox offset = 36 + 21 = 57
     // -----------------------------------------------------------------------
     #[test]
     fn test_two_blocks() {
-        // full_body_hex from oracle output
+        // full_body_hex from oracle output (hello 36 bytes + "Some text in between\n" 21 bytes + fox 54 bytes = 111 bytes)
         let body = hex_bytes(
-            "626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a656e\
-             640a536f6d65207465787420696e206265747765656e0a626567696e20363030\
-             20666f782e62696e0a3335264145282725553a362d4b282629523b573d4e2826\
-             394f3e2020200a656e640a",
+            "626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a200a656e64\
+             0a536f6d65207465787420696e206265747765656e0a626567696e2036303020666f78\
+             2e62696e0a3335264145282725553a362d4b282629523b573d4e2826394f3e2020200a\
+             200a656e640a",
         );
         let (raw, part) = make_part(b"", &body);
 
@@ -435,7 +269,7 @@ mod tests {
         assert_eq!(b0.data, hex_bytes("48656c6c6f")); // "Hello"
         assert!(!b0.is_encoding_problem);
         assert_eq!(b0.begin_offset, 0);
-        assert_eq!(b0.begin_length, 34);
+        assert_eq!(b0.begin_length, 36); // 36-byte block with terminator
 
         let b1 = &blocks[1];
         assert_eq!(b1.mode, 0o600);
@@ -445,9 +279,9 @@ mod tests {
             hex_bytes("54686520717569636b2062726f776e20666f78") // "The quick brown fox"
         );
         assert!(!b1.is_encoding_problem);
-        // block2 starts at offset 55 (34 + len("Some text in between\n") = 34+21=55)
-        assert_eq!(b1.begin_offset, 55);
-        assert_eq!(b1.begin_length, 52);
+        // block2 starts at offset 57 (36 + len("Some text in between\n") = 36+21=57)
+        assert_eq!(b1.begin_offset, 57);
+        assert_eq!(b1.begin_length, 54); // 54-byte fox block with terminator
 
         // Verify slices
         let s0 = &raw[b0.begin_offset as usize..(b0.begin_offset + b0.begin_length) as usize];
@@ -466,10 +300,10 @@ mod tests {
     #[test]
     fn test_two_blocks_with_prefix_offset() {
         let body = hex_bytes(
-            "626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a656e\
-             640a536f6d65207465787420696e206265747765656e0a626567696e20363030\
-             20666f782e62696e0a3335264145282725553a362d4b282629523b573d4e2826\
-             394f3e2020200a656e640a",
+            "626567696e203634342068656c6c6f2e7478740a253226354c3b265c200a200a656e64\
+             0a536f6d65207465787420696e206265747765656e0a626567696e2036303020666f78\
+             2e62696e0a3335264145282725553a362d4b282629523b573d4e2826394f3e2020200a\
+             200a656e640a",
         );
         let prefix = b"Content-Type: text/plain\r\n\r\n"; // 28 bytes
         let (raw, part) = make_part(prefix, &body);
@@ -479,7 +313,7 @@ mod tests {
 
         // Absolute offsets = prefix_len + relative_offset
         assert_eq!(blocks[0].begin_offset, 28);
-        assert_eq!(blocks[1].begin_offset, 28 + 55);
+        assert_eq!(blocks[1].begin_offset, 28 + 57); // fox starts at 57 in body
 
         // Verify by slicing raw with absolute offsets
         for b in &blocks {
@@ -508,15 +342,17 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // TV4: 45 bytes decoded from one full UU line (all bytes 0x00..0x2c)
-    // Oracle: python3 -c "import binascii; print(binascii.b2a_uu(bytes(range(45))))"
+    // Oracle (Python 3.12 `uu` module):
+    //   uu.encode(io.BytesIO(bytes(range(45))), buf, 'allbytes.bin', 0o644)
+    //   → b'begin 644 allbytes.bin\nM  $" P0%!@...Ll\n \nend\n'
     // -----------------------------------------------------------------------
     #[test]
     fn test_full_line_45_bytes() {
-        // body_hex from oracle output
+        // body_hex from oracle output (includes ' \n' terminator before end)
         let body = hex_bytes(
-            "626567696e2036343420616c6c62797465732e62696e0a4d20202422205030\
-             2521403c282230482b2320542e2351203124412c34253138372621443a2651\
-             503d27415c402832284329223446295240492a424c4c0a656e640a",
+            "626567696e2036343420616c6c62797465732e62696e0a4d202024222050302521\
+             403c282230482b2320542e2351203124412c34253138372621443a2651503d27\
+             415c402832284329223446295240492a424c4c0a200a656e640a",
         );
         let (raw, part) = make_part(b"", &body);
 
@@ -550,16 +386,20 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // TV6: multi-line block
-    // Oracle: python3 -c "import binascii; d=b'Hello, World! ...' (74 bytes); ..."
+    // Oracle (Python 3.12 `uu` module):
+    //   data = b'Hello, World! This is a test of multi-line UU encoding. Adding more bytes.'
+    //   uu.encode(io.BytesIO(data), buf, 'multiline.txt', 0o644)
+    //   → b'begin 644 multiline.txt\nM2&5L;&\\...\n=...\n \nend\n'
     // -----------------------------------------------------------------------
     #[test]
     fn test_multiline_block() {
+        // Oracle hex (Python 3.12, includes ' \n' terminator before end)
         let body = hex_bytes(
-            "626567696e20363434206d756c74696c696e652e7478740a4d3226354c3b265c\
-             4c28253d4f3c465144283221343a26455328264553282624403d263553\
-             3d22214f3942214d3d3651543a32554c3a365945282535350a3d282635\
-             4e38565d443a3659472b422121392631493b463c403b365d52393221\
-             423e3731453c5258200a656e640a",
+            "626567696e20363434206d756c74696c696e652e7478740a4d3226354c3b265c4c\
+             28253d4f3c465144283221343a26455328264553282624403d2635533d22214f39\
+             42214d3d3651543a32554c3a365945282535350a3d2826354e38565d443a365947\
+             2b422121392631493b463c403b365d52393221423e3731453c5258200a200a656e\
+             640a",
         );
         let (raw, part) = make_part(b"", &body);
 
@@ -567,6 +407,7 @@ mod tests {
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].mode, 0o644);
         assert_eq!(blocks[0].filename, "multiline.txt");
+        // Oracle decoded bytes: "Hello, World! This is a test of multi-line UU encoding. Adding more bytes."
         assert_eq!(
             blocks[0].data,
             hex_bytes("48656c6c6f2c20576f726c6421205468697320697320612074657374206f66206d756c74692d6c696e6520555520656e636f64696e672e20416464696e67206d6f72652062797465732e")
@@ -635,6 +476,35 @@ mod tests {
             blocks.is_empty(),
             "overflowing body_range must return empty Vec"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // begin-base64 block is reported with is_encoding_problem=true
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_begin_base64_is_encoding_problem() {
+        // A begin-base64 block followed by a normal UU block.
+        // The begin-base64 generates an Err item; the UU block is decoded normally.
+        // Oracle: uu.encode(b'Hello', ...) → b'begin 644 hello.txt\n%2&5L;&\\ \n \nend\n'
+        let b64_block = b"begin-base64 644 file.txt\naGVsbG8=\n====\n";
+        let uu_block = b"begin 644 hello.txt\n%2&5L;&\\ \n \nend\n";
+        let mut body = Vec::new();
+        body.extend_from_slice(b64_block);
+        body.extend_from_slice(uu_block);
+        let (raw, part) = make_part(b"", &body);
+
+        let blocks = scan_inline_uuencode(&raw, &part);
+        // Two items: one Err (begin-base64) → is_encoding_problem, one Ok (UU block).
+        assert_eq!(blocks.len(), 2, "expected 2 items");
+        assert!(
+            blocks[0].is_encoding_problem,
+            "begin-base64 block must have is_encoding_problem=true"
+        );
+        assert!(
+            !blocks[1].is_encoding_problem,
+            "valid UU block must not have is_encoding_problem"
+        );
+        assert_eq!(blocks[1].data, b"Hello");
     }
 
     // -----------------------------------------------------------------------

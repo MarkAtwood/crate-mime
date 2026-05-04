@@ -176,26 +176,13 @@ fn decode_uuencode(
         }
         Ok(block) => {
             if block.is_truncated {
-                // Distinguish between "input had a decode error / was missing
-                // end line" (encoding problem) and "we stopped early at the
-                // caller's max_bytes limit" (input_was_limited).
-                //
-                // INVARIANT: uuencoding::decode_limited() guarantees
-                // block.data.len() <= max_bytes (see its post-loop truncation).
-                // At exactly max_bytes, the terminator/end path sets
-                // is_truncated=false, so is_truncated=true with data.len() >=
-                // limit means a data line pushed us over (limit hit mid-line).
-                // If decode_limited() ever changes this contract — e.g. returns
-                // data.len() < limit when stopping early — this heuristic will
-                // silently misclassify as is_encoding_problem.  At that point,
-                // add a was_limit_reached: bool field to DecodedBlock instead.
-                match max_bytes {
-                    Some(limit) if block.data.len() >= limit => {
-                        *input_was_limited = true;
-                    }
-                    _ => {
-                        *is_encoding_problem = true;
-                    }
+                // was_limit_hit is set by decode_limited() when max_bytes
+                // caused the early stop.  Absent that, the block was genuinely
+                // truncated (missing end line, bad data byte, etc.).
+                if block.was_limit_hit {
+                    *input_was_limited = true;
+                } else {
+                    *is_encoding_problem = true;
                 }
             }
             block.data

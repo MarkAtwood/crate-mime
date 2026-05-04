@@ -106,10 +106,10 @@ pub struct BlockMetadata {
 
 /// A successfully decoded UU block.
 ///
-/// Returned by [`decode`]. On success `is_truncated` is `false` and `data`
-/// contains the complete binary payload. When the `end` line is missing
-/// `is_truncated` is `true` and `data` contains whatever bytes were decoded
-/// before input was exhausted or an error was encountered.
+/// Returned by [`decode`] and [`decode_limited`]. On success `is_truncated`
+/// is `false` and `data` contains the complete binary payload. When the `end`
+/// line is missing `is_truncated` is `true` and `data` contains whatever bytes
+/// were decoded before input was exhausted or an error was encountered.
 #[derive(Debug)]
 pub struct DecodedBlock {
     /// The decoded binary payload.
@@ -118,7 +118,20 @@ pub struct DecodedBlock {
     pub metadata: BlockMetadata,
     /// `true` if the `end` line was never found; `data` contains bytes decoded
     /// up to the point where input was exhausted or a decode error occurred.
+    ///
+    /// Note: when [`decode_limited`] is used and `is_truncated` is `true`,
+    /// inspect [`was_limit_hit`][Self::was_limit_hit] to determine whether
+    /// truncation was caused by the `max_bytes` limit or by a genuine encoding
+    /// problem (missing `end` line, bad data byte).
     pub is_truncated: bool,
+    /// `true` when [`decode_limited`] stopped early because the decoded byte
+    /// count reached `max_bytes`.
+    ///
+    /// When this is `true`, `is_truncated` is also `true` and `data.len()` is
+    /// at most `max_bytes`. Callers should treat this as a preview truncation
+    /// rather than an encoding error. Always `false` when `max_bytes` is `None`
+    /// (i.e. when called via [`decode`]).
+    pub was_limit_hit: bool,
 }
 
 /// A UU block located within a larger byte slice, but not yet decoded.
