@@ -39,50 +39,89 @@ fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
     haystack.iter().position(|&b| b == needle)
 }
 
-/// Returns true if `line` (already stripped of \r\n) starts with `begin ` or
-/// `begin-base64 ` (case-insensitive ASCII).
+/// Returns true if `line` (already stripped of \r\n) starts with `begin`
+/// (case-insensitive ASCII), including bare `begin` with no trailing space.
+///
+/// This matches the detection behavior of `uuencoding::decode`, which accepts
+/// any line whose lowercased form starts with `b"begin"`.
 fn is_begin_line(line: &[u8]) -> bool {
-    // Fast path: must start with 'b' or 'B'
-    if line.len() < 6 {
+    if line.len() < 5 {
         return false;
     }
-    let lo: Vec<u8> = line.iter().map(|b| b.to_ascii_lowercase()).collect();
-    lo.starts_with(b"begin ") || lo.starts_with(b"begin-base64 ")
+    line[..5].eq_ignore_ascii_case(b"begin")
 }
 
 /// Returns true if the line (stripped) looks like `begin-base64 ...`
 fn is_begin_base64(line: &[u8]) -> bool {
-    let lo: Vec<u8> = line.iter().map(|b| b.to_ascii_lowercase()).collect();
-    lo.starts_with(b"begin-base64 ")
+    line.len() >= 13 && line[..13].eq_ignore_ascii_case(b"begin-base64 ")
 }
 
 /// Parse `begin <mode> <filename>` from a stripped line. Returns None on failure.
 ///
-/// Accepts case-insensitive `begin` keyword followed by a space.
+/// Accepts case-insensitive `begin` keyword. A bare `begin` line with no mode
+/// or filename tokens produces `mode=0` and `filename=""`, matching the
+/// behavior of `uuencoding::decode`. An empty filename is accepted (returns
+/// `BlockMetadata { filename: "", mode }`) to align with `decode()`.
 fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
-    // Expect: "begin <octal-mode> <filename>"
-    // The keyword is case-insensitive; strip the leading "begin " case-insensitively.
-    if line.len() < 7 {
+    // Must start with "begin" (case-insensitive).
+    if line.len() < 5 || !line[..5].eq_ignore_ascii_case(b"begin") {
         return None;
     }
-    if !line[..6].eq_ignore_ascii_case(b"begin ") {
+
+    // Everything after "begin"
+    let after_begin = &line[5..];
+
+    // If nothing follows (bare "begin"), return mode=0, filename="".
+    if after_begin.is_empty() || after_begin == b"\r" {
+        return Some(BlockMetadata {
+            filename: String::new(),
+            mode: 0,
+        });
+    }
+
+    // Must have a space/tab after "begin".
+    if !after_begin[0].is_ascii_whitespace() {
+        // e.g. "begin-base64" — not a standard UU begin line
         return None;
     }
-    let rest = &line[6..];
 
-    // Find the space separating mode from filename
-    let space_pos = memchr(b' ', rest)?;
-    let mode_bytes = &rest[..space_pos];
-    let filename_bytes = &rest[space_pos + 1..];
+    // Skip whitespace after "begin"
+    let rest = {
+        let skip = after_begin
+            .iter()
+            .position(|b| !b.is_ascii_whitespace())
+            .unwrap_or(after_begin.len());
+        &after_begin[skip..]
+    };
 
-    // Parse mode as octal
+    // If no more tokens (just "begin   "), mode=0, filename="".
+    if rest.is_empty() {
+        return Some(BlockMetadata {
+            filename: String::new(),
+            mode: 0,
+        });
+    }
+
+    // Parse mode token (up to next whitespace).
+    let mode_end = rest
+        .iter()
+        .position(|b| b.is_ascii_whitespace())
+        .unwrap_or(rest.len());
+    let mode_bytes = &rest[..mode_end];
     let mode_str = std::str::from_utf8(mode_bytes).ok()?;
-    let mode = u32::from_str_radix(mode_str.trim(), 8).ok()?;
+    let mode = u32::from_str_radix(mode_str.trim(), 8).unwrap_or(0);
 
-    let filename = std::str::from_utf8(filename_bytes).ok()?.trim().to_string();
-    if filename.is_empty() {
-        return None;
-    }
+    // Filename: everything after the mode token and its trailing whitespace.
+    let after_mode = &rest[mode_end..];
+    let filename_skip = after_mode
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .unwrap_or(after_mode.len());
+    let filename_bytes = &after_mode[filename_skip..];
+    let filename = std::str::from_utf8(filename_bytes)
+        .ok()?
+        .trim_end()
+        .to_string();
 
     Some(BlockMetadata { filename, mode })
 }
@@ -189,12 +228,13 @@ fn handle_block(
                 saw_terminator = false;
                 scan_pos = le;
             }
-            Err(e) => {
-                // Decoding error: emit error for this line, but keep scanning
-                // the block. We record the error and continue to gather the rest
-                // of the block's bytes.
-                results.push(Err(e));
-                scan_pos = le;
+            Err(_) => {
+                // Decoding error: stop here, emit a truncated Ok(ScannedBlock)
+                // with the bytes decoded so far. This matches decode() behavior,
+                // which also stops at the first bad data line and returns a
+                // partial result with is_truncated=true. A single block never
+                // produces both Err and Ok items.
+                break;
             }
         }
     }
@@ -343,6 +383,54 @@ mod tests {
         assert!(!block.is_truncated);
         // begin_offset must be after the b64 block
         assert!(block.begin_offset >= b64_block.len());
+    }
+
+    // MIME-gcz.4: bare "begin" line (no mode, no filename) is now accepted by
+    // scan, matching decode() behavior which accepts it with mode=0, filename="".
+    // Oracle: "begin\n \nend\n" accepted by decode() with mode=0, filename="".
+    #[test]
+    fn bare_begin_no_mode_no_filename_scanned() {
+        let input = b"begin\n \nend\n";
+        let results = scan_impl(input);
+        assert_eq!(results.len(), 1);
+        let block = results[0].as_ref().unwrap();
+        assert_eq!(block.metadata.filename, "");
+        assert_eq!(block.metadata.mode, 0);
+        assert!(block.data.is_empty());
+        assert!(!block.is_truncated);
+    }
+
+    // MIME-gcz.2: empty filename is accepted by scan, matching decode() behavior.
+    // Oracle: "begin 644 \n#0V%T\n`\nend\n" — "begin 644 " with no filename.
+    // Python: uu module does not produce empty filenames, but decode() accepts them.
+    #[test]
+    fn empty_filename_block_scanned() {
+        let input = b"begin 644 \n#0V%T\n`\nend\n";
+        let results = scan_impl(input);
+        assert_eq!(results.len(), 1);
+        let block = results[0].as_ref().unwrap();
+        assert_eq!(block.metadata.filename, "");
+        assert_eq!(block.metadata.mode, 0o644);
+        assert_eq!(block.data, b"Cat");
+        assert!(!block.is_truncated);
+    }
+
+    // MIME-gcz.3: a block with one bad data line produces exactly one Ok result
+    // with is_truncated=true and the bytes decoded before the error. No separate
+    // Err items are emitted for the same block.
+    // Oracle: "#0V%T" decodes "Cat"; "!a   " has invalid char 0x61 ('a').
+    #[test]
+    fn bad_data_line_yields_single_truncated_ok() {
+        let input = b"begin 644 file.bin\n#0V%T\n!a   \n \nend\n";
+        let results = scan_impl(input);
+        // Must be exactly one Ok item, no Err items from the bad data line.
+        assert_eq!(results.len(), 1, "expected exactly one result");
+        let block = results[0].as_ref().unwrap();
+        assert_eq!(
+            block.data, b"Cat",
+            "bytes before bad line should be present"
+        );
+        assert!(block.is_truncated, "block should be truncated");
     }
 
     #[test]

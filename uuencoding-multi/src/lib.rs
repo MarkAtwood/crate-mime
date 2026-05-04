@@ -102,11 +102,11 @@
 //! }
 //! ```
 
-pub mod collection;
-pub mod error;
-pub mod reassemble;
-pub mod subject;
-pub mod toc;
+pub(crate) mod collection;
+pub(crate) mod error;
+pub(crate) mod reassemble;
+pub(crate) mod subject;
+pub(crate) mod toc;
 
 pub use collection::{PartCollection, PartEntry};
 pub use error::MultiUuError;
@@ -126,6 +126,7 @@ pub use toc::{parse_toc, ParsedToc, TocEntry};
 ///   returns `Some` with `part_index = None`).
 /// - `part_total` is always `Some` when `part_index` is `Some`, because every
 ///   supported marker format includes the total count.
+#[derive(Debug)]
 pub struct SubjectParts {
     /// Subject line with the part-number marker removed and surrounding
     /// whitespace trimmed. Safe to use as a collection grouping key because

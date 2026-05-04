@@ -25,8 +25,7 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
     // --- Find the begin line ---
     let mut begin_idx = None;
     for (i, line) in lines.iter().enumerate() {
-        let lower: Vec<u8> = line.iter().map(|b| b.to_ascii_lowercase()).collect();
-        if lower.starts_with(b"begin") {
+        if line.len() >= 5 && line[..5].eq_ignore_ascii_case(b"begin") {
             begin_idx = Some(i);
             break;
         }
@@ -41,10 +40,9 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
     };
 
     let begin_line = lines[begin_idx];
-    let lower_begin: Vec<u8> = begin_line.iter().map(|b| b.to_ascii_lowercase()).collect();
 
     // Detect begin-base64 before further parsing.
-    if lower_begin.starts_with(b"begin-base64") {
+    if begin_line.len() >= 12 && begin_line[..12].eq_ignore_ascii_case(b"begin-base64") {
         return Err(UuError::BeginBase64);
     }
 
@@ -69,38 +67,27 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
         0
     };
 
-    // Filename: everything after "begin <mode> " on the original line,
-    // preserving internal spaces.  We find the byte offset past the first two
-    // whitespace-separated tokens on the raw line.
+    // Filename: everything after "begin <mode>" on the original line,
+    // preserving internal spaces. We skip two whitespace-separated tokens
+    // ("begin" and the mode) then take the rest of the raw line as-is.
     let filename: String = {
-        // Skip the first two tokens by scanning the raw line.
-        let mut it = begin_line;
-        // Skip "begin"
-        it = it
-            .iter()
-            .position(|b| b.is_ascii_whitespace())
-            .map(|p| &it[p..])
-            .unwrap_or(b"");
-        // Skip whitespace between begin and mode
-        let skip_ws = it
-            .iter()
-            .position(|b| !b.is_ascii_whitespace())
-            .unwrap_or(it.len());
-        it = &it[skip_ws..];
-        // Skip mode token
-        it = it
-            .iter()
-            .position(|b| b.is_ascii_whitespace())
-            .map(|p| &it[p..])
-            .unwrap_or(b"");
-        // Skip whitespace between mode and filename
-        let skip_ws2 = it
-            .iter()
-            .position(|b| !b.is_ascii_whitespace())
-            .unwrap_or(it.len());
-        it = &it[skip_ws2..];
-        // `it` is now the filename portion (may contain spaces)
-        String::from_utf8_lossy(it).into_owned()
+        // skip_token advances past a run of non-whitespace, then past trailing
+        // whitespace, returning the remainder.
+        fn skip_token(s: &[u8]) -> &[u8] {
+            let after = s
+                .iter()
+                .position(|b| b.is_ascii_whitespace())
+                .unwrap_or(s.len());
+            let s = &s[after..];
+            let ws = s
+                .iter()
+                .position(|b| !b.is_ascii_whitespace())
+                .unwrap_or(s.len());
+            &s[ws..]
+        }
+        let rest = skip_token(begin_line); // skip "begin"
+        let rest = skip_token(rest); // skip mode
+        String::from_utf8_lossy(rest).into_owned()
     };
 
     // --- Decode data lines ---
@@ -113,9 +100,7 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
             Ok(0) => {
                 // Terminator line found.  Look ahead for "end".
                 for &subsequent in &data_lines[rel_idx + 1..] {
-                    let lower: Vec<u8> =
-                        subsequent.iter().map(|b| b.to_ascii_lowercase()).collect();
-                    if lower == b"end" {
+                    if subsequent.eq_ignore_ascii_case(b"end") {
                         is_truncated = false;
                         break 'outer;
                     }
@@ -148,7 +133,6 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 /// `line` must already have leading/trailing whitespace and `\r` stripped.
 /// Returns the number of decoded bytes appended to `out`, or an error if
 /// any encoded byte is outside the valid UU character range.
-#[allow(dead_code)]
 pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate::error::UuError> {
     // Step 1: strip trailing \r defensively
     let line = line.strip_suffix(b"\r").unwrap_or(line);
@@ -456,7 +440,7 @@ mod tests {
     fn begin_base64_error() {
         let input = b"begin-base64 644 foo.txt\nSGVsbG8=\n====\nend\n";
         let err = decode_block(input).unwrap_err();
-        assert!(matches!(err, UuError::BeginBase64));
+        assert_eq!(err, UuError::BeginBase64);
     }
 
     /// begin-base64 is case-insensitive
@@ -464,7 +448,7 @@ mod tests {
     fn begin_base64_case_insensitive() {
         let input = b"BEGIN-BASE64 644 foo.txt\nSGVsbG8=\n====\nend\n";
         let err = decode_block(input).unwrap_err();
-        assert!(matches!(err, UuError::BeginBase64));
+        assert_eq!(err, UuError::BeginBase64);
     }
 
     /// Malformed begin line (just "begin", no mode or filename)
@@ -489,7 +473,12 @@ mod tests {
     fn no_begin_line() {
         let input = b"some random text\nM  $\"\n \nend\n";
         let err = decode_block(input).unwrap_err();
-        assert!(matches!(err, UuError::InvalidBeginLine { line } if line.is_empty()));
+        assert_eq!(
+            err,
+            UuError::InvalidBeginLine {
+                line: String::new()
+            }
+        );
     }
 
     /// Missing end line → Ok with is_truncated=true
