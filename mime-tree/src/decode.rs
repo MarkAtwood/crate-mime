@@ -167,8 +167,8 @@ fn decode_uuencode(
     input_was_limited: &mut bool,
 ) -> Vec<u8> {
     // Use decode_limited so that decoding halts as soon as max_bytes decoded
-    // bytes have been produced.  This makes preview queries O(max_bytes) rather
-    // than O(full attachment size).
+    // bytes have been produced.  Note: input is still split into lines up-front
+    // (O(input)), but data decoding stops at max_bytes.
     match uuencoding::decode_limited(body, max_bytes) {
         Err(_) => {
             *is_encoding_problem = true;
@@ -179,6 +179,16 @@ fn decode_uuencode(
                 // Distinguish between "input had a decode error / was missing
                 // end line" (encoding problem) and "we stopped early at the
                 // caller's max_bytes limit" (input_was_limited).
+                //
+                // INVARIANT: uuencoding::decode_limited() guarantees
+                // block.data.len() <= max_bytes (see its post-loop truncation).
+                // At exactly max_bytes, the terminator/end path sets
+                // is_truncated=false, so is_truncated=true with data.len() >=
+                // limit means a data line pushed us over (limit hit mid-line).
+                // If decode_limited() ever changes this contract — e.g. returns
+                // data.len() < limit when stopping early — this heuristic will
+                // silently misclassify as is_encoding_problem.  At that point,
+                // add a was_limit_reached: bool field to DecodedBlock instead.
                 match max_bytes {
                     Some(limit) if block.data.len() >= limit => {
                         *input_was_limited = true;

@@ -15,117 +15,10 @@ use crate::{BlockMetadata, DecodedBlock, UuError};
 ///
 /// Decode errors on individual data lines do **not** propagate; the function
 /// returns the bytes decoded so far with `is_truncated = true`.
+///
+/// Delegates to [`decode_limited`] with no byte limit.
 pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
-    // Split on LF, strip trailing CR from each line.
-    let lines: Vec<&[u8]> = input
-        .split(|&b| b == b'\n')
-        .map(|l| l.strip_suffix(b"\r").unwrap_or(l))
-        .collect();
-
-    // --- Find the begin line ---
-    let mut begin_idx = None;
-    for (i, line) in lines.iter().enumerate() {
-        if line.len() >= 5 && line[..5].eq_ignore_ascii_case(b"begin") {
-            begin_idx = Some(i);
-            break;
-        }
-    }
-    let begin_idx = match begin_idx {
-        Some(i) => i,
-        None => {
-            return Err(UuError::InvalidBeginLine {
-                line: String::new(),
-            })
-        }
-    };
-
-    let begin_line = lines[begin_idx];
-
-    // Detect begin-base64 before further parsing.
-    if begin_line.len() >= 12 && begin_line[..12].eq_ignore_ascii_case(b"begin-base64") {
-        return Err(UuError::BeginBase64);
-    }
-
-    // --- Parse begin line ---
-    // Split on ASCII whitespace; tokens[0]="begin", tokens[1]=mode, tokens[2..]=filename
-    let tokens: Vec<&[u8]> = begin_line
-        .split(|b: &u8| b.is_ascii_whitespace())
-        .filter(|t| !t.is_empty())
-        .collect();
-
-    // Need at least "begin" token; everything else has a sensible default.
-    if tokens.is_empty() || !tokens[0].eq_ignore_ascii_case(b"begin") {
-        return Err(UuError::InvalidBeginLine {
-            line: String::from_utf8_lossy(begin_line).into_owned(),
-        });
-    }
-
-    let mode: u32 = if tokens.len() >= 2 {
-        let mode_str = std::str::from_utf8(tokens[1]).unwrap_or("");
-        u32::from_str_radix(mode_str, 8).unwrap_or(0)
-    } else {
-        0
-    };
-
-    // Filename: everything after "begin <mode>" on the original line,
-    // preserving internal spaces. We skip two whitespace-separated tokens
-    // ("begin" and the mode) then take the rest of the raw line as-is.
-    let filename: String = {
-        // skip_token advances past a run of non-whitespace, then past trailing
-        // whitespace, returning the remainder.
-        fn skip_token(s: &[u8]) -> &[u8] {
-            let after = s
-                .iter()
-                .position(|b| b.is_ascii_whitespace())
-                .unwrap_or(s.len());
-            let s = &s[after..];
-            let ws = s
-                .iter()
-                .position(|b| !b.is_ascii_whitespace())
-                .unwrap_or(s.len());
-            &s[ws..]
-        }
-        let rest = skip_token(begin_line); // skip "begin"
-        let rest = skip_token(rest); // skip mode
-        String::from_utf8_lossy(rest).into_owned()
-    };
-
-    // --- Decode data lines ---
-    let mut data: Vec<u8> = Vec::new();
-    let mut is_truncated = true;
-    let data_lines = &lines[begin_idx + 1..];
-
-    'outer: for (rel_idx, &line) in data_lines.iter().enumerate() {
-        match decode_line(line, &mut data) {
-            Ok(0) => {
-                // Terminator line found.  Look ahead for "end".
-                for &subsequent in &data_lines[rel_idx + 1..] {
-                    if subsequent.eq_ignore_ascii_case(b"end") {
-                        is_truncated = false;
-                        break 'outer;
-                    }
-                    // Skip blank lines; stop if we hit something non-blank, non-end.
-                    if !subsequent.is_empty() {
-                        break;
-                    }
-                }
-                // No "end" found — truncated.
-                break 'outer;
-            }
-            Ok(_) => {} // normal data line
-            Err(_) => {
-                // Decode error → partial result.
-                is_truncated = true;
-                break 'outer;
-            }
-        }
-    }
-
-    Ok(DecodedBlock {
-        data,
-        metadata: BlockMetadata { filename, mode },
-        is_truncated,
-    })
+    decode_limited(input, None)
 }
 
 /// Decode a UU block from `input`, stopping as soon as `max_bytes` decoded
@@ -134,7 +27,13 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 /// Identical to [`decode`] except that decoding halts early once the
 /// accumulated payload reaches `max_bytes`. When the limit is hit,
 /// `is_truncated` is set to `true` and `data` contains at most `max_bytes`
-/// bytes. This makes preview queries O(`max_bytes`) rather than O(input).
+/// bytes.
+///
+/// **Complexity note:** the input is split into lines up-front (O(input) time
+/// and O(line-count) space) before any limit check takes effect. Only the
+/// *decoding* of data lines is bounded by `max_bytes`. For large inputs with a
+/// small limit, callers that need true O(max_bytes) behaviour should switch to
+/// a streaming line iterator approach.
 ///
 /// Passing `None` for `max_bytes` is equivalent to calling [`decode`].
 ///
@@ -218,8 +117,13 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     let data_lines = &lines[begin_idx + 1..];
 
     'outer: for (rel_idx, &line) in data_lines.iter().enumerate() {
-        // Stop early when limit already reached.
-        if data.len() >= max {
+        // Stop early only when we have strictly more bytes than the limit.
+        // At exactly max bytes we must still process the current line: if it is
+        // the terminator (decode_line returns Ok(0)) the look-ahead below will
+        // find "end" and correctly set is_truncated=false.  If it is a data
+        // line, decode_line will push more bytes and the post-loop truncation
+        // (line ~249) will clamp data to max and set is_truncated=true.
+        if data.len() > max {
             is_truncated = true;
             break;
         }
@@ -353,7 +257,7 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate
 
 #[cfg(test)]
 mod tests {
-    use super::{decode as decode_block, decode_line};
+    use super::{decode as decode_block, decode_limited, decode_line};
     use crate::error::UuError;
 
     fn decode(line: &[u8]) -> Result<Vec<u8>, UuError> {
@@ -709,5 +613,62 @@ mod tests {
         // First line decoded to "Cat" before the error
         assert_eq!(block.data, b"Cat");
         assert!(block.is_truncated);
+    }
+
+    // ---- decode_limited() edge-case tests ----
+    //
+    // Block used throughout: "begin 644 f\n#0V%T\n \nend\n"
+    //   - data line "#0V%T" encodes "Cat" (3 bytes)
+    // Oracle: python3 -c "import binascii; print(binascii.b2a_uu(b'Cat').rstrip(b'\n'))"
+    //   => b'#0V%T'
+
+    /// Exact limit: max_bytes == decoded size of a complete block.
+    /// Regression for P0 bug: limit check at loop start must not fire on the
+    /// terminator line when data.len() == max, which would leave is_truncated=true.
+    #[test]
+    fn decode_limited_exact_limit_is_not_truncated() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, Some(3)).unwrap();
+        assert_eq!(block.data, b"Cat");
+        assert!(
+            !block.is_truncated,
+            "exact-limit complete block must not be truncated"
+        );
+    }
+
+    /// Over limit: max_bytes < decoded size → data clamped, is_truncated=true.
+    #[test]
+    fn decode_limited_over_limit_is_truncated() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, Some(2)).unwrap();
+        assert_eq!(block.data.len(), 2);
+        assert!(block.is_truncated);
+    }
+
+    /// Zero limit: no bytes decoded, is_truncated=true.
+    #[test]
+    fn decode_limited_zero_limit() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, Some(0)).unwrap();
+        assert!(block.data.is_empty());
+        assert!(block.is_truncated);
+    }
+
+    /// None limit: equivalent to decode() — complete block, is_truncated=false.
+    #[test]
+    fn decode_limited_none_limit_equals_decode() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, None).unwrap();
+        assert_eq!(block.data, b"Cat");
+        assert!(!block.is_truncated);
+    }
+
+    /// Limit larger than decoded size: complete block, is_truncated=false.
+    #[test]
+    fn decode_limited_large_limit_not_truncated() {
+        let input = b"begin 644 f\n#0V%T\n \nend\n";
+        let block = decode_limited(input, Some(100)).unwrap();
+        assert_eq!(block.data, b"Cat");
+        assert!(!block.is_truncated);
     }
 }
