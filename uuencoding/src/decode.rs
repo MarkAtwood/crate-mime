@@ -128,6 +128,136 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
     })
 }
 
+/// Decode a UU block from `input`, stopping as soon as `max_bytes` decoded
+/// bytes have been produced.
+///
+/// Identical to [`decode`] except that decoding halts early once the
+/// accumulated payload reaches `max_bytes`. When the limit is hit,
+/// `is_truncated` is set to `true` and `data` contains at most `max_bytes`
+/// bytes. This makes preview queries O(`max_bytes`) rather than O(input).
+///
+/// Passing `None` for `max_bytes` is equivalent to calling [`decode`].
+///
+/// # Errors
+///
+/// Same as [`decode`]: [`UuError::InvalidBeginLine`] when no `begin` line
+/// is found, [`UuError::BeginBase64`] when a `begin-base64` line is detected.
+pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedBlock, UuError> {
+    let max = max_bytes.unwrap_or(usize::MAX);
+
+    // Split on LF, strip trailing CR from each line.
+    let lines: Vec<&[u8]> = input
+        .split(|&b| b == b'\n')
+        .map(|l| l.strip_suffix(b"\r").unwrap_or(l))
+        .collect();
+
+    // --- Find the begin line ---
+    let mut begin_idx = None;
+    for (i, line) in lines.iter().enumerate() {
+        if line.len() >= 5 && line[..5].eq_ignore_ascii_case(b"begin") {
+            begin_idx = Some(i);
+            break;
+        }
+    }
+    let begin_idx = match begin_idx {
+        Some(i) => i,
+        None => {
+            return Err(UuError::InvalidBeginLine {
+                line: String::new(),
+            })
+        }
+    };
+
+    let begin_line = lines[begin_idx];
+
+    // Detect begin-base64 before further parsing.
+    if begin_line.len() >= 12 && begin_line[..12].eq_ignore_ascii_case(b"begin-base64") {
+        return Err(UuError::BeginBase64);
+    }
+
+    // --- Parse begin line ---
+    let tokens: Vec<&[u8]> = begin_line
+        .split(|b: &u8| b.is_ascii_whitespace())
+        .filter(|t| !t.is_empty())
+        .collect();
+
+    if tokens.is_empty() || !tokens[0].eq_ignore_ascii_case(b"begin") {
+        return Err(UuError::InvalidBeginLine {
+            line: String::from_utf8_lossy(begin_line).into_owned(),
+        });
+    }
+
+    let mode: u32 = if tokens.len() >= 2 {
+        let mode_str = std::str::from_utf8(tokens[1]).unwrap_or("");
+        u32::from_str_radix(mode_str, 8).unwrap_or(0)
+    } else {
+        0
+    };
+
+    let filename: String = {
+        fn skip_token(s: &[u8]) -> &[u8] {
+            let after = s
+                .iter()
+                .position(|b| b.is_ascii_whitespace())
+                .unwrap_or(s.len());
+            let s = &s[after..];
+            let ws = s
+                .iter()
+                .position(|b| !b.is_ascii_whitespace())
+                .unwrap_or(s.len());
+            &s[ws..]
+        }
+        let rest = skip_token(begin_line);
+        let rest = skip_token(rest);
+        String::from_utf8_lossy(rest).into_owned()
+    };
+
+    // --- Decode data lines, stopping at max_bytes ---
+    let mut data: Vec<u8> = Vec::new();
+    let mut is_truncated = true;
+    let data_lines = &lines[begin_idx + 1..];
+
+    'outer: for (rel_idx, &line) in data_lines.iter().enumerate() {
+        // Stop early when limit already reached.
+        if data.len() >= max {
+            is_truncated = true;
+            break;
+        }
+        match decode_line(line, &mut data) {
+            Ok(0) => {
+                // Terminator line found. Look ahead for "end".
+                for &subsequent in &data_lines[rel_idx + 1..] {
+                    if subsequent.eq_ignore_ascii_case(b"end") {
+                        is_truncated = false;
+                        break 'outer;
+                    }
+                    if !subsequent.is_empty() {
+                        break;
+                    }
+                }
+                break 'outer;
+            }
+            Ok(_) => {}
+            Err(_) => {
+                is_truncated = true;
+                break 'outer;
+            }
+        }
+    }
+
+    // Truncate to max_bytes if a data line pushed us over.
+    if data.len() > max {
+        data.truncate(max);
+        is_truncated = true;
+    }
+
+    Ok(DecodedBlock {
+        data,
+        metadata: BlockMetadata { filename, mode },
+        is_truncated,
+    })
+}
+
 /// Decodes one UU data line into `out`.
 ///
 /// `line` must already have leading/trailing whitespace and `\r` stripped.

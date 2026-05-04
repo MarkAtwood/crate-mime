@@ -166,22 +166,29 @@ fn decode_uuencode(
     is_encoding_problem: &mut bool,
     input_was_limited: &mut bool,
 ) -> Vec<u8> {
-    match uuencoding::decode(body) {
+    // Use decode_limited so that decoding halts as soon as max_bytes decoded
+    // bytes have been produced.  This makes preview queries O(max_bytes) rather
+    // than O(full attachment size).
+    match uuencoding::decode_limited(body, max_bytes) {
         Err(_) => {
             *is_encoding_problem = true;
             Vec::new()
         }
         Ok(block) => {
             if block.is_truncated {
-                *is_encoding_problem = true;
-            }
-            match max_bytes {
-                Some(limit) if block.data.len() > limit => {
-                    *input_was_limited = true;
-                    block.data[..limit].to_vec()
+                // Distinguish between "input had a decode error / was missing
+                // end line" (encoding problem) and "we stopped early at the
+                // caller's max_bytes limit" (input_was_limited).
+                match max_bytes {
+                    Some(limit) if block.data.len() >= limit => {
+                        *input_was_limited = true;
+                    }
+                    _ => {
+                        *is_encoding_problem = true;
+                    }
                 }
-                _ => block.data,
             }
+            block.data
         }
     }
 }
@@ -438,18 +445,19 @@ mod tests {
     #[test]
     fn test_uuencode_null_byte_in_encoded_payload_no_panic() {
         // Regression test for MIME-gcz.1: a 0x00 byte in the encoded payload
-        // must not panic (debug underflow) or produce wrong values (release
-        // wrapping).  wrapping_sub(32) & 0x3F treats 0x00 as value 0 (same as
-        // 0x60/backtick or 0x20/space).
+        // must not panic.
         //
-        // Construct: 'begin 644 f\n' + length byte '#' (3 bytes) + 0x00 0x00
-        // 0x00 0x00 + ' \nend\n'.  The null bytes are < 0x20 and are treated
-        // as 6-bit zero by wrapping_sub, so decoded value is 0x00 0x00 0x00.
+        // Mechanism: in uuencoding/src/decode_line.rs, data bytes go through
+        // decode_byte(), which rejects anything outside 0x20..=0x5F or 0x60.
+        // A 0x00 byte in a data position returns Err(InvalidChar), which causes
+        // the block to be returned with is_truncated=true and whatever bytes
+        // were decoded before the error.  wrapping_sub(32) applies only to the
+        // length byte (line[0]), not the data payload.
+        //
+        // The key invariant is no panic regardless of the error path taken.
+        // is_encoding_problem will be true because is_truncated is true.
         let uu_body = b"begin 644 f\n#\x00\x00\x00\x00\n \nend\n";
         let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
-        // Must not panic; is_encoding_problem may be true or false depending on
-        // whether 0x00 passes the length-check gate, but no panic is the key
-        // invariant.
         let _result = decode_body_value(&raw, &part, None).unwrap();
     }
 
