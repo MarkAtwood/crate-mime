@@ -53,10 +53,20 @@ pub struct InlineUUBlock {
     /// Slicing `raw[begin_offset .. begin_offset + begin_length]` yields the
     /// complete UU block from the `begin` line through the `end` line
     /// (inclusive).
+    ///
+    /// **Note:** When [`is_encoding_problem`] is `true` and the block boundary
+    /// could not be determined (e.g. for `begin-base64` detection errors),
+    /// this field is `0` and the slicing invariant does not hold.
+    /// Always check `is_encoding_problem` before using this field.
     pub begin_offset: u32,
 
     /// Byte length of the entire UU block: from the start of the `begin` line
     /// through the end of the `end` line (inclusive of its newline).
+    ///
+    /// **Note:** When [`is_encoding_problem`] is `true` and the block boundary
+    /// could not be determined (e.g. for `begin-base64` detection errors),
+    /// this field is `0` and the slicing invariant does not hold.
+    /// Always check `is_encoding_problem` before using this field.
     pub begin_length: u32,
 
     /// File permission mode parsed from the `begin` line, e.g. `0o644`.
@@ -111,6 +121,10 @@ pub struct InlineUUBlock {
 /// * Byte offsets in the returned [`InlineUUBlock`]s are absolute — they are
 ///   relative to the start of `raw`, matching the coordinate space of
 ///   `part.body_range`.
+/// * For error items where [`InlineUUBlock::is_encoding_problem`] is `true`
+///   and the block could not be located (e.g. `begin-base64` detection
+///   errors), `begin_offset` and `begin_length` may both be `0` and the
+///   slicing invariant does not hold.
 /// * No panic occurs on any input (malformed, truncated, or adversarial).
 ///
 /// # Example

@@ -130,6 +130,12 @@ fn encode_body(data: &[u8], line_length: usize, out: &mut Vec<u8>) -> u32 {
             || (col == 0 && matches!(encoded, 0x2E | 0x09));
 
         if must_escape {
+            // A 2-byte escape pair must fit on one line.  If there is only one
+            // column left, flush the current line before emitting the pair.
+            if col + 2 > line_length {
+                out.extend_from_slice(b"\r\n");
+                col = 0;
+            }
             out.push(b'=');
             out.push(encoded.wrapping_add(64));
             col += 2;
@@ -320,5 +326,42 @@ mod tests {
         let s = String::from_utf8_lossy(&out);
         assert!(s.contains("pcrc32=100ece8c"), "per-part CRC wrong: {s}");
         assert!(s.contains("crc32=24650d57"), "whole-file CRC wrong: {s}");
+    }
+
+    #[test]
+    fn no_line_exceeds_line_length() {
+        use crate::encode;
+        // Use a small line_length (e.g. 10) and a payload that forces escapes at various positions.
+        // Bytes that must be escaped: those whose (b+42)%256 equals 0, 10, 13, or 61.
+        // (b+42)%256 = 0 -> b = 214
+        // (b+42)%256 = 10 -> b = 224
+        // (b+42)%256 = 13 -> b = 227
+        // (b+42)%256 = 61 -> b = 19
+        // Create a payload with escapes at position 9 (last column for line_length=10).
+        let line_length = 10u8;
+        // Build a 50-byte payload where every 9th byte (0-indexed) forces an escape:
+        let payload: Vec<u8> = (0u8..50)
+            .map(|i| if i % 9 == 8 { 19u8 } else { 0u8 })
+            .collect();
+        let encoded = encode(&payload, "test.bin", line_length);
+        // Extract data lines (skip =ybegin and =yend lines)
+        for line in encoded.split(|&b| b == b'\n') {
+            let line = if line.ends_with(b"\r") {
+                &line[..line.len() - 1]
+            } else {
+                line
+            };
+            // Skip header/footer lines
+            if line.starts_with(b"=ybegin") || line.starts_with(b"=yend") || line.is_empty() {
+                continue;
+            }
+            assert!(
+                line.len() <= line_length as usize,
+                "data line too long: {} chars (limit {}): {:?}",
+                line.len(),
+                line_length,
+                std::str::from_utf8(line).unwrap_or("<binary>")
+            );
+        }
     }
 }

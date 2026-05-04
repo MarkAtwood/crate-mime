@@ -31,14 +31,24 @@ pub enum YencError {
     /// the decoder computed.
     CrcMismatch { expected: u32, actual: u32 },
 
-    /// The `=yend` line was never found.
-    ///
-    /// The article was truncated. `data` in the returned [`crate::DecodedPart`]
-    /// (when available via a partial-result path) may be incomplete.
+    /// The encoded stream ended before the `=yend` line was found.
+    /// The article is truncated; no decoded data is returned.
     ///
     /// **Caller action**: the article was likely cut off mid-transfer. Re-fetch
     /// or skip.
     UnexpectedEof,
+
+    /// The decoded payload length does not match the `size=` field in `=yend`.
+    ///
+    /// This signals a truncated or corrupt article. In the presence of a valid
+    /// CRC, this error would never fire (CRC already detects corruption).
+    /// In the absence of a CRC, this is the only integrity check.
+    SizeMismatch {
+        /// The byte count declared in `=yend size=`.
+        expected: u64,
+        /// The actual number of decoded bytes.
+        actual: u64,
+    },
 }
 
 impl std::fmt::Display for YencError {
@@ -63,6 +73,11 @@ impl std::fmt::Display for YencError {
             YencError::UnexpectedEof => write!(
                 f,
                 "no '=yend' line found — article was truncated; re-fetch the article"
+            ),
+            YencError::SizeMismatch { expected, actual } => write!(
+                f,
+                "size mismatch: =yend size={expected} but decoded {actual} bytes — \
+                 the article data is corrupt or truncated; re-fetch and retry"
             ),
         }
     }

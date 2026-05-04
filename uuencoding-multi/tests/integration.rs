@@ -28,10 +28,10 @@ use uuencoding_multi::{
 // Fixtures — externally-generated (Python `uu` module)
 // ---------------------------------------------------------------------------
 
-/// UU-encoded bytes for b'The quick brown fox j' (first 15 bytes of FULL).
+/// UU-encoded bytes for b'The quick brown' (bytes 0-14 of FULL).
 const PART1: &[u8] = b"begin 644 fox.bin\n/5&AE('%U:6-K(&)R;W=N\n \nend\n";
 
-/// UU-encoded bytes for b'umps over the lazy d' (bytes 15-29 of FULL).
+/// UU-encoded bytes for b' fox jumps over' (bytes 15-29 of FULL).
 /// Note: contains `"` in the encoded body (valid UU character); escaped as `\"`.
 const PART2: &[u8] = b"begin 644 fox.bin\n/(&9O>\"!J=6UP<R!O=F5R\n \nend\n";
 

@@ -14,8 +14,6 @@ categories = ["email", "encoding"]
 [dependencies]
 uuencoding = { version = "0.2.0", path = "../uuencoding" }
 regex = "1"
-serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
 default = []
-serde = ["dep:serde"]

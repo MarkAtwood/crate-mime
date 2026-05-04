@@ -34,6 +34,7 @@ use crate::{DecodedPart, YencMetadata};
 /// - [`YencError::InvalidHeader`] — a required field is missing or unparsable.
 /// - [`YencError::UnexpectedEof`] — `=yend` line was never found.
 /// - [`YencError::CrcMismatch`] — decoded bytes do not match the CRC in `=yend`.
+/// - [`YencError::SizeMismatch`] — decoded byte count does not match `=yend size=`.
 pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
     // -----------------------------------------------------------------------
     // Step 1: Find =ybegin line.
@@ -140,18 +141,38 @@ fn finish_decode(
 
     // CRC32 verification: prefer pcrc32 (per-part) for multi-part articles,
     // fall back to crc32 for single-part.
+    //
+    // For multi-part articles, only pcrc32 is meaningful — crc32 is the
+    // whole-file CRC and cannot be verified against a single part's payload.
+    let crc_to_check = if part.is_some() {
+        yend.pcrc32
+    } else {
+        yend.pcrc32.or(yend.crc32)
+    };
     let crc32_verified;
-    if let Some(expected) = yend.pcrc32.or(yend.crc32) {
+    if let Some(expected) = crc_to_check {
         let actual = crc32fast::hash(&data);
         if actual != expected {
             return Err(YencError::CrcMismatch { expected, actual });
         }
         crc32_verified = true;
     } else {
-        // No CRC field present — cannot verify. Not an error per the yEnc
-        // "spec" (CRC is optional on some older encoders), but we surface this
-        // via crc32_verified=false so callers can decide.
+        // No CRC field present (or multi-part with only whole-file crc32) —
+        // cannot verify. Not an error per the yEnc "spec" (CRC is optional
+        // on some older encoders), but we surface this via crc32_verified=false
+        // so callers can decide.
         crc32_verified = false;
+    }
+
+    // When no CRC was present, validate size= as the only integrity check.
+    // When CRC was present and verified, this is redundant but harmless to keep.
+    if let Some(declared_size) = yend.size {
+        if data.len() as u64 != declared_size {
+            return Err(YencError::SizeMismatch {
+                expected: declared_size,
+                actual: data.len() as u64,
+            });
+        }
     }
 
     Ok(DecodedPart {
@@ -497,6 +518,24 @@ mod tests {
     }
 
     #[test]
+    fn decode_size_mismatch_is_error() {
+        // =yend size=10 but only 4 bytes in the data block
+        let input = b"=ybegin line=128 size=10 name=f.bin\n*+,-\n=yend size=10\n";
+        let err = decode(input).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                YencError::SizeMismatch {
+                    expected: 10,
+                    actual: 4
+                }
+            ),
+            "expected SizeMismatch, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
     fn decode_no_panic_on_arbitrary_input() {
         // Fuzz-style: must not panic on any byte sequence.
         let inputs: &[&[u8]] = &[
@@ -512,5 +551,39 @@ mod tests {
         for input in inputs {
             let _ = decode(input); // must not panic
         }
+    }
+
+    #[test]
+    fn decode_multipart_crc32_only_no_pcrc32_is_ok() {
+        // Regression test for MIME-3ps.3: a multi-part article that has crc32=
+        // in =yend but no pcrc32= must NOT return CrcMismatch.
+        //
+        // crc32= is the whole-file CRC and is meaningless for a single part.
+        // We use an intentionally wrong value (0xdeadbeef) to confirm it is
+        // completely ignored.
+        //
+        // Payload: bytes [0, 1, 2, 3] encoded as yEnc (* + , -).
+        // Oracle (encode): (b + 42) % 256 for each; none of these need escaping.
+        //   0+42=42='*', 1+42=43='+', 2+42=44=',', 3+42=45='-'
+        let input: &[u8] = b"=ybegin part=1 total=2 line=128 size=128 name=test.bin\n\
+                              =ypart begin=1 end=4\n\
+                              *+,-\n\
+                              =yend size=4 part=1 crc32=deadbeef\n";
+
+        let result = decode(input);
+        // Must not return CrcMismatch — the whole-file crc32 is not checked
+        // against a part's payload.
+        assert!(
+            result.is_ok(),
+            "expected Ok for multi-part with only crc32= (no pcrc32=), got: {:?}",
+            result.unwrap_err()
+        );
+        let part = result.unwrap();
+        assert_eq!(part.data, &[0, 1, 2, 3], "decoded bytes");
+        // crc32_verified must be false: we had no pcrc32 to check against.
+        assert!(
+            !part.crc32_verified,
+            "crc32_verified should be false when only whole-file crc32= is present"
+        );
     }
 }
