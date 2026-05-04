@@ -122,7 +122,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         // the terminator (decode_line returns Ok(0)) the look-ahead below will
         // find "end" and correctly set is_truncated=false.  If it is a data
         // line, decode_line will push more bytes and the post-loop truncation
-        // (line ~249) will clamp data to max and set is_truncated=true.
+        // below) will clamp data to max and set is_truncated=true.
         if data.len() > max {
             is_truncated = true;
             break;
@@ -652,6 +652,21 @@ mod tests {
         let block = decode_limited(input, Some(0)).unwrap();
         assert!(block.data.is_empty());
         assert!(block.is_truncated);
+    }
+
+    /// Zero limit on an empty (zero-byte) block: no data to truncate → is_truncated=false.
+    #[test]
+    fn decode_limited_zero_limit_empty_block_not_truncated() {
+        // Empty UU block: begin line, backtick terminator, end line.
+        // Oracle: Python uu.encode(b"") → "begin 644 f\n`\nend\n"
+        let input = b"begin 644 f\n`\nend\n";
+        let block = decode_limited(input, Some(0)).unwrap();
+        assert!(block.data.is_empty());
+        // Zero bytes decoded, limit never exceeded → block is structurally complete.
+        assert!(
+            !block.is_truncated,
+            "empty block with max=0 should not be truncated"
+        );
     }
 
     /// None limit: equivalent to decode() — complete block, is_truncated=false.
