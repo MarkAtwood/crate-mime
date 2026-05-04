@@ -1,0 +1,23 @@
+[package]
+name = "yencoding"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+description = "yEnc encoding and decoding for Usenet binary posts"
+authors = ["Mark Atwood <mark@reviewcommit.com>"]
+repository = "https://github.com/MarkAtwood/crate-mime"
+readme = "README.md"
+keywords = ["yenc", "usenet", "encoding", "nntp", "binary"]
+categories = ["email", "encoding"]
+
+[dependencies]
+crc32fast = "1"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dev-dependencies]
+# none needed — test vectors are committed binary fixtures
