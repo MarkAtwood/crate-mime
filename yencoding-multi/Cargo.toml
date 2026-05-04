@@ -1,0 +1,19 @@
+[package]
+name = "yencoding-multi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+description = "Multi-part yEnc Usenet article reassembly"
+authors = ["Mark Atwood <mark@reviewcommit.com>"]
+repository = "https://github.com/MarkAtwood/crate-mime"
+readme = "README.md"
+keywords = ["yenc", "usenet", "nntp", "multipart", "encoding"]
+categories = ["email", "encoding"]
+
+[dependencies]
+yencoding = { version = "0.1.0", path = "../yencoding" }
+crc32fast = "1"
+
+[dev-dependencies]
+# none needed
