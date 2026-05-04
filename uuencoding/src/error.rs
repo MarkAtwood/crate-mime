@@ -9,9 +9,17 @@ pub enum UuError {
     /// cannot be parsed. The `line` field contains the offending text, or an
     /// empty string when no `begin` line was found at all.
     ///
+    /// When produced by [`scan`][crate::scan], `begin_offset` is the byte
+    /// offset of the malformed `begin` line within the input slice.
+    ///
     /// **Caller action**: treat the input as not a UU block. Inspect `line`
     /// for diagnostics.
-    InvalidBeginLine { line: String },
+    InvalidBeginLine {
+        line: String,
+        /// Byte offset of the malformed `begin` line within the input.
+        /// Always `0` when produced by [`decode`][crate::decode].
+        begin_offset: usize,
+    },
 
     /// A `begin-base64` line was detected.
     ///
@@ -22,9 +30,16 @@ pub enum UuError {
     /// `data-encoding`). The terminator for such a block is `====` rather than
     /// `end`.
     ///
+    /// When produced by [`scan`][crate::scan], `begin_offset` is the byte
+    /// offset of the `begin-base64` line within the input slice.
+    ///
     /// **Caller action**: pass the block body (between the `begin-base64` line
     /// and the `====` terminator) to a Base64 decoder.
-    BeginBase64,
+    BeginBase64 {
+        /// Byte offset of the `begin-base64` line within the input.
+        /// Always `0` when produced by [`decode`][crate::decode].
+        begin_offset: usize,
+    },
 
     /// A byte outside the valid UU character range was encountered in a data
     /// line.
@@ -46,10 +61,10 @@ pub enum UuError {
 impl std::fmt::Display for UuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UuError::InvalidBeginLine { line } => {
+            UuError::InvalidBeginLine { line, .. } => {
                 write!(f, "invalid or missing 'begin' line: {:?}", line)
             }
-            UuError::BeginBase64 => write!(
+            UuError::BeginBase64 { .. } => write!(
                 f,
                 "'begin-base64' detected; this is Base64, not UUencoding — use a Base64 decoder"
             ),

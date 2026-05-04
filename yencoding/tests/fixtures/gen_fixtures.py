@@ -37,6 +37,21 @@ def yenc_line_wrap(encoded: bytes, line_len: int = 128) -> bytes:
     Split encoded byte stream into lines of at most line_len bytes.
     Lines are separated by CRLF.  A dot at the start of a line is escaped
     per NNTP dot-stuffing (prepend an extra dot).
+
+    NOTE: This function is NOT escape-pair-aware. It slices the pre-encoded
+    byte stream at a fixed line_len boundary with no knowledge of yEnc escape
+    pairs (the '=' byte followed by an escaped byte). If an escape '=' falls at
+    encoded position line_len-1 (i.e. the last byte of a line), the '=' will
+    end line N and the escaped byte will begin line N+1 — a valid split-escape
+    per the yEnc spec. The existing fixtures do not trigger this because their
+    only escaped byte (value 19 → encoded as '=' + 'A') appears at encoded
+    position 19, well within the first 128-byte line.
+
+    To generate a split-escape fixture, use a payload such as [0]*127 + [19],
+    where byte 19 at index 127 causes '=' to land at encoded position 127
+    (the last slot of line 1). Do NOT regenerate fixtures from this script
+    until the Rust decoder correctly handles split-escape sequences; see
+    MIME-592.19.
     """
     lines = []
     i = 0

@@ -68,6 +68,13 @@ pub struct InlineYEncBlock {
 
     /// Byte length of the entire block: from the start of `=ybegin` through
     /// the end of `=yend` (inclusive of its newline).
+    ///
+    /// **When [`is_encoding_problem`] is `true`**, this field holds the length
+    /// of the `=ybegin` line only (up to and including its newline), not the
+    /// full block through `=yend`.  The `=yend` line could not be located
+    /// because decoding failed before it was reached.  Do not rely on
+    /// `begin_offset + begin_length` spanning a complete block when
+    /// `is_encoding_problem` is set.
     pub begin_length: u32,
 
     /// Filename from the `name=` field of `=ybegin`.
@@ -210,7 +217,20 @@ pub fn scan_inline_yencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineYEncBlock
 /// Matches only at true line boundaries (offset 0 or immediately after `\n`)
 /// to avoid false positives from encoded data that happens to contain
 /// the ASCII bytes `=ybegin`.
+///
+/// # Precondition
+///
+/// `start` must be `0` or immediately following a `\n` byte in `body`
+/// (i.e. a line-boundary offset). Passing a mid-line offset will not
+/// produce a panic, but the search will begin at a non-line-boundary
+/// position and may miss a `=ybegin` line that starts before the next
+/// `\n`, or — in pathological encoded data — match `=ybegin` bytes that
+/// do not appear at a true line start.
 fn find_ybegin(body: &[u8], start: usize) -> Option<usize> {
+    debug_assert!(
+        start == 0 || body.get(start - 1) == Some(&b'\n'),
+        "find_ybegin: start must be a line-boundary offset"
+    );
     let needle = b"=ybegin ";
     let mut pos = start;
 

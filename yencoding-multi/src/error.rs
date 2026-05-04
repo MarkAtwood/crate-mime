@@ -53,12 +53,15 @@ pub enum AssemblyError {
         actual_data_len: usize,
     },
 
-    /// `total_size` exceeds the addressable memory on this platform.
+    /// `total_size` exceeds the built-in safety cap or the addressable memory
+    /// on this platform.
     ///
-    /// On 64-bit targets this requires a `total_size > usize::MAX` (> 16 EiB).
-    /// On 32-bit targets the limit is `u32::MAX` (4 GiB).
+    /// [`Assembler::new`][crate::Assembler::new] rejects any `total_size`
+    /// greater than [`MAX_TOTAL_SIZE`][crate::MAX_TOTAL_SIZE] (512 MiB) to
+    /// prevent an adversarial `=ybegin size=` field from forcing a multi-GiB
+    /// allocation.  On 32-bit targets the platform `usize` limit applies first.
     TotalSizeTooLarge {
-        /// The value that was too large to allocate.
+        /// The value that was rejected.
         total_size: u64,
     },
 
@@ -119,8 +122,8 @@ impl std::fmt::Display for AssemblyError {
             ),
             AssemblyError::TotalSizeTooLarge { total_size } => write!(
                 f,
-                "total_size {total_size} exceeds addressable memory on this platform \
-                 (usize::MAX = {})",
+                "total_size {total_size} exceeds the 512 MiB safety cap or the \
+                 addressable memory on this platform (usize::MAX = {})",
                 usize::MAX
             ),
             AssemblyError::MalformedPartRange => write!(

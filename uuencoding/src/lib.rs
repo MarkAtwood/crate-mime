@@ -88,7 +88,7 @@ pub use error::UuError;
 ///
 /// Every UU block starts with a line of the form `begin <mode> <filename>`.
 /// This struct holds the two fields parsed from that line.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockMetadata {
     /// The filename recorded on the `begin` line.
     ///
@@ -110,7 +110,7 @@ pub struct BlockMetadata {
 /// is `false` and `data` contains the complete binary payload. When the `end`
 /// line is missing `is_truncated` is `true` and `data` contains whatever bytes
 /// were decoded before input was exhausted or an error was encountered.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DecodedBlock {
     /// The decoded binary payload.
     pub data: Vec<u8>,
@@ -141,7 +141,7 @@ pub struct DecodedBlock {
 /// satisfy `input[begin_offset..end_offset]` == the raw UU block (starting
 /// with `begin` and ending with `end\n`, or ending at `input.len()` when
 /// truncated).
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ScannedBlock {
     /// Byte offset of the `b` in the `begin` line within the input.
     pub begin_offset: usize,
@@ -246,27 +246,17 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
     encode::encode(data, filename, mode)
 }
 
-/// Scan `input` for UU blocks, yielding a [`ScannedBlock`] for each one found.
+/// Scan `input` for UU blocks, returning one entry per block found.
 ///
-/// The iterator walks the input once, locating every `begin`/`end` pair at
-/// true line boundaries. Each item is a fully-decoded [`ScannedBlock`] on
-/// success, or a [`UuError`] for `begin-base64` blocks (which this crate does
-/// not decode) or malformed `begin` lines.
-///
-/// # Eagerness
-///
-/// **The entire input is scanned and all blocks are decoded on the first call**
-/// to the returned iterator. The function returns an `impl Iterator` for API
-/// convenience, but the underlying implementation is fully eager: all results
-/// are collected into a `Vec` before any item is consumed. Calling `.next()`
-/// on a body with ten blocks decodes all ten immediately, not one at a time.
-/// If you only need the first block and the input is large, consider using
-/// [`decode`] instead, which processes only up to the first block.
+/// Walks the input once, locating every `begin`/`end` pair at true line
+/// boundaries. Each item is a fully-decoded [`ScannedBlock`] on success, or a
+/// [`UuError`] for `begin-base64` blocks (which this crate does not decode)
+/// or malformed `begin` lines.
 ///
 /// # Error continuation
 ///
-/// After yielding an error the scanner continues past the offending construct
-/// so that subsequent valid blocks are still returned. Specifically:
+/// After an error the scanner continues past the offending construct so that
+/// subsequent valid blocks are still returned. Specifically:
 ///
 /// - **`begin-base64`**: one [`UuError::BeginBase64`] is emitted; the scanner
 ///   then skips to the `====` terminator before resuming.
@@ -287,13 +277,13 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
 ///
 /// ```rust
 /// let text = b"Prose.\nbegin 644 hello.txt\n%2&5L;&\\ \n \nend\nMore prose.\n";
-/// let blocks: Vec<_> = uuencoding::scan(text).collect();
+/// let blocks = uuencoding::scan(text);
 /// assert_eq!(blocks.len(), 1);
 /// let block = blocks[0].as_ref().unwrap();
 /// assert_eq!(block.data, b"Hello");
 /// assert_eq!(block.metadata.filename, "hello.txt");
 /// assert_eq!(block.begin_offset, 7);
 /// ```
-pub fn scan(input: &[u8]) -> impl Iterator<Item = Result<ScannedBlock, UuError>> {
-    scan::scan_impl(input).into_iter()
+pub fn scan(input: &[u8]) -> Vec<Result<ScannedBlock, UuError>> {
+    scan::scan_impl(input)
 }

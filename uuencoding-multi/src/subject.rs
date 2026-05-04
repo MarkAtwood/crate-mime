@@ -89,12 +89,24 @@ fn strip_prefixes(s: &str) -> &str {
 /// (repeatedly, to handle nested re-forwards). The extracted part marker is
 /// removed from the subject to produce `base_subject`.
 ///
+/// # First-match-wins
+///
+/// The five patterns are tried in the priority order listed above. The first
+/// pattern that matches wins; no attempt is made to find a "better" match
+/// further along. If a subject line contains multiple markers
+/// (e.g. `"file (1/3) [2/4]"`), only the first one matched — the
+/// parenthesised fraction in that example — is used and the rest are left in
+/// `base_subject`.
+///
 /// # Return value
 ///
 /// Returns `None` only when:
 /// - `subject` is empty, or
 /// - `subject` contains a `yEnc` marker (those posts use a distinct encoding
-///   that is explicitly out of scope for this crate).
+///   that is explicitly out of scope for this crate), or
+/// - the entire input is consumed by the part-marker pattern, leaving no
+///   base subject (e.g. `"(1/3)"` with nothing else). The invariant that
+///   `base_subject` is never empty must hold whenever `Some` is returned.
 ///
 /// Otherwise returns `Some(SubjectParts)`. When no part-marker pattern
 /// matches, `part_index` and `part_total` are both `None` and `base_subject`
@@ -205,6 +217,13 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
                 .trim_end_matches(|c: char| c == '-' || c.is_whitespace())
                 .trim()
                 .to_string();
+
+            // Invariant: base_subject must not be empty. A subject that
+            // consists solely of a part marker (e.g. "(1/3)") has no
+            // meaningful base; treat it as non-parseable.
+            if base_subject.is_empty() {
+                return None;
+            }
 
             return Some(SubjectParts {
                 base_subject,
@@ -380,6 +399,26 @@ mod tests {
     #[test]
     fn empty_returns_none() {
         assert!(parse_subject("").is_none());
+    }
+
+    // ------------------------------------------------------------------
+    // Bare marker (entire input is the marker) → None
+    // Invariant: base_subject must never be empty.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn bare_paren_marker_returns_none() {
+        assert!(parse_subject("(1/3)").is_none());
+    }
+
+    #[test]
+    fn bare_paren_marker_with_spaces_returns_none() {
+        assert!(parse_subject("  (1/3)  ").is_none());
+    }
+
+    #[test]
+    fn bare_bracket_marker_returns_none() {
+        assert!(parse_subject("[2/4]").is_none());
     }
 
     // ------------------------------------------------------------------

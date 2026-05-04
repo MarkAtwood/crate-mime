@@ -221,7 +221,10 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) {
             }
             // Escape sequence: next byte has 64 additional subtracted.
             // (b - 42 - 64) = (b - 106) mod 256
-            b'=' if i + 1 < len => {
+            // Guard: if the next byte is a framing byte (\r, \n, \0), the '='
+            // is a lone/trailing escape — discard it rather than consuming the
+            // framing byte as an escape target (which would emit a garbage byte).
+            b'=' if i + 1 < len && !matches!(line[i + 1], b'\r' | b'\n' | b'\0') => {
                 let next = line[i + 1];
                 out.push(next.wrapping_sub(106));
                 i += 2;
@@ -400,6 +403,36 @@ mod tests {
         assert_eq!(out, &[0]); // only '*' decoded
     }
 
+    #[test]
+    fn decode_line_eq_before_cr_is_lone_escape() {
+        // '=' immediately before \r must NOT consume \r as escape target.
+        // Oracle: '*' decodes to (42 - 42) = 0.  The trailing '=' before \r
+        // is a lone escape and produces no output byte.
+        // Pre-fix this produced [0, 163]: (13 - 106 + 256) % 256 = 163.
+        let encoded = b"*=\r";
+        let mut out = Vec::new();
+        decode_line(encoded, &mut out);
+        assert_eq!(out, &[0], "=\\r must not produce a garbage byte");
+    }
+
+    #[test]
+    fn decode_line_eq_before_lf_is_lone_escape() {
+        // '=' immediately before \n must NOT consume \n as escape target.
+        let encoded = b"*=\n";
+        let mut out = Vec::new();
+        decode_line(encoded, &mut out);
+        assert_eq!(out, &[0], "=\\n must not produce a garbage byte");
+    }
+
+    #[test]
+    fn decode_line_eq_before_nul_is_lone_escape() {
+        // '=' immediately before \0 must NOT consume \0 as escape target.
+        let encoded = b"*=\x00";
+        let mut out = Vec::new();
+        decode_line(encoded, &mut out);
+        assert_eq!(out, &[0], "=\\0 must not produce a garbage byte");
+    }
+
     // -----------------------------------------------------------------------
     // Full decode() tests using committed fixture files
     // Oracle: Python gen_fixtures.py — independent of this crate
@@ -551,6 +584,30 @@ mod tests {
         for input in inputs {
             let _ = decode(input); // must not panic
         }
+    }
+
+    #[test]
+    fn decode_rejects_lone_eq_before_crlf() {
+        // Construct a minimal yEnc stream where '=' appears before \r\n.
+        // The '=' should be discarded (lone escape), not decode \r as a data byte.
+        // Body: just the '*' byte (encodes raw 0), then lone '=' before CRLF.
+        // Oracle: '*' = 0x2A = 42; raw = (42 - 42) % 256 = 0.
+        let input = b"=ybegin line=128 size=1 name=test\n*=\r\n=yend size=1 crc32=00000000\n";
+        // After fix: decode succeeds (or returns CrcMismatch for size=1) but does
+        // NOT produce 2 decoded bytes.
+        let result = crate::decode(input);
+        if let Ok(decoded) = &result {
+            // Should decode to just [0], not [0, 163]
+            assert_eq!(
+                decoded.data.len(),
+                1,
+                "lone '=' before CRLF must not produce extra byte; got {:?}",
+                decoded.data
+            );
+            assert_eq!(decoded.data[0], 0);
+        }
+        // SizeMismatch or CrcMismatch is also acceptable (the fixture CRC is 00000000
+        // which won't match real CRC of [0]).  What is NOT acceptable is Ok with 2 bytes.
     }
 
     #[test]
