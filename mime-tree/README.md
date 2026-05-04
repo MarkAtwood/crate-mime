@@ -154,6 +154,51 @@ for id in &msg.text_body {
 | `data` | `Vec<u8>` | Decoded binary payload |
 | `is_encoding_problem` | `bool` | True if the block was truncated or malformed |
 
+## Inline yEnc blocks
+
+Usenet binary posts from the 2000s onward typically use yEnc encoding with no
+`Content-Transfer-Encoding` header — the article body is simply `text/plain`
+with `=ybegin`/`=yend` framing embedded in it. Use `scan_inline_yencode` to
+locate and decode those blocks:
+
+```rust
+use mime_tree::{parse, scan_inline_yencode};
+
+let raw: &[u8] = /* raw message bytes */;
+let msg = parse(raw).unwrap();
+
+for id in &msg.text_body {
+    let part = msg.part_index.find_by_id(id).unwrap();
+    for block in scan_inline_yencode(raw, part) {
+        if !block.is_encoding_problem {
+            println!("found {} ({} bytes)", block.filename, block.data.len());
+        }
+    }
+}
+```
+
+A reasonable heuristic before calling: check whether the part's decoded text
+contains the byte sequence `b"=ybegin "`.
+
+`InlineYEncBlock` fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `begin_offset` | `u32` | Absolute byte offset of the `=ybegin` line in `raw` |
+| `begin_length` | `u32` | Byte length of the entire block (through `=yend\n`) |
+| `filename` | `String` | Filename from `=ybegin name=` |
+| `file_size` | `u64` | Total file size from `=ybegin size=` |
+| `part` | `Option<u32>` | Part number (multi-part only) |
+| `total_parts` | `Option<u32>` | Total parts (multi-part only) |
+| `part_begin` | `Option<u64>` | 1-based start offset in full file (multi-part only) |
+| `part_end` | `Option<u64>` | 1-based end offset in full file (multi-part only) |
+| `data` | `Vec<u8>` | Decoded binary payload |
+| `crc32_verified` | `bool` | True if CRC32 was present and matched |
+| `is_encoding_problem` | `bool` | True if the block was truncated, had a bad header, or CRC mismatch |
+
+For multi-part reassembly, pass each `InlineYEncBlock`'s fields to
+[`yencoding_multi::Assembler`](https://crates.io/crates/yencoding-multi).
+
 ## Design invariants
 
 - **No JMAP dependency.** General-purpose MIME parser; no `jmap-mail-types`.
