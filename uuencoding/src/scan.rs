@@ -61,8 +61,15 @@ fn is_begin_line(line: &[u8]) -> bool {
 }
 
 /// Returns true if the line (stripped) looks like `begin-base64 ...`
+///
+/// Requires that `"begin-base64"` (12 bytes) is either the entire line or
+/// followed by ASCII whitespace, so that a `"begin-base64X"` variant is not
+/// misclassified.  Matches `decode.rs` behaviour, which accepts any whitespace
+/// character (space, tab, …) as the delimiter.
 fn is_begin_base64(line: &[u8]) -> bool {
-    line.len() >= 13 && line[..13].eq_ignore_ascii_case(b"begin-base64 ")
+    line.len() >= 12
+        && line[..12].eq_ignore_ascii_case(b"begin-base64")
+        && (line.len() == 12 || line[12].is_ascii_whitespace())
 }
 
 /// Parse `begin <mode> <filename>` from a stripped line. Returns None on failure.
@@ -228,13 +235,30 @@ fn handle_block(
         }
 
         // Try decoding as a data line.
+        let data_len_before = data.len();
         match decode_line(lt, &mut data) {
             Ok(0) => {
+                // Zero-length line: either the terminator or a blank line in
+                // the terminator look-ahead.  Keep saw_terminator=true so the
+                // next line is still checked for "end".
                 saw_terminator = true;
                 scan_pos = le;
             }
             Ok(_) => {
-                saw_terminator = false;
+                if saw_terminator {
+                    // A real data line appeared after the terminator, which is
+                    // malformed.  Stop here, matching decode() behaviour: once
+                    // the terminator is seen, only blank lines and "end" are
+                    // expected.  The block is truncated at the terminator.
+                    //
+                    // Discard the bytes that decode_line just pushed: data has
+                    // grown beyond data_len_before.  Truncate back so that the
+                    // emitted block contains only bytes decoded before the
+                    // terminator.
+                    data.truncate(data_len_before);
+                    end_offset = ls;
+                    break;
+                }
                 scan_pos = le;
             }
             Err(_) => {
@@ -507,6 +531,39 @@ mod tests {
         assert_eq!(&input[block.begin_offset..block.begin_offset + 5], b"begin");
         // the character before begin_offset must be '\n' (line boundary)
         assert_eq!(input[block.begin_offset - 1], b'\n');
+    }
+
+    // Regression: data line after terminator must be ignored, matching decode().
+    // A block with structure: data / terminator / data / end should produce
+    // is_truncated=true and data containing only bytes before the terminator.
+    // Before this fix, scan() continued decoding after the terminator, producing
+    // different (and longer) data than decode() for the same input.
+    //
+    // Oracle: "#0V%T" decodes "Cat" (3 bytes).
+    #[test]
+    fn data_line_after_terminator_is_ignored() {
+        // Valid data line, then terminator, then another data line, then end.
+        let input = b"begin 644 f\n#0V%T\n`\n#0V%T\nend\n";
+        let results = scan_impl(input);
+        assert_eq!(results.len(), 1);
+        let block = results[0].as_ref().unwrap();
+        // scan() and decode() must agree: data contains only the pre-terminator bytes.
+        assert_eq!(
+            block.data, b"Cat",
+            "data after terminator must be discarded"
+        );
+        assert!(block.is_truncated, "malformed block must be truncated");
+
+        // Verify agreement with decode().
+        let decoded = crate::decode::decode(input).unwrap();
+        assert_eq!(
+            block.data, decoded.data,
+            "scan and decode must return same data"
+        );
+        assert_eq!(
+            block.is_truncated, decoded.is_truncated,
+            "scan and decode must agree on truncation"
+        );
     }
 
     #[test]

@@ -43,12 +43,19 @@ pub enum UuError {
     ///
     /// Valid UU data characters are `0x20`–`0x5F` (space through underscore)
     /// and `` 0x60 `` (backtick, used as an alias for zero). Any other byte
-    /// causes this error. `line` and `col` are 0-based indices into the
-    /// encoded stream (after the length byte); `byte` is the offending value.
+    /// causes this error.
+    ///
+    /// - `byte` — the offending byte value.
+    /// - `col` — 0-based byte offset within the encoded payload of the bad
+    ///   line (i.e. after the length byte).
+    /// - `line` — **always `0` in the current implementation.** The
+    ///   `decode_line` function operates on a single line and does not receive
+    ///   the line's position within the block, so this field carries no useful
+    ///   information at present.
     ///
     /// **Caller action**: the block is corrupted. `decode` returns a partial
     /// result with `is_truncated = true` up to the bad line; callers may log
-    /// `byte`, `line`, and `col` for diagnostics.
+    /// `byte` and `col` for diagnostics.
     InvalidChar { line: usize, col: usize, byte: u8 },
 }
 

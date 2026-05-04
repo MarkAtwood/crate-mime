@@ -31,6 +31,11 @@ pub struct ReassembledFile {
     /// `true` when one or more parts were absent from the collection, or when
     /// any individual part's UU body was missing its `end` line. The data is
     /// likely corrupt in this case.
+    ///
+    /// To distinguish the two truncation causes:
+    /// - `is_truncated && !missing_parts.is_empty()` — gap in the collection.
+    /// - `is_truncated && missing_parts.is_empty()` — all parts were present
+    ///   but at least one part's UU body was itself truncated (missing `end`).
     pub is_truncated: bool,
     /// Part numbers in `1..=total` that were absent from the collection, in
     /// ascending order. Empty when the collection was complete.
