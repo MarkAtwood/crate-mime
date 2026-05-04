@@ -73,6 +73,14 @@ impl PartCollection {
     /// via [`add`][Self::add]. Use [`with_total`][Self::with_total] when the
     /// total is known in advance (e.g. extracted from the subject line).
     ///
+    /// # Warning: `is_complete()` after a single `add`
+    ///
+    /// Because the total is inferred from the highest part seen, adding a
+    /// single part (e.g. part 1) immediately sets `total = Some(1)` and
+    /// causes [`is_complete`][Self::is_complete] to return `true`. If the
+    /// actual series has more parts, this is a false positive. Prefer
+    /// [`with_total`][Self::with_total] whenever the total is known.
+    ///
     /// # Example
     ///
     /// ```
@@ -229,6 +237,14 @@ impl PartCollection {
     ///
     /// Always returns `false` when `total` is `None`, even if parts have been
     /// added.
+    ///
+    /// # Warning: auto-inferred total
+    ///
+    /// When a collection was created with [`new`][Self::new] (no declared
+    /// total), the total is inferred as the highest part number seen. Adding
+    /// only part 1 sets `total = Some(1)` and this function immediately returns
+    /// `true`, even if the series actually has more parts. Use
+    /// [`with_total`][Self::with_total] to set the authoritative total.
     ///
     /// # Example
     ///
