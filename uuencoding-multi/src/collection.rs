@@ -106,6 +106,14 @@ impl PartCollection {
     /// If a later call to [`add`][Self::add] supplies a `part_number` greater
     /// than `total`, the stored total is bumped upward automatically.
     ///
+    /// # Note: `total = 0`
+    ///
+    /// Passing `total = 0` sets the expected part range to `1..=0`, which is
+    /// empty. As a result [`missing_parts`][Self::missing_parts] returns `[]`
+    /// and [`is_complete`][Self::is_complete] returns `true` immediately,
+    /// before any parts are added. If you do not yet know the total, use
+    /// [`new`][Self::new] instead.
+    ///
     /// # Example
     ///
     /// ```

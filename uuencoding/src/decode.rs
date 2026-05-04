@@ -115,6 +115,14 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         }
         let rest = skip_token(begin_line);
         let rest = skip_token(rest);
+        // Trim trailing whitespace to match scan.rs behaviour: a begin line
+        // like "begin 644 foo.txt   " (trailing spaces from mailer wrapping)
+        // should produce filename "foo.txt", not "foo.txt   ".
+        let rest = rest
+            .iter()
+            .rposition(|b| !b.is_ascii_whitespace())
+            .map(|pos| &rest[..=pos])
+            .unwrap_or(b"");
         String::from_utf8_lossy(rest).into_owned()
     };
 
@@ -545,6 +553,20 @@ mod tests {
         let input = b"begin 644 foo.txt\n-2&5L;&\\L(%=O<FQD(0  \n";
         let block = decode_block(input).unwrap();
         assert!(block.is_truncated);
+    }
+
+    /// Trailing whitespace on begin line is stripped from filename, matching scan().
+    /// A mailer that wraps or adds a trailing space should not affect the filename.
+    #[test]
+    fn trailing_whitespace_on_begin_line_stripped_from_filename() {
+        // Three trailing spaces after the filename.
+        let input = b"begin 644 foo.txt   \n \nend\n";
+        let block = decode_block(input).unwrap();
+        assert_eq!(
+            block.metadata.filename, "foo.txt",
+            "trailing whitespace must be stripped to match scan() behaviour"
+        );
+        assert_eq!(block.metadata.mode, 0o644);
     }
 
     /// Filename with spaces: "begin 644 My File.doc" → filename="My File.doc"
