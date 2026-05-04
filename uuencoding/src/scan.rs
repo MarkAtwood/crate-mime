@@ -241,9 +241,23 @@ fn handle_block(
         match decode_line(lt, &mut data) {
             Ok(0) => {
                 if saw_terminator {
-                    // A second zero-length line after the terminator: decode()
-                    // look-ahead stops here (non-empty, non-"end" line) and
-                    // returns is_truncated=true.  Match that behaviour.
+                    // decode() look-ahead (decode.rs:151-158) skips truly-empty
+                    // lines (raw bytes after stripping CR/LF are empty) before
+                    // finding "end".  Match that: a bare \n or \r\n line must be
+                    // skipped, not treated as a second terminator.
+                    //
+                    // Only break-as-truncated when the raw line contains an
+                    // actual character (e.g. ` or space) that decode_line
+                    // recognised as a terminator.  An empty lt means the line
+                    // was truly blank — skip it the same way decode() does.
+                    if lt.is_empty() {
+                        // Blank line — skip, keep looking for "end".
+                        scan_pos = le;
+                        continue;
+                    }
+                    // Non-empty line produced Ok(0): e.g. a backtick or space
+                    // line after the first terminator.  decode() look-ahead would
+                    // stop here (non-empty, non-"end"), so we're truncated.
                     end_offset = ls;
                     break;
                 }
@@ -571,6 +585,51 @@ mod tests {
             block.is_truncated, decoded.is_truncated,
             "scan and decode must agree on truncation"
         );
+    }
+
+    // MIME-592.31: two bare newlines between the terminator line and "end"
+    // must not set is_truncated=true.  decode() skips empty lines in its
+    // look-ahead; scan() must match.
+    //
+    // Oracle: "#0V%T" decodes "Cat" (3 bytes).
+    #[test]
+    fn double_blank_before_end_not_truncated() {
+        let input = b"begin 644 test.txt\n#0V%T\n \n\n\nend\n";
+        let results = scan_impl(input);
+        assert_eq!(results.len(), 1);
+        let block = results[0].as_ref().unwrap();
+        assert!(
+            !block.is_truncated,
+            "double blank before end should not be truncated"
+        );
+        assert_eq!(block.data, b"Cat");
+
+        // Also verify agreement with decode().
+        let decoded = crate::decode::decode(input).unwrap();
+        assert_eq!(
+            block.is_truncated, decoded.is_truncated,
+            "scan and decode must agree on truncation"
+        );
+    }
+
+    // MIME-592.31 regression: consecutive UU terminator characters (backtick
+    // lines) after the first terminator must still be flagged as truncated.
+    // This was the MIME-592.20 fix and must not regress.
+    //
+    // Oracle: "#0V%T" decodes "Cat".
+    #[test]
+    fn consecutive_terminator_lines_are_truncated() {
+        // Valid data line, then two backtick terminator lines, then end.
+        // The second backtick after the first terminator is malformed.
+        let input = b"begin 644 f\n#0V%T\n`\n`\nend\n";
+        let results = scan_impl(input);
+        assert_eq!(results.len(), 1);
+        let block = results[0].as_ref().unwrap();
+        assert!(
+            block.is_truncated,
+            "consecutive terminator lines must be flagged truncated"
+        );
+        assert_eq!(block.data, b"Cat");
     }
 
     #[test]
