@@ -1,4 +1,6 @@
-use mail_parser::{Encoding, Message, MessageParser, MessagePart, MimeHeaders, PartType};
+use mail_parser::{
+    Encoding, HeaderValue, Message, MessageParser, MessagePart, MimeHeaders, PartType,
+};
 
 use crate::{
     error::ParseError,
@@ -77,17 +79,41 @@ pub fn decode_body_value(
 
 /// Extract `ParsedHeader` values from a part's header list.
 ///
-/// Each header's raw value bytes are sliced from `raw` using the offsets
-/// stored by mail-parser, then decoded as lossy UTF-8 and trimmed.
+/// For headers whose value mail-parser parses as plain text (Subject,
+/// Comments, Content-Description, and any unstructured header), the decoded
+/// string from `h.value` is used directly.  mail-parser decodes RFC 2047
+/// encoded-words during its own parse phase, so the `Text` variant already
+/// contains the final Unicode string.
+///
+/// For headers whose value is a `TextList` (e.g. References, Keywords), the
+/// list elements are joined with ", " after trimming each item.
+///
+/// For all other header types (Address, DateTime, ContentType, Received) the
+/// raw bytes are sliced from `raw` as before, because those values are not
+/// encoded-word fields and the structured `HeaderValue` variants would require
+/// lossy reconstruction.
 fn extract_headers(part: &MessagePart<'_>, raw: &[u8]) -> Vec<ParsedHeader> {
     part.headers
         .iter()
         .map(|h| {
             let name = h.name.as_str().to_owned();
-            let value = raw
-                .get(h.offset_start as usize..h.offset_end as usize)
-                .map(|bytes| String::from_utf8_lossy(bytes.trim_ascii()).into_owned())
-                .unwrap_or_default();
+            let value = match &h.value {
+                // mail-parser has already decoded any RFC 2047 encoded-words
+                // into this Cow<str>; use it directly.
+                HeaderValue::Text(s) => s.as_ref().trim().to_owned(),
+                // TextList: join with comma+space (e.g. References, Keywords).
+                HeaderValue::TextList(list) => list
+                    .iter()
+                    .map(|s| s.as_ref().trim())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                // All other variants (Address, DateTime, ContentType, Received,
+                // Empty): fall back to the raw bytes slice.
+                _ => raw
+                    .get(h.offset_start as usize..h.offset_end as usize)
+                    .map(|bytes| String::from_utf8_lossy(bytes.trim_ascii()).into_owned())
+                    .unwrap_or_default(),
+            };
             ParsedHeader { name, value }
         })
         .collect()
@@ -146,7 +172,7 @@ fn build_part(
             }
         });
 
-    let transfer_encoding = map_encoding(part);
+    let transfer_encoding = map_encoding(part, warnings);
 
     let disposition = part.content_disposition().map(|cd| cd.ctype().to_owned());
 
@@ -221,16 +247,32 @@ fn build_root(
 }
 
 /// Map a mail-parser `Encoding` (and optional CTE string) to `TransferEncoding`.
-fn map_encoding(part: &MessagePart<'_>) -> TransferEncoding {
+///
+/// Pushes a warning to `warnings` when the CTE token is non-empty and not one
+/// of the values recognised by this crate.  RFC 2045 §6.4 permits x-token
+/// CTE values; the conventional UUencode spellings are handled explicitly and
+/// do not produce a warning.
+fn map_encoding(part: &MessagePart<'_>, warnings: &mut Vec<String>) -> TransferEncoding {
     match part.encoding {
         Encoding::Base64 => TransferEncoding::Base64,
         Encoding::QuotedPrintable => TransferEncoding::QuotedPrintable,
         Encoding::None => {
-            // Check the raw CTE header string for 7bit / 8bit / binary.
+            // Check the raw CTE header string for well-known values.
             match part.content_transfer_encoding() {
                 Some(s) if s.eq_ignore_ascii_case("7bit") => TransferEncoding::SevenBit,
                 Some(s) if s.eq_ignore_ascii_case("8bit") => TransferEncoding::EightBit,
                 Some(s) if s.eq_ignore_ascii_case("binary") => TransferEncoding::Binary,
+                Some(s)
+                    if s.eq_ignore_ascii_case("x-uuencode")
+                        || s.eq_ignore_ascii_case("x-uue")
+                        || s.eq_ignore_ascii_case("uuencode") =>
+                {
+                    TransferEncoding::UUEncode
+                }
+                Some(s) if !s.is_empty() => {
+                    warnings.push(format!("Unknown Content-Transfer-Encoding: {s}"));
+                    TransferEncoding::Identity
+                }
                 _ => TransferEncoding::Identity,
             }
         }

@@ -1,17 +1,18 @@
 //! Integration tests for mime-tree's `parse()` and `decode_body_value()`.
 //!
 //! All expected values are derived from external oracles:
-//!   - RFC 5322, RFC 2045, RFC 2046, RFC 2183, RFC 8621 §4.1.4
+//!   - RFC 5322, RFC 2045, RFC 2046, RFC 2047, RFC 2183, RFC 8621 §4.1.4
 //!   - IANA media type registrations
 //!   - Python `base64` / `quopri` modules (values confirmed with:
 //!       python3 -c "import base64; print(base64.b64decode('SGVsbG8sIFdvcmxkIQ=='))"
 //!       → b'Hello, World!'
 //!       python3 -c "import base64; print(base64.b64decode('SGVsbG8='))"
 //!       → b'Hello'
+//!   - RFC 2047 encoded-word examples (see tests 9, 10, 11 below)
 //!
 //! None of the expected values are derived from running this crate.
 
-use mime_tree::{decode_body_value, parse, ParseError};
+use mime_tree::{decode_body_value, parse, ParseError, TransferEncoding};
 
 // ---------------------------------------------------------------------------
 // Test 1 — simple text/plain message
@@ -344,4 +345,335 @@ fn test_no_content_type_defaults_to_text_plain() {
         "bare-body part must appear in text_body; text_body={:?}",
         msg.text_body
     );
+}
+
+// ---------------------------------------------------------------------------
+// Test 9 — RFC 2047 encoded-word: UTF-8 base64
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 2047 §2 encoded-word syntax and RFC 4648 §4 base64 alphabet.
+///
+/// The encoded-word `=?utf-8?b?SGVsbG8=?=` decodes as follows:
+///   - charset:  utf-8
+///   - encoding: b (base64, per RFC 2047 §4.1)
+///   - encoded:  SGVsbG8=
+///   - decoded:  base64("SGVsbG8=") = bytes [0x48,0x65,0x6C,0x6C,0x6F] = "Hello"
+///
+/// Independently confirmed:
+///   python3 -c "import base64; print(base64.b64decode('SGVsbG8='))"
+///   → b'Hello'
+///
+/// This test confirms that `ParsedMessage.headers` contains the decoded Unicode
+/// string, not the raw encoded-word bytes.
+#[test]
+fn test_rfc2047_utf8_base64_subject() {
+    let raw = b"From: alice@example.com\r\n\
+                Subject: =?utf-8?b?SGVsbG8=?=\r\n\
+                MIME-Version: 1.0\r\n\
+                Content-Type: text/plain; charset=utf-8\r\n\
+                \r\n\
+                body\r\n";
+
+    let msg = parse(raw).expect("parse must succeed");
+
+    let subject = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("Subject"))
+        .map(|h| h.value.as_str())
+        .unwrap_or("");
+
+    // Oracle: RFC 2047 §2 + RFC 4648 §4: decoded value is "Hello"
+    assert_eq!(
+        subject, "Hello",
+        "RFC 2047 UTF-8/base64 encoded-word must be decoded to 'Hello', got: {subject:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 10 — RFC 2047 encoded-word: ISO-8859-1 quoted-printable
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 2047 §4.2 (quoted-printable in encoded-words) and the
+/// ISO-8859-1 code chart (U+00E9 LATIN SMALL LETTER E WITH ACUTE = 0xE9).
+///
+/// The encoded-word `=?iso-8859-1?q?caf=E9?=` decodes as follows:
+///   - charset:  iso-8859-1
+///   - encoding: q (quoted-printable, per RFC 2047 §4.2)
+///   - encoded:  caf=E9
+///   - QP-decoded bytes: [0x63, 0x61, 0x66, 0xE9]  ("caf" + 0xE9)
+///   - ISO-8859-1 0xE9 maps to U+00E9 LATIN SMALL LETTER E WITH ACUTE → "é"
+///   - full string: "café"
+///
+/// Independently confirmed:
+///   python3 -c "
+///     import quopri, codecs
+///     b = quopri.decodestring(b'caf=E9')
+///     print(b.decode('iso-8859-1'))
+///   "
+///   → café
+///
+/// This test confirms that charset conversion (ISO-8859-1 → UTF-8) is applied
+/// correctly for encoded-words with non-ASCII charsets.
+#[test]
+fn test_rfc2047_iso8859_qp_subject() {
+    let raw = b"From: alice@example.com\r\n\
+                Subject: =?iso-8859-1?q?caf=E9?=\r\n\
+                MIME-Version: 1.0\r\n\
+                Content-Type: text/plain; charset=utf-8\r\n\
+                \r\n\
+                body\r\n";
+
+    let msg = parse(raw).expect("parse must succeed");
+
+    let subject = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("Subject"))
+        .map(|h| h.value.as_str())
+        .unwrap_or("");
+
+    // Oracle: ISO-8859-1 QP decode: "caf" + 0xE9 → U+00E9 → "café"
+    assert_eq!(
+        subject, "café",
+        "RFC 2047 ISO-8859-1/QP encoded-word must be decoded to 'café', got: {subject:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 11 — plain Subject (no encoded-words) is unchanged
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 5322 §2.2 — a header with no encoded-words must be preserved
+/// exactly as written (modulo leading/trailing whitespace trim which the
+/// current implementation applies).
+///
+/// This regression test guards against over-decoding: a plain ASCII Subject
+/// must pass through unchanged.
+#[test]
+fn test_plain_subject_unchanged() {
+    let raw = b"From: alice@example.com\r\n\
+                Subject: Just a plain subject\r\n\
+                MIME-Version: 1.0\r\n\
+                Content-Type: text/plain; charset=utf-8\r\n\
+                \r\n\
+                body\r\n";
+
+    let msg = parse(raw).expect("parse must succeed");
+
+    let subject = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("Subject"))
+        .map(|h| h.value.as_str())
+        .unwrap_or("");
+
+    // Oracle: the literal string placed in the message above.
+    assert_eq!(
+        subject, "Just a plain subject",
+        "plain Subject must be preserved unchanged, got: {subject:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Tests 12–22 — Content-Transfer-Encoding warnings
+// ---------------------------------------------------------------------------
+//
+// Oracle: RFC 2045 §6.1–6.3 define the standard CTE values (7bit, 8bit,
+// binary, quoted-printable, base64).  RFC 2045 §6.4 permits x-token values;
+// x-uuencode / x-uue / uuencode are conventional spellings handled explicitly.
+// Any other non-empty CTE token is unrecognised and must produce a warning.
+//
+// All "no warning" assertions are also verified by existing tests that check
+// msg.warnings.is_empty(); these focused tests confirm the token-level mapping.
+
+/// Helper: build a minimal single-part message with the given CTE header value.
+fn make_cte_message(cte_value: &str) -> Vec<u8> {
+    format!(
+        "From: alice@example.com\r\n\
+         Content-Type: text/plain; charset=utf-8\r\n\
+         Content-Transfer-Encoding: {cte_value}\r\n\
+         \r\n\
+         body\r\n"
+    )
+    .into_bytes()
+}
+
+/// Helper: build a minimal single-part message with NO CTE header.
+fn make_no_cte_message() -> Vec<u8> {
+    b"From: alice@example.com\r\n\
+      Content-Type: text/plain; charset=utf-8\r\n\
+      \r\n\
+      body\r\n"
+        .to_vec()
+}
+
+// Test 12 — x-gzip produces a warning containing the token
+#[test]
+fn test_cte_unknown_x_gzip_warns() {
+    let raw = make_cte_message("x-gzip");
+    let msg = parse(&raw).expect("parse must succeed");
+
+    assert!(
+        !msg.warnings.is_empty(),
+        "x-gzip CTE must produce a warning"
+    );
+    let w = msg.warnings.join(" ");
+    assert!(
+        w.contains("x-gzip"),
+        "warning must mention 'x-gzip'; warnings={:?}",
+        msg.warnings
+    );
+    // Identity is still returned for unrecognised CTE.
+    assert_eq!(
+        msg.part_index.transfer_encoding,
+        TransferEncoding::Identity,
+        "unrecognised CTE must map to Identity"
+    );
+}
+
+// Test 13 — x-bzip2 produces a warning
+#[test]
+fn test_cte_unknown_x_bzip2_warns() {
+    let raw = make_cte_message("x-bzip2");
+    let msg = parse(&raw).expect("parse must succeed");
+
+    assert!(
+        !msg.warnings.is_empty(),
+        "x-bzip2 CTE must produce a warning"
+    );
+    let w = msg.warnings.join(" ");
+    assert!(
+        w.contains("x-bzip2"),
+        "warning must mention 'x-bzip2'; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::Identity);
+}
+
+// Test 14 — absent CTE produces no warning
+#[test]
+fn test_no_cte_header_no_warning() {
+    let raw = make_no_cte_message();
+    let msg = parse(&raw).expect("parse must succeed");
+
+    assert!(
+        msg.warnings.is_empty(),
+        "absent CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+}
+
+// Test 15 — 7bit produces no warning
+#[test]
+fn test_cte_7bit_no_warning() {
+    let raw = make_cte_message("7bit");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "7bit CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::SevenBit);
+}
+
+// Test 16 — 8bit produces no warning
+#[test]
+fn test_cte_8bit_no_warning() {
+    let raw = make_cte_message("8bit");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "8bit CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::EightBit);
+}
+
+// Test 17 — binary produces no warning
+#[test]
+fn test_cte_binary_no_warning() {
+    let raw = make_cte_message("binary");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "binary CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::Binary);
+}
+
+// Test 18 — quoted-printable produces no warning
+//
+// Oracle: RFC 2045 §6.7 — quoted-printable is a standard CTE value.
+// mail-parser sets Encoding::QuotedPrintable for this token so map_encoding()
+// hits the QuotedPrintable arm before reaching the Encoding::None branch.
+#[test]
+fn test_cte_quoted_printable_no_warning() {
+    let raw = make_cte_message("quoted-printable");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "quoted-printable CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(
+        msg.part_index.transfer_encoding,
+        TransferEncoding::QuotedPrintable
+    );
+}
+
+// Test 19 — base64 produces no warning
+//
+// Oracle: RFC 2045 §6.8 — base64 is a standard CTE value.
+// mail-parser sets Encoding::Base64 so map_encoding() hits the Base64 arm.
+#[test]
+fn test_cte_base64_no_warning() {
+    let raw = make_cte_message("base64");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "base64 CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::Base64);
+}
+
+// Test 20 — x-uuencode produces no warning
+#[test]
+fn test_cte_x_uuencode_no_warning() {
+    let raw = make_cte_message("x-uuencode");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "x-uuencode CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::UUEncode);
+}
+
+// Test 21 — x-uue produces no warning
+#[test]
+fn test_cte_x_uue_no_warning() {
+    let raw = make_cte_message("x-uue");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "x-uue CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::UUEncode);
+}
+
+// Test 22 — uuencode produces no warning
+#[test]
+fn test_cte_uuencode_no_warning() {
+    let raw = make_cte_message("uuencode");
+    let msg = parse(&raw).expect("parse must succeed");
+    assert!(
+        msg.warnings.is_empty(),
+        "uuencode CTE must not produce a warning; warnings={:?}",
+        msg.warnings
+    );
+    assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::UUEncode);
 }
