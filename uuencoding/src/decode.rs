@@ -214,11 +214,7 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate
         } else if (0x20..=0x5F).contains(&c) {
             Ok(c - 0x20)
         } else {
-            Err(crate::error::UuError::InvalidChar {
-                line: 0,
-                col,
-                byte: c,
-            })
+            Err(crate::error::UuError::InvalidChar { col, byte: c })
         }
     };
 
