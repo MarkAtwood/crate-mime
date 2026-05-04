@@ -199,7 +199,7 @@ fn duplicate_part_rejected() {
 #[test]
 fn overlapping_part_rejected() {
     // Part 1: bytes 0..59 (yEnc begin=1, end=60)
-    // Part 2: bytes 49..99 (yEnc begin=50, end=100) — overlaps part 1 by 10 bytes
+    // Part 2: bytes 49..99 (yEnc begin=50, end=100) — overlaps part 1 by 11 bytes
     // This is distinct from an exact duplicate: begin/end differ, but the ranges
     // share bytes 49..59.
     let full: Vec<u8> = (0u8..100).collect();

@@ -12,7 +12,7 @@ keywords = ["uuencode", "usenet", "email", "multipart", "encoding"]
 categories = ["email", "encoding"]
 
 [dependencies]
-uuencoding = { version = "0.2.0", path = "../uuencoding" }
+uuencoding = { version = "0.3.0", path = "../uuencoding" }
 regex = "1"
 
 [features]
