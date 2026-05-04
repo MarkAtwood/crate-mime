@@ -40,9 +40,11 @@ mod parse;
 mod part;
 pub mod uuencode;
 mod walk;
+pub mod yenc;
 
 pub use error::ParseError;
 pub use message::{DecodedBodyValue, ParsedMessage};
 pub use parse::{decode_body_value, parse};
 pub use part::{ParsedHeader, ParsedPart, TransferEncoding};
 pub use uuencode::{scan_inline_uuencode, InlineUUBlock};
+pub use yenc::{scan_inline_yencode, InlineYEncBlock};
