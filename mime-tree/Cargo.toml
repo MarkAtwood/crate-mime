@@ -17,4 +17,4 @@ encoding_rs = "0.8"
 base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 quoted_printable = "0.5"
 serde = { version = "1", features = ["derive"] }
-uuencoding = { path = "../uuencoding" }
+uuencoding = { version = "0.2.0", path = "../uuencoding" }
