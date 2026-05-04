@@ -1,0 +1,4 @@
+=ybegin part=2 total=2 line=128 size=128 name=test.bin
+=ypart begin=65 end=128
+jklmnopqrstuvwxyz{|}~€‚ƒ„…†‡ˆ‰Š‹Œ‘’“”•–—˜™š›œŸ ¡¢£¤¥¦§¨©
+=yend size=64 part=2 pcrc32=5a8fc61f crc32=24650d57

@@ -1,0 +1,6 @@
+This is a usenet post.
+Subject: [01/01] test.bin yenc
+Newsgroups: alt.binaries.test
+=ybegin line=128 size=64 name=test.bin
+*+,-./0123456789:;<=}>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghi
+=yend size=64 crc32=100ece8c

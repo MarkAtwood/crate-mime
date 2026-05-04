@@ -1,0 +1,3 @@
+# yEnc fixture files use CRLF line endings per the yEnc spec.
+# Treat them as binary so git does not mangle line endings.
+*.yenc binary
