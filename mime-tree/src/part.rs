@@ -12,6 +12,9 @@ pub enum TransferEncoding {
     SevenBit,
     EightBit,
     Binary,
+    /// UUencode, as used in `Content-Transfer-Encoding: x-uuencode`,
+    /// `x-uue`, or `uuencode`.  RFC 2045 permits x-token CTE values.
+    UUEncode,
 }
 
 impl fmt::Display for TransferEncoding {
@@ -23,6 +26,7 @@ impl fmt::Display for TransferEncoding {
             TransferEncoding::SevenBit => f.write_str("7bit"),
             TransferEncoding::EightBit => f.write_str("8bit"),
             TransferEncoding::Binary => f.write_str("binary"),
+            TransferEncoding::UUEncode => f.write_str("x-uuencode"),
         }
     }
 }

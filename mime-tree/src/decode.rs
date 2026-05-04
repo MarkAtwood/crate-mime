@@ -96,6 +96,12 @@ pub fn decode_body_value(
                 }
             }
         }
+        TransferEncoding::UUEncode => decode_uuencode(
+            body_bytes,
+            max_bytes,
+            &mut is_encoding_problem,
+            &mut input_was_limited,
+        ),
         TransferEncoding::Identity
         | TransferEncoding::SevenBit
         | TransferEncoding::EightBit
@@ -140,6 +146,134 @@ pub fn decode_body_value(
         is_truncated,
         is_encoding_problem,
     })
+}
+
+/// Decode a UUencoded body.
+///
+/// Scans `body` for the `begin NNN filename` line, then decodes each
+/// subsequent data line using the standard UU algorithm:
+///
+/// - Strip only `\r` and `\n` from each line end.  Trailing spaces are **not**
+///   stripped: in UU encoding, spaces (0x20) are valid encoded characters
+///   (they encode the value 0) and are used as padding in the final group.
+/// - First byte of the data portion: `length = (byte - 32) & 0x3F`.
+/// - A line whose only byte (after CRLF-strip) is space (0x20) or backtick
+///   (0x60) encodes length 0 and acts as an end marker.
+/// - Each group of four encoded chars decodes to three raw bytes:
+///   `c_n = (char - 32) & 0x3F`, then pack the six-bit groups into bytes.
+/// - Stop at the `end` line or a zero-length line.
+/// - Respect `max_bytes`; set `*input_was_limited` when truncated.
+/// - On malformed input (missing begin line or truncated group), set
+///   `*is_encoding_problem` and return the bytes decoded so far.
+fn decode_uuencode(
+    body: &[u8],
+    max_bytes: Option<usize>,
+    is_encoding_problem: &mut bool,
+    input_was_limited: &mut bool,
+) -> Vec<u8> {
+    let limit = max_bytes.unwrap_or(usize::MAX);
+    let mut out: Vec<u8> = Vec::new();
+
+    // Split into lines on LF (handles both LF and CRLF by stripping CR below).
+    let mut lines = body.split(|&b| b == b'\n');
+
+    // Phase 1: skip until we find a line starting with "begin ".
+    let found_begin = loop {
+        match lines.next() {
+            None => break false,
+            Some(raw_line) => {
+                let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
+                if line.starts_with(b"begin ") {
+                    break true;
+                }
+            }
+        }
+    };
+
+    if !found_begin {
+        *is_encoding_problem = true;
+        return out;
+    }
+
+    // Phase 2: decode data lines until end marker or "end" line.
+    for raw_line in lines {
+        // Strip trailing CR only; trailing spaces must be kept (they are padding).
+        let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
+
+        if line.is_empty() {
+            continue;
+        }
+
+        let first = line[0];
+
+        // Space (0x20) or backtick (0x60) as the sole character → 0 bytes, end marker.
+        if (first == b'`' || first == b' ') && line.len() == 1 {
+            break;
+        }
+
+        // "end" line terminates the block.
+        if line == b"end" {
+            break;
+        }
+
+        let line_len = ((first - 32) & 0x3F) as usize;
+
+        // Validate that the line is long enough to hold line_len decoded bytes.
+        let encoded_chars_needed = line_len.div_ceil(3) * 4;
+        if line.len() < 1 + encoded_chars_needed {
+            *is_encoding_problem = true;
+            return out;
+        }
+
+        let encoded = &line[1..];
+        let mut decoded_on_line = 0usize;
+        let mut i = 0usize;
+
+        while decoded_on_line < line_len {
+            if i + 4 > encoded.len() {
+                *is_encoding_problem = true;
+                return out;
+            }
+            let c1 = ((encoded[i] - 32) & 0x3F) as u32;
+            let c2 = ((encoded[i + 1] - 32) & 0x3F) as u32;
+            let c3 = ((encoded[i + 2] - 32) & 0x3F) as u32;
+            let c4 = ((encoded[i + 3] - 32) & 0x3F) as u32;
+
+            let b1 = ((c1 << 2) | (c2 >> 4)) as u8;
+            let b2 = (((c2 & 0xF) << 4) | (c3 >> 2)) as u8;
+            let b3 = (((c3 & 0x3) << 6) | c4) as u8;
+
+            let remaining = line_len - decoded_on_line;
+            if remaining >= 1 {
+                if out.len() >= limit {
+                    *input_was_limited = true;
+                    return out;
+                }
+                out.push(b1);
+                decoded_on_line += 1;
+            }
+            if remaining >= 2 {
+                if out.len() >= limit {
+                    *input_was_limited = true;
+                    return out;
+                }
+                out.push(b2);
+                decoded_on_line += 1;
+            }
+            if remaining >= 3 {
+                if out.len() >= limit {
+                    *input_was_limited = true;
+                    return out;
+                }
+                out.push(b3);
+                decoded_on_line += 1;
+            }
+
+            i += 4;
+        }
+    }
+
+    out
 }
 
 #[cfg(test)]
@@ -275,6 +409,187 @@ mod tests {
             assert!(
                 !result.value.is_empty(),
                 "max_bytes={n}: expected non-empty result"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // UUencode tests
+    //
+    // All UU-encoded byte strings are from the Python 3.12 `uu` / `binascii`
+    // stdlib modules — the independent oracle.  No expected value comes from
+    // this crate.  Python commands are cited inline.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_uuencode_hello_world() {
+        // Oracle (Python 3.12):
+        //   import uu, io
+        //   buf = io.BytesIO()
+        //   uu.encode(io.BytesIO(b"Hello, World!"), buf, "test.txt", mode=0o644)
+        //   print(repr(buf.getvalue()))
+        //   → b'begin 644 test.txt\n-2&5L;&\\L(%=O<FQD(0  \n \nend\n'
+        //
+        // Expected decoded bytes (hex 48 65 6c 6c 6f 2c 20 57 6f 72 6c 64 21):
+        // "Hello, World!" in ASCII.
+        let uu_body = b"begin 644 test.txt\n-2&5L;&\\L(%=O<FQD(0  \n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello, World!");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_hello() {
+        // Oracle (Python 3.12):
+        //   import uu, io
+        //   buf = io.BytesIO()
+        //   uu.encode(io.BytesIO(b"Hello"), buf, "hello.txt", mode=0o644)
+        //   print(repr(buf.getvalue()))
+        //   → b'begin 644 hello.txt\n%2&5L;&\\ \n \nend\n'
+        //
+        // Expected decoded bytes (hex 48 65 6c 6c 6f): "Hello".
+        let uu_body = b"begin 644 hello.txt\n%2&5L;&\\ \n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_empty() {
+        // Oracle (Python 3.12):
+        //   import uu, io
+        //   buf = io.BytesIO()
+        //   uu.encode(io.BytesIO(b""), buf, "empty.txt", mode=0o644)
+        //   print(repr(buf.getvalue()))
+        //   → b'begin 644 empty.txt\n \nend\n'
+        //
+        // A single space line means 0 decoded bytes (end marker).
+        let uu_body = b"begin 644 empty.txt\n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_crlf_line_endings() {
+        // Same data as test_uuencode_hello_world but with CRLF line endings.
+        // UU is commonly CRLF-terminated in email.  Only CR/LF is stripped;
+        // trailing spaces (= encoding padding) must be preserved.
+        // Oracle: same expected bytes as the LF-only version.
+        let uu_body = b"begin 644 test.txt\r\n-2&5L;&\\L(%=O<FQD(0  \r\n \r\nend\r\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello, World!");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_content_before_begin_skipped() {
+        // Content before the "begin NNN filename" line must be silently skipped.
+        // Oracle: same expected bytes as test_uuencode_hello_world.
+        let uu_body =
+            b"Some MIME preamble\r\nMore garbage\r\nbegin 644 test.txt\n-2&5L;&\\L(%=O<FQD(0  \n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello, World!");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_max_bytes_truncation() {
+        // Oracle: UU-encoded "Hello, World!" → 13 decoded bytes.
+        // max_bytes = 5 should yield "Hello" and set is_truncated.
+        let uu_body = b"begin 644 test.txt\n-2&5L;&\\L(%=O<FQD(0  \n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, Some(5)).unwrap();
+        assert_eq!(result.value, "Hello");
+        assert!(result.is_truncated);
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_no_begin_line_is_encoding_problem() {
+        // A body with no "begin" line is malformed.
+        // Expected: empty output with is_encoding_problem set.
+        let uu_body = b"this has no begin line\njust garbage\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert!(result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_backtick_end_marker() {
+        // A backtick-only line is an alternative end marker (used by some mailers).
+        // Oracle (Python 3.12):
+        //   import binascii
+        //   print(repr(binascii.b2a_uu(b"Hi")))
+        //   → b'"2&D \n'
+        //
+        // Replace the standard space end-marker with a backtick; decoder must stop.
+        // Expected decoded bytes: b"Hi" (0x48 0x69).
+        let uu_body = b"begin 644 hi.txt\n\"2&D \n`\nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value.as_bytes(), b"Hi");
+        assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_full_45_byte_line() {
+        // Oracle (Python 3.12):
+        //   import binascii
+        //   print(repr(binascii.b2a_uu(bytes(range(45)))))
+        //   → b'M  $" P0%!@<("0H+# T.#Q 1$A,4%187&!D:&QP=\'A\\@(2(C)"4F)R@I*BLL\n'
+        //
+        // 'M' = 77, (77-32)&63 = 45 bytes per line.
+        // Decoded: bytes 0x00..0x2C (0 through 44).
+        let uu_body =
+            b"begin 644 test.bin\nM  $\" P0%!@<(\"0H+# T.#Q 1$A,4%187&!D:&QP=\'A\\@(2(C)\"4F)R@I*BLL\n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert!(!result.is_encoding_problem, "unexpected encoding problem");
+        let decoded = result.value.as_bytes();
+        assert_eq!(decoded.len(), 45, "expected 45 decoded bytes");
+        for (i, &b) in decoded.iter().enumerate() {
+            assert_eq!(
+                b, i as u8,
+                "decoded[{i}] = {b:#04x}, expected {:#04x}",
+                i as u8
+            );
+        }
+    }
+
+    #[test]
+    fn test_uuencode_two_line_decode() {
+        // Oracle (Python 3.12):
+        //   import binascii
+        //   print(repr(binascii.b2a_uu(bytes(range(45)))))
+        //   → b'M  $" P0%!@<("0H+# T.#Q 1$A,4%187&!D:&QP=\'A\\@(2(C)"4F)R@I*BLL\n'
+        //   print(repr(binascii.b2a_uu(bytes(range(45, 48)))))
+        //   → b'#+2XO\n'
+        //
+        // Two-line decode: bytes 0..47.
+        let uu_body = b"begin 644 test48.bin\n\
+M  $\" P0%!@<(\"0H+# T.#Q 1$A,4%187&!D:&QP=\'A\\@(2(C)\"4F)R@I*BLL\n\
+#+2XO\n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert!(!result.is_encoding_problem, "unexpected encoding problem");
+        let decoded = result.value.as_bytes();
+        assert_eq!(decoded.len(), 48, "expected 48 decoded bytes");
+        for (i, &b) in decoded.iter().enumerate() {
+            assert_eq!(
+                b, i as u8,
+                "decoded[{i}] = {b:#04x}, expected {:#04x}",
+                i as u8
             );
         }
     }
