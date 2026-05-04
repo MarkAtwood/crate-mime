@@ -1,0 +1,17 @@
+[package]
+name = "uuencoding"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+description = "UUencoding and UUdecoding — encode, decode, and scan for UU blocks"
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dev-dependencies]
+# none needed yet
