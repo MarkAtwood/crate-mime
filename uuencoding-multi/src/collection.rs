@@ -21,6 +21,7 @@ use crate::MultiUuError;
 /// };
 /// assert_eq!(entry.part_number, 1);
 /// ```
+#[derive(Clone)]
 pub struct PartEntry {
     /// 1-based part index; 0 = TOC post.
     ///
@@ -56,6 +57,7 @@ pub struct PartEntry {
 /// }
 /// assert!(coll.is_complete());
 /// ```
+#[derive(Clone)]
 pub struct PartCollection {
     /// Keyed by part_number.
     parts: BTreeMap<u32, PartEntry>,

@@ -148,132 +148,42 @@ pub fn decode_body_value(
     })
 }
 
-/// Decode a UUencoded body.
+/// Decode a UUencoded body using the `uuencoding` crate.
 ///
-/// Scans `body` for the `begin NNN filename` line, then decodes each
-/// subsequent data line using the standard UU algorithm:
+/// Delegates to [`uuencoding::decode`], which handles `begin`/`end` framing,
+/// CRLF stripping, space/backtick zero-value handling, and partial-result
+/// tolerance. This replaces a duplicate in-crate implementation and ensures
+/// all UU edge-case fixes in the `uuencoding` crate apply here automatically.
 ///
-/// - Strip only `\r` and `\n` from each line end.  Trailing spaces are **not**
-///   stripped: in UU encoding, spaces (0x20) are valid encoded characters
-///   (they encode the value 0) and are used as padding in the final group.
-/// - First byte of the data portion: `length = (byte - 32) & 0x3F`.
-/// - A line whose only byte (after CRLF-strip) is space (0x20) or backtick
-///   (0x60) encodes length 0 and acts as an end marker.
-/// - Each group of four encoded chars decodes to three raw bytes:
-///   `c_n = (char - 32) & 0x3F`, then pack the six-bit groups into bytes.
-/// - Stop at the `end` line or a zero-length line.
-/// - Respect `max_bytes`; set `*input_was_limited` when truncated.
-/// - On malformed input (missing begin line or truncated group), set
-///   `*is_encoding_problem` and return the bytes decoded so far.
+/// - Respects `max_bytes`; sets `*input_was_limited` when the decoded output
+///   was truncated to the limit.
+/// - Sets `*is_encoding_problem` when the block is missing a `begin` line,
+///   is a `begin-base64` block, or the decoded result was truncated (i.e.
+///   the `end` line was absent or a data line was malformed).
 fn decode_uuencode(
     body: &[u8],
     max_bytes: Option<usize>,
     is_encoding_problem: &mut bool,
     input_was_limited: &mut bool,
 ) -> Vec<u8> {
-    let limit = max_bytes.unwrap_or(usize::MAX);
-    let mut out: Vec<u8> = Vec::new();
-
-    // Split into lines on LF (handles both LF and CRLF by stripping CR below).
-    let mut lines = body.split(|&b| b == b'\n');
-
-    // Phase 1: skip until we find a line starting with "begin ".
-    let found_begin = loop {
-        match lines.next() {
-            None => break false,
-            Some(raw_line) => {
-                let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
-                if line.starts_with(b"begin ") {
-                    break true;
-                }
-            }
-        }
-    };
-
-    if !found_begin {
-        *is_encoding_problem = true;
-        return out;
-    }
-
-    // Phase 2: decode data lines until end marker or "end" line.
-    for raw_line in lines {
-        // Strip trailing CR only; trailing spaces must be kept (they are padding).
-        let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
-
-        if line.is_empty() {
-            continue;
-        }
-
-        let first = line[0];
-
-        // Space (0x20) or backtick (0x60) as the sole character → 0 bytes, end marker.
-        if (first == b'`' || first == b' ') && line.len() == 1 {
-            break;
-        }
-
-        // "end" line terminates the block.
-        if line == b"end" {
-            break;
-        }
-
-        let line_len = ((first - 32) & 0x3F) as usize;
-
-        // Validate that the line is long enough to hold line_len decoded bytes.
-        let encoded_chars_needed = line_len.div_ceil(3) * 4;
-        if line.len() < 1 + encoded_chars_needed {
+    match uuencoding::decode(body) {
+        Err(_) => {
             *is_encoding_problem = true;
-            return out;
+            Vec::new()
         }
-
-        let encoded = &line[1..];
-        let mut decoded_on_line = 0usize;
-        let mut i = 0usize;
-
-        while decoded_on_line < line_len {
-            if i + 4 > encoded.len() {
+        Ok(block) => {
+            if block.is_truncated {
                 *is_encoding_problem = true;
-                return out;
             }
-            let c1 = ((encoded[i] - 32) & 0x3F) as u32;
-            let c2 = ((encoded[i + 1] - 32) & 0x3F) as u32;
-            let c3 = ((encoded[i + 2] - 32) & 0x3F) as u32;
-            let c4 = ((encoded[i + 3] - 32) & 0x3F) as u32;
-
-            let b1 = ((c1 << 2) | (c2 >> 4)) as u8;
-            let b2 = (((c2 & 0xF) << 4) | (c3 >> 2)) as u8;
-            let b3 = (((c3 & 0x3) << 6) | c4) as u8;
-
-            let remaining = line_len - decoded_on_line;
-            if remaining >= 1 {
-                if out.len() >= limit {
+            match max_bytes {
+                Some(limit) if block.data.len() > limit => {
                     *input_was_limited = true;
-                    return out;
+                    block.data[..limit].to_vec()
                 }
-                out.push(b1);
-                decoded_on_line += 1;
+                _ => block.data,
             }
-            if remaining >= 2 {
-                if out.len() >= limit {
-                    *input_was_limited = true;
-                    return out;
-                }
-                out.push(b2);
-                decoded_on_line += 1;
-            }
-            if remaining >= 3 {
-                if out.len() >= limit {
-                    *input_was_limited = true;
-                    return out;
-                }
-                out.push(b3);
-                decoded_on_line += 1;
-            }
-
-            i += 4;
         }
     }
-
-    out
 }
 
 #[cfg(test)]
@@ -523,6 +433,24 @@ mod tests {
         let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
         let result = decode_body_value(&raw, &part, None).unwrap();
         assert!(result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_uuencode_null_byte_in_encoded_payload_no_panic() {
+        // Regression test for MIME-gcz.1: a 0x00 byte in the encoded payload
+        // must not panic (debug underflow) or produce wrong values (release
+        // wrapping).  wrapping_sub(32) & 0x3F treats 0x00 as value 0 (same as
+        // 0x60/backtick or 0x20/space).
+        //
+        // Construct: 'begin 644 f\n' + length byte '#' (3 bytes) + 0x00 0x00
+        // 0x00 0x00 + ' \nend\n'.  The null bytes are < 0x20 and are treated
+        // as 6-bit zero by wrapping_sub, so decoded value is 0x00 0x00 0x00.
+        let uu_body = b"begin 644 f\n#\x00\x00\x00\x00\n \nend\n";
+        let (raw, part) = make_part(uu_body, TransferEncoding::UUEncode, None);
+        // Must not panic; is_encoding_problem may be true or false depending on
+        // whether 0x00 passes the length-check gate, but no panic is the key
+        // invariant.
+        let _result = decode_body_value(&raw, &part, None).unwrap();
     }
 
     #[test]

@@ -11,7 +11,7 @@
 /// let err = MultiUuError::EmptyCollection;
 /// assert!(err.to_string().contains("empty"));
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum MultiUuError {
     /// One or more part numbers in `1..=expected` are absent from the

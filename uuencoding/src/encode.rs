@@ -15,6 +15,14 @@ fn encode_char(v: u8) -> u8 {
 ///
 /// Returns the complete encoded block as a byte vector including `begin` and
 /// `end` lines.
+///
+/// # Mode formatting
+///
+/// `mode` is formatted as `{:03o}` (at least 3 octal digits). Standard Unix
+/// permission bits fit in 12 bits (`0o7777`), producing at most 4 digits
+/// (e.g. `mode = 0o1755` → `"begin 1755 ..."`). Values above `0o7777` produce
+/// longer mode strings; most decoders tolerate this. The caller is responsible
+/// for passing a value that fits the expected range for their use case.
 pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
     let mut out = Vec::new();
 
@@ -146,6 +154,28 @@ mod tests {
     fn encode_mode_755() {
         let result = encode(b"Cat", "test.txt", 0o755);
         assert!(result.starts_with(b"begin 755 test.txt\n"));
+    }
+
+    // MIME-gcz.7: mode > 0o777 produces a multi-digit octal mode string;
+    // document + test that this is intentional.
+    #[test]
+    fn encode_mode_setuid_sticky() {
+        // 0o1755 = sticky + rwxr-xr-x (4 octal digits)
+        let result = encode(b"Cat", "test.txt", 0o1755);
+        assert!(
+            result.starts_with(b"begin 1755 test.txt\n"),
+            "mode 0o1755 should produce 4-digit octal: got {:?}",
+            &result[..result.iter().position(|&b| b == b'\n').unwrap_or(20)]
+        );
+    }
+
+    #[test]
+    fn encode_mode_large_value() {
+        // 0xFFFF_FFFF produces a long mode string; must not panic.
+        let result = encode(b"x", "f", 0xFFFF_FFFF);
+        // Just verify it starts with "begin " and doesn't panic.
+        assert!(result.starts_with(b"begin "));
+        assert!(result.ends_with(b"end\n"));
     }
 
     #[test]

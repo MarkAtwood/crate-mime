@@ -126,6 +126,7 @@ pub struct DecodedBlock {
 /// Holds the byte offsets of the `begin`/`end` framing within the original
 /// buffer along with the parsed metadata. The caller can slice the original
 /// input to obtain the raw encoded bytes and pass them to [`decode`].
+#[derive(Debug)]
 pub struct BlockLocation {
     /// Byte offset of the first byte of the `begin` line within the input.
     pub begin_offset: usize,
@@ -142,6 +143,7 @@ pub struct BlockLocation {
 /// satisfy `input[begin_offset..end_offset]` == the raw UU block (starting
 /// with `begin` and ending with `end\n`, or ending at `input.len()` when
 /// truncated).
+#[derive(Debug)]
 pub struct ScannedBlock {
     /// Byte offset of the `b` in the `begin` line within the input.
     pub begin_offset: usize,
@@ -222,8 +224,29 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
 /// success, or a [`UuError`] for `begin-base64` blocks (which this crate does
 /// not decode) or malformed `begin` lines.
 ///
-/// After yielding an error the scanner continues past the offending block so
-/// that subsequent valid blocks are still returned.
+/// # Eagerness
+///
+/// **The entire input is scanned and all blocks are decoded on the first call**
+/// to the returned iterator. The function returns an `impl Iterator` for API
+/// convenience, but the underlying implementation is fully eager: all results
+/// are collected into a `Vec` before any item is consumed. Calling `.next()`
+/// on a body with ten blocks decodes all ten immediately, not one at a time.
+/// If you only need the first block and the input is large, consider using
+/// [`decode`] instead, which processes only up to the first block.
+///
+/// # Error continuation
+///
+/// After yielding an error the scanner continues past the offending construct
+/// so that subsequent valid blocks are still returned. Specifically:
+///
+/// - **`begin-base64`**: one [`UuError::BeginBase64`] is emitted; the scanner
+///   then skips to the `====` terminator before resuming.
+/// - **Malformed `begin` line**: one [`UuError::InvalidBeginLine`] is emitted;
+///   the scanner advances one line before resuming.
+/// - **Decode error on a data line**: decoding stops at that line; a single
+///   [`ScannedBlock`] with `is_truncated = true` is emitted containing the
+///   bytes decoded before the error. No separate [`UuError`] is emitted for
+///   the bad line — only the `Ok(ScannedBlock)` with `is_truncated`.
 ///
 /// # Note on `begin` detection
 ///
