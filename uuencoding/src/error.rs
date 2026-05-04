@@ -26,18 +26,6 @@ pub enum UuError {
     /// and the `====` terminator) to a Base64 decoder.
     BeginBase64,
 
-    /// Reserved for future use. **This variant is not returned by the current
-    /// implementation.**
-    ///
-    /// [`decode`][crate::decode] and [`decode_limited`][crate::decode_limited]
-    /// represent a missing `end` line by returning
-    /// `Ok(`[`DecodedBlock`][crate::DecodedBlock]` { is_truncated: true, .. })`
-    /// rather than `Err(UnexpectedEof)`. This variant is retained in the public
-    /// API as a placeholder for a potential strict-mode in a future version.
-    ///
-    /// Matching on this variant in a `match` arm today will produce dead code.
-    UnexpectedEof,
-
     /// A byte outside the valid UU character range was encountered in a data
     /// line.
     ///
@@ -48,15 +36,11 @@ pub enum UuError {
     /// - `byte` — the offending byte value.
     /// - `col` — 0-based byte offset within the encoded payload of the bad
     ///   line (i.e. after the length byte).
-    /// - `line` — **always `0` in the current implementation.** The
-    ///   `decode_line` function operates on a single line and does not receive
-    ///   the line's position within the block, so this field carries no useful
-    ///   information at present.
     ///
     /// **Caller action**: the block is corrupted. `decode` returns a partial
     /// result with `is_truncated = true` up to the bad line; callers may log
     /// `byte` and `col` for diagnostics.
-    InvalidChar { line: usize, col: usize, byte: u8 },
+    InvalidChar { col: usize, byte: u8 },
 }
 
 impl std::fmt::Display for UuError {
@@ -69,12 +53,9 @@ impl std::fmt::Display for UuError {
                 f,
                 "'begin-base64' detected; this is Base64, not UUencoding — use a Base64 decoder"
             ),
-            UuError::UnexpectedEof => write!(f, "unexpected end of input: 'end' line not found"),
-            UuError::InvalidChar { line, col, byte } => write!(
-                f,
-                "invalid UU character 0x{:02x} at line {}, col {}",
-                byte, line, col
-            ),
+            UuError::InvalidChar { col, byte } => {
+                write!(f, "invalid UU character 0x{:02x} at col {}", byte, col)
+            }
         }
     }
 }
