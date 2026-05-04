@@ -5,6 +5,11 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"
 description = "UUencoding and UUdecoding — encode, decode, and scan for UU blocks"
+authors = ["Mark Atwood <mark@reviewcommit.com>"]
+repository = "https://github.com/MarkAtwood/crate-mime"
+readme = "README.md"
+keywords = ["uuencode", "uudecode", "email", "encoding", "usenet"]
+categories = ["email", "encoding"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
