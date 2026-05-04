@@ -25,7 +25,7 @@ a pure-Rust, no-filesystem, no-unsafe implementation.
 use yencoding::{decode, encode, DEFAULT_LINE_LENGTH};
 
 // Decode a yEnc article (preamble/NNTP headers are skipped automatically)
-let article: &[u8] = b"=ybegin line=128 size=3 name=hi.bin\r\n},-\r\n=yend size=3 crc32=b63cfbcd\r\n";
+let article: &[u8] = b"=ybegin line=128 size=3 name=hi.bin\r\n*+,\r\n=yend size=3 crc32=0854897f\r\n";
 let part = decode(article).unwrap();
 assert_eq!(part.data, &[0u8, 1, 2]);
 assert_eq!(part.metadata.filename, "hi.bin");
@@ -52,6 +52,7 @@ pub enum YencError {
     InvalidHeader { field: String },     // required field missing or unparsable
     CrcMismatch { expected: u32, actual: u32 },
     UnexpectedEof,                       // =yend line never found
+    SizeMismatch { expected: u64, actual: u64 }, // decoded size != =yend size=
 }
 ```
 

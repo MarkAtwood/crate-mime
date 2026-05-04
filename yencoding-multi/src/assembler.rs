@@ -57,18 +57,20 @@ impl Assembler {
     /// `total_size` must match the `size=` field on the `=ybegin` line of all
     /// articles in the series.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Does not panic. Allocates a zero-filled buffer of `total_size` bytes.
-    /// For very large files, callers should verify `total_size` is reasonable
-    /// before calling this method.
-    pub fn new(total_size: u64) -> Self {
-        Self {
-            buffer: vec![0u8; total_size as usize],
+    /// Returns [`AssemblyError::TotalSizeTooLarge`] if `total_size` cannot be
+    /// represented as a `usize` on the current platform (e.g. > 4 GiB on
+    /// 32-bit targets).
+    pub fn new(total_size: u64) -> Result<Self, AssemblyError> {
+        let size = usize::try_from(total_size)
+            .map_err(|_| AssemblyError::TotalSizeTooLarge { total_size })?;
+        Ok(Self {
+            buffer: vec![0u8; size],
             total_size,
             covered: BTreeMap::new(),
             expected_crc32: None,
-        }
+        })
     }
 
     /// Set the expected whole-file CRC32.
@@ -96,6 +98,8 @@ impl Assembler {
     ///   `total_size` or the begin/end offsets are missing.
     /// - [`AssemblyError::OverlappingPart`] — the part's range overlaps with
     ///   a previously added part.
+    /// - [`AssemblyError::DataLengthMismatch`] — the part's decoded data length
+    ///   does not match its declared `begin`/`end` range.
     ///
     /// # Notes
     ///
@@ -104,10 +108,13 @@ impl Assembler {
     /// at offset 0.
     pub fn add_part(&mut self, part: &yencoding::DecodedPart) -> Result<(), AssemblyError> {
         // Convert 1-based yEnc offsets to 0-based internal offsets.
-        // A single-part article has no =ypart, so begin/end are None.
-        // In that case the entire decoded data is the file, at offset 0.
-        let begin_0 = part.part_begin.map(|b| b.saturating_sub(1)).unwrap_or(0);
-        let end_0 = part.part_end.unwrap_or(part.data.len() as u64);
+        // A single-part article has no =ypart, so begin/end are both None.
+        // Having only one of the two set is a malformed part.
+        let (begin_0, end_0) = match (part.part_begin, part.part_end) {
+            (None, None) => (0u64, part.data.len() as u64),
+            (Some(b), Some(e)) => (b.saturating_sub(1), e),
+            _ => return Err(AssemblyError::MalformedPartRange),
+        };
 
         // Validate range against declared total size.
         if end_0 > self.total_size || begin_0 > end_0 {
@@ -121,18 +128,10 @@ impl Assembler {
         // Validate that decoded data fits the declared range.
         let range_len = (end_0 - begin_0) as usize;
         if part.data.len() != range_len {
-            // The part's decoded byte count doesn't match its declared range.
-            // This shouldn't happen with well-formed articles, but we must not
-            // write out of bounds. Treat the actual data length as authoritative
-            // for the copy, but still reject if it would overflow the buffer.
-            let actual_end = begin_0 + part.data.len() as u64;
-            if actual_end > self.total_size {
-                return Err(AssemblyError::OutOfRange {
-                    begin: begin_0,
-                    end: actual_end,
-                    total_size: self.total_size,
-                });
-            }
+            return Err(AssemblyError::DataLengthMismatch {
+                declared_range_len: range_len,
+                actual_data_len: part.data.len(),
+            });
         }
 
         // Check for overlap with any existing covered interval.
@@ -160,9 +159,9 @@ impl Assembler {
         }
 
         // Write the decoded bytes into the buffer.
+        // Safety: data.len() == range_len is guaranteed by the check above.
         let start = begin_0 as usize;
-        let copy_len = part.data.len().min((end_0 - begin_0) as usize);
-        self.buffer[start..start + copy_len].copy_from_slice(&part.data[..copy_len]);
+        self.buffer[start..start + range_len].copy_from_slice(&part.data);
 
         // Record the covered interval.
         self.covered.insert(begin_0, end_0);
@@ -285,20 +284,20 @@ mod tests {
 
     #[test]
     fn missing_ranges_empty_assembler() {
-        let a = Assembler::new(100);
+        let a = Assembler::new(100).unwrap();
         assert_eq!(a.missing_ranges(), vec![0..100]);
     }
 
     #[test]
     fn missing_ranges_zero_size() {
-        let a = Assembler::new(0);
+        let a = Assembler::new(0).unwrap();
         assert!(a.missing_ranges().is_empty());
         assert!(a.is_complete());
     }
 
     #[test]
     fn missing_ranges_one_part_of_two() {
-        let mut a = Assembler::new(10);
+        let mut a = Assembler::new(10).unwrap();
         a.add_part(&make_part(&[0u8; 5], 1, 5)).unwrap();
         // Part 1 covers bytes 0..5 (0-based), missing is 5..10.
         assert_eq!(a.missing_ranges(), vec![5..10]);
@@ -306,7 +305,7 @@ mod tests {
 
     #[test]
     fn missing_ranges_gap_in_middle() {
-        let mut a = Assembler::new(9);
+        let mut a = Assembler::new(9).unwrap();
         a.add_part(&make_part(&[0u8; 3], 1, 3)).unwrap(); // bytes 0..3
         a.add_part(&make_part(&[0u8; 3], 7, 9)).unwrap(); // bytes 6..9
                                                           // Gap: bytes 3..6
@@ -315,7 +314,7 @@ mod tests {
 
     #[test]
     fn missing_ranges_complete() {
-        let mut a = Assembler::new(6);
+        let mut a = Assembler::new(6).unwrap();
         a.add_part(&make_part(&[0u8; 3], 1, 3)).unwrap();
         a.add_part(&make_part(&[0u8; 3], 4, 6)).unwrap();
         assert!(a.missing_ranges().is_empty());
@@ -328,7 +327,7 @@ mod tests {
 
     #[test]
     fn overlap_rejected() {
-        let mut a = Assembler::new(10);
+        let mut a = Assembler::new(10).unwrap();
         a.add_part(&make_part(&[0u8; 5], 1, 5)).unwrap();
         // Overlap: 0..5 vs 3..8 (0-based)
         let err = a.add_part(&make_part(&[0u8; 5], 4, 8)).unwrap_err();
@@ -337,7 +336,7 @@ mod tests {
 
     #[test]
     fn exact_duplicate_rejected() {
-        let mut a = Assembler::new(10);
+        let mut a = Assembler::new(10).unwrap();
         a.add_part(&make_part(&[0u8; 5], 1, 5)).unwrap();
         let err = a.add_part(&make_part(&[0u8; 5], 1, 5)).unwrap_err();
         assert!(matches!(err, AssemblyError::OverlappingPart { .. }));
@@ -345,7 +344,7 @@ mod tests {
 
     #[test]
     fn out_of_range_rejected() {
-        let mut a = Assembler::new(5);
+        let mut a = Assembler::new(5).unwrap();
         // Part claims bytes 0..6 but total_size is 5.
         let err = a.add_part(&make_part(&[0u8; 6], 1, 6)).unwrap_err();
         assert!(matches!(
@@ -360,7 +359,7 @@ mod tests {
 
     #[test]
     fn finish_incomplete_returns_error() {
-        let mut a = Assembler::new(10);
+        let mut a = Assembler::new(10).unwrap();
         a.add_part(&make_part(&[0u8; 5], 1, 5)).unwrap();
         let err = a.finish().unwrap_err();
         assert!(matches!(err, AssemblyError::Incomplete { .. }));
@@ -369,7 +368,7 @@ mod tests {
     #[test]
     fn finish_crc_mismatch_returns_error() {
         let data = vec![1u8; 4];
-        let mut a = Assembler::new(4);
+        let mut a = Assembler::new(4).unwrap();
         a.add_part(&make_single_part(&data)).unwrap();
         a.set_expected_crc32(0xdeadbeef); // wrong CRC
         let err = a.finish().unwrap_err();
@@ -380,7 +379,7 @@ mod tests {
     fn finish_correct_crc_succeeds() {
         let data: Vec<u8> = (0u8..64).collect();
         let crc = crc32fast::hash(&data);
-        let mut a = Assembler::new(64);
+        let mut a = Assembler::new(64).unwrap();
         a.add_part(&make_single_part(&data)).unwrap();
         a.set_expected_crc32(crc);
         let result = a.finish().unwrap();
@@ -390,7 +389,7 @@ mod tests {
     #[test]
     fn finish_no_crc_check_if_not_set() {
         let data = vec![42u8; 4];
-        let mut a = Assembler::new(4);
+        let mut a = Assembler::new(4).unwrap();
         a.add_part(&make_single_part(&data)).unwrap();
         // No CRC set — finish() should succeed without verification.
         let result = a.finish().unwrap();
@@ -408,7 +407,7 @@ mod tests {
         let part2_data: Vec<u8> = (4u8..8).collect();
         let expected: Vec<u8> = (0u8..8).collect();
 
-        let mut a = Assembler::new(8);
+        let mut a = Assembler::new(8).unwrap();
         a.add_part(&make_part(&part2_data, 5, 8)).unwrap(); // out of order
         a.add_part(&make_part(&part1_data, 1, 4)).unwrap();
         let result = a.finish().unwrap();
@@ -423,12 +422,71 @@ mod tests {
         let p3 = &data[6..9];
 
         // Insert in reverse order
-        let mut a = Assembler::new(9);
+        let mut a = Assembler::new(9).unwrap();
         a.add_part(&make_part(p3, 7, 9)).unwrap();
         a.add_part(&make_part(p1, 1, 3)).unwrap();
         a.add_part(&make_part(p2, 4, 6)).unwrap();
 
         assert_eq!(a.finish().unwrap(), data);
+    }
+
+    // -----------------------------------------------------------------------
+    // DataLengthMismatch and TotalSizeTooLarge error paths
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn data_length_mismatch_rejected() {
+        let mut a = Assembler::new(10).unwrap();
+        // Claims begin=1 end=5 (4-byte range) but supplies 3 bytes.
+        let part = make_part(&[0u8; 3], 1, 4);
+        let err = a.add_part(&part).unwrap_err();
+        assert!(matches!(
+            err,
+            AssemblyError::DataLengthMismatch {
+                declared_range_len: 4,
+                actual_data_len: 3
+            }
+        ));
+    }
+
+    #[test]
+    fn data_length_mismatch_too_long_rejected() {
+        let mut a = Assembler::new(10).unwrap();
+        // Claims begin=1 end=3 (2-byte range) but supplies 5 bytes.
+        let part = make_part(&[0u8; 5], 1, 2);
+        let err = a.add_part(&part).unwrap_err();
+        assert!(matches!(
+            err,
+            AssemblyError::DataLengthMismatch {
+                declared_range_len: 2,
+                actual_data_len: 5
+            }
+        ));
+    }
+
+    #[test]
+    fn malformed_part_range_begin_without_end() {
+        let mut a = Assembler::new(10).unwrap();
+        let mut part = make_part(&[0u8; 5], 1, 5);
+        part.part_end = None; // only begin is set
+        let err = a.add_part(&part).unwrap_err();
+        assert!(matches!(err, AssemblyError::MalformedPartRange));
+    }
+
+    #[test]
+    fn malformed_part_range_end_without_begin() {
+        let mut a = Assembler::new(10).unwrap();
+        let mut part = make_part(&[0u8; 5], 1, 5);
+        part.part_begin = None; // only end is set
+        let err = a.add_part(&part).unwrap_err();
+        assert!(matches!(err, AssemblyError::MalformedPartRange));
+    }
+
+    #[test]
+    #[cfg(target_pointer_width = "32")]
+    fn total_size_too_large_rejected() {
+        let err = Assembler::new(u64::MAX).unwrap_err();
+        assert!(matches!(err, AssemblyError::TotalSizeTooLarge { .. }));
     }
 
     // -----------------------------------------------------------------------
@@ -470,7 +528,7 @@ mod tests {
         let p1 = decode(&enc1).unwrap();
         let p2 = decode(&enc2).unwrap();
 
-        let mut assembler = Assembler::new(128);
+        let mut assembler = Assembler::new(128).unwrap();
         assembler.set_expected_crc32(whole_crc);
         assembler.add_part(&p1).unwrap();
         assembler.add_part(&p2).unwrap();

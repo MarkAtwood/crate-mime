@@ -1396,7 +1396,6 @@ name = "uuencoding-multi"
 version = "0.2.0"
 dependencies = [
  "regex",
- "serde",
  "uuencoding",
 ]
 

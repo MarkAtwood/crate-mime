@@ -51,7 +51,7 @@
 //! let total_file_size: u64 = todo!("from =ybegin size= or NZB");
 //! let whole_file_crc32: Option<u32> = todo!("from last-part =yend crc32= or NZB");
 //!
-//! let mut assembler = Assembler::new(total_file_size);
+//! let mut assembler = Assembler::new(total_file_size).expect("total_size too large");
 //! if let Some(crc) = whole_file_crc32 {
 //!     assembler.set_expected_crc32(crc);
 //! }

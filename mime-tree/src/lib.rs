@@ -38,9 +38,9 @@ mod error;
 mod message;
 mod parse;
 mod part;
-pub mod uuencode;
+mod uuencode;
 mod walk;
-pub mod yenc;
+mod yenc;
 
 pub use error::ParseError;
 pub use message::{DecodedBodyValue, ParsedMessage};

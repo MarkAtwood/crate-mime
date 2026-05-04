@@ -74,6 +74,9 @@ pub struct InlineYEncBlock {
     ///
     /// Not sanitised against path traversal. Callers writing this to disk must
     /// validate against `..` and absolute paths.
+    ///
+    /// Empty when [`is_encoding_problem`] is `true` and the block header
+    /// could not be parsed.
     pub filename: String,
 
     /// Total declared file size in bytes, from `=ybegin size=`. For multi-part
@@ -276,14 +279,8 @@ fn find_line_end(slice: &[u8], pos: usize) -> usize {
 }
 
 /// Build a zero-data `DecodedPart` to use when decode returns an error.
-fn make_error_sentinel(err: yencoding::YencError) -> yencoding::DecodedPart {
-    // Extract whatever filename we can from InvalidHeader; otherwise empty.
-    let filename = match &err {
-        yencoding::YencError::InvalidHeader { field } => {
-            format!("<invalid: {field}>")
-        }
-        _ => String::new(),
-    };
+fn make_error_sentinel(_err: yencoding::YencError) -> yencoding::DecodedPart {
+    let filename = String::new();
     yencoding::DecodedPart {
         data: Vec::new(),
         metadata: yencoding::YencMetadata {

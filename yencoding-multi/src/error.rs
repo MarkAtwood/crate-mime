@@ -41,6 +41,33 @@ pub enum AssemblyError {
     /// Call [`Assembler::is_complete`][crate::Assembler::is_complete] before
     /// `finish()` to avoid this error.
     Incomplete { missing: Vec<Range<u64>> },
+
+    /// A decoded part's data length does not match its declared `=ypart begin=/end=` range.
+    ///
+    /// This indicates a corrupt or malformed article: the decoded payload is
+    /// a different size than the byte range it claims to cover.
+    DataLengthMismatch {
+        /// The byte count implied by the `begin`/`end` range header.
+        declared_range_len: usize,
+        /// The actual number of decoded bytes.
+        actual_data_len: usize,
+    },
+
+    /// `total_size` exceeds the addressable memory on this platform.
+    ///
+    /// On 64-bit targets this requires a `total_size > usize::MAX` (> 16 EiB).
+    /// On 32-bit targets the limit is `u32::MAX` (4 GiB).
+    TotalSizeTooLarge {
+        /// The value that was too large to allocate.
+        total_size: u64,
+    },
+
+    /// A decoded part has `part_begin` set but `part_end` absent, or vice versa.
+    ///
+    /// yEnc `=ypart begin=/end=` always provides both values or neither.
+    /// A `DecodedPart` with only one of the two fields set indicates a corrupt
+    /// or incorrectly constructed part.
+    MalformedPartRange,
 }
 
 impl std::fmt::Display for AssemblyError {
@@ -82,6 +109,24 @@ impl std::fmt::Display for AssemblyError {
                 }
                 Ok(())
             }
+            AssemblyError::DataLengthMismatch {
+                declared_range_len,
+                actual_data_len,
+            } => write!(
+                f,
+                "part data length {actual_data_len} does not match declared range length \
+                 {declared_range_len} — corrupt or malformed article"
+            ),
+            AssemblyError::TotalSizeTooLarge { total_size } => write!(
+                f,
+                "total_size {total_size} exceeds addressable memory on this platform \
+                 (usize::MAX = {})",
+                usize::MAX
+            ),
+            AssemblyError::MalformedPartRange => write!(
+                f,
+                "part_begin and part_end must both be Some or both be None"
+            ),
         }
     }
 }

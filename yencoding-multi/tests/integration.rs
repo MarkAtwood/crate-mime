@@ -20,7 +20,7 @@ fn encode_and_assemble(total_bytes: u8, num_parts: usize) -> (Assembler, Vec<u8>
     let total = full.len() as u64;
     let chunk = (total as usize).div_ceil(num_parts);
 
-    let mut assembler = Assembler::new(total);
+    let mut assembler = Assembler::new(total).unwrap();
     assembler.set_expected_crc32(whole_crc);
 
     for i in 0..num_parts {
@@ -92,7 +92,7 @@ fn three_parts_out_of_order() {
     let p3 = make_enc(60, 90, 3);
 
     // Insert in reverse order
-    let mut assembler = Assembler::new(90);
+    let mut assembler = Assembler::new(90).unwrap();
     assembler.set_expected_crc32(whole_crc);
     assembler.add_part(&p3).unwrap();
     assembler.add_part(&p1).unwrap();
@@ -125,7 +125,7 @@ fn missing_middle_part() {
         decode(&encode_part(&full[start..end], &opts)).unwrap()
     };
 
-    let mut assembler = Assembler::new(90);
+    let mut assembler = Assembler::new(90).unwrap();
     assembler.add_part(&make_enc(0, 30, 1)).unwrap();
     // Part 2 (bytes 30..60) intentionally omitted.
     assembler.add_part(&make_enc(60, 90, 3)).unwrap();
@@ -162,7 +162,7 @@ fn duplicate_part_rejected() {
     };
     let p1 = decode(&encode_part(&full[..30], &opts)).unwrap();
 
-    let mut assembler = Assembler::new(60);
+    let mut assembler = Assembler::new(60).unwrap();
     assembler.add_part(&p1).unwrap();
     // Adding the same part again must fail.
     let err = assembler.add_part(&p1).unwrap_err();
@@ -180,7 +180,7 @@ fn duplicate_part_rejected() {
 #[test]
 fn crc_mismatch_on_finish() {
     let data = vec![42u8; 20];
-    let mut assembler = Assembler::new(20);
+    let mut assembler = Assembler::new(20).unwrap();
     let part = yencoding::DecodedPart {
         data: data.clone(),
         metadata: yencoding::YencMetadata {
@@ -207,7 +207,7 @@ fn crc_mismatch_on_finish() {
 
 #[test]
 fn zero_byte_file() {
-    let assembler = Assembler::new(0);
+    let assembler = Assembler::new(0).unwrap();
     assert!(assembler.is_complete());
     assert!(assembler.missing_ranges().is_empty());
     let result = assembler.finish().unwrap();

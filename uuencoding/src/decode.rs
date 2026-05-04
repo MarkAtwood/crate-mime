@@ -51,9 +51,15 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         .collect();
 
     // --- Find the begin line ---
+    // Require whitespace or '-' at position 5 (or end-of-line at exactly 5),
+    // matching scan.rs's is_begin_line() so that prose words like "beginners"
+    // or "beginning" are not mistaken for UU begin lines.
     let mut begin_idx = None;
     for (i, line) in lines.iter().enumerate() {
-        if line.len() >= 5 && line[..5].eq_ignore_ascii_case(b"begin") {
+        if line.len() >= 5
+            && line[..5].eq_ignore_ascii_case(b"begin")
+            && (line.len() == 5 || line[5].is_ascii_whitespace() || line[5] == b'-')
+        {
             begin_idx = Some(i);
             break;
         }
@@ -767,5 +773,25 @@ mod tests {
             !block.was_limit_hit,
             "exact-limit complete block must not set was_limit_hit"
         );
+    }
+
+    /// "beginners" starts with "begin" but has no whitespace or '-' at position 5.
+    /// It must not be treated as a UU begin line; the real begin line must be found.
+    ///
+    /// Oracle (Python 3.11 `uu` module):
+    ///   python3 -c "import uu, io; b=io.BytesIO(); uu.encode(io.BytesIO(b'Test'), b, 'f'); print(b.getvalue())"
+    ///   => b'begin 644 f\n$5&5S=`\n`\nend\n'
+    #[test]
+    fn decode_skips_beginners_prefix_finds_real_begin() {
+        // "beginners guide to uuencoding" starts with "begin" but position 5 is 'n',
+        // not whitespace or '-', so it must not be treated as a UU begin line.
+        // The real "begin 644 f" line that follows must be decoded successfully.
+        // Payload "Test" verified against Python uu module (oracle above).
+        let input = b"beginners guide to uuencoding\nbegin 644 f\n$5&5S=`\n`\nend\n";
+        let block =
+            decode_block(input).expect("should skip 'beginners' and decode the real begin block");
+        assert_eq!(block.metadata.filename, "f");
+        assert_eq!(block.data, b"Test");
+        assert!(!block.is_truncated);
     }
 }

@@ -134,21 +134,6 @@ pub struct DecodedBlock {
     pub was_limit_hit: bool,
 }
 
-/// A UU block located within a larger byte slice, but not yet decoded.
-///
-/// Holds the byte offsets of the `begin`/`end` framing within the original
-/// buffer along with the parsed metadata. The caller can slice the original
-/// input to obtain the raw encoded bytes and pass them to [`decode`].
-#[derive(Debug)]
-pub struct BlockLocation {
-    /// Byte offset of the first byte of the `begin` line within the input.
-    pub begin_offset: usize,
-    /// Byte offset one past the last byte of the `end` line within the input.
-    pub end_offset: usize,
-    /// Metadata from the `begin` line (filename and mode).
-    pub metadata: BlockMetadata,
-}
-
 /// A UU block located and fully decoded from a larger byte slice.
 ///
 /// Returned by [`scan`]. Contains both the byte offsets of the block within
