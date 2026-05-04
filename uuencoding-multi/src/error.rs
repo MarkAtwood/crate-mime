@@ -14,9 +14,16 @@
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum MultiUuError {
-    /// One or more part numbers in `1..=expected` are absent from the
-    /// collection. `present` lists the part numbers that *were* provided, in
-    /// ascending order.
+    /// Reserved for future use. **This variant is not returned by the current
+    /// implementation.**
+    ///
+    /// [`reassemble()`][crate::reassemble()] represents absent parts by
+    /// returning `Ok(`[`ReassembledFile`][crate::ReassembledFile]`
+    /// { is_truncated: true, missing_parts: vec![..], .. })` rather than
+    /// `Err(MissingParts { .. })`. This variant is retained in the public API
+    /// as a placeholder for a potential strict-mode in a future version.
+    ///
+    /// Matching on this variant in a `match` arm today will produce dead code.
     MissingParts { expected: u32, present: Vec<u32> },
 
     /// [`reassemble()`][crate::reassemble()] was called on a [`PartCollection`][crate::PartCollection]
