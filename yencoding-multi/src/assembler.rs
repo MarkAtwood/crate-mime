@@ -89,9 +89,11 @@ impl Assembler {
     /// reassembled bytes against this value and returns
     /// [`AssemblyError::CrcMismatch`] on mismatch.
     ///
-    /// You can extract the whole-file CRC32 from `DecodedPart` manually:
-    /// it is the `crc32=` field in `=yend` (distinct from `pcrc32=`, which is
-    /// per-part). Not every encoder includes it; check `DecodedPart::crc32_verified`.
+    /// You can extract the whole-file CRC32 directly from a decoded part:
+    /// `DecodedPart::whole_file_crc32` carries the `crc32=` field from `=yend`
+    /// (distinct from `pcrc32=`, which is per-part). Not every encoder includes
+    /// it; check `DecodedPart::whole_file_crc32.is_some()` to determine whether
+    /// it is available.
     pub fn set_expected_crc32(&mut self, crc32: u32) {
         self.expected_crc32 = Some(crc32);
     }
@@ -124,8 +126,9 @@ impl Assembler {
     /// When no `pcrc32=` is present the only file-integrity safety net is the
     /// whole-file CRC32 checked by [`finish`][Self::finish]. If you need
     /// integrity guarantees for encoders that omit per-part CRCs, always call
-    /// [`set_expected_crc32`][Self::set_expected_crc32] with the whole-file CRC
-    /// before calling `finish()`.
+    /// [`set_expected_crc32`][Self::set_expected_crc32] before calling `finish()`.
+    /// The value to pass is `part.whole_file_crc32` when it is `Some` — the
+    /// last part in a multi-part series typically carries this field.
     ///
     /// # Notes
     ///
@@ -145,6 +148,11 @@ impl Assembler {
                 if b == 0 {
                     return Err(AssemblyError::MalformedPartRange);
                 }
+                // Convert to 0-based:
+                //   begin_0 = b - 1  (1-based → 0-based start)
+                //   end_0   = e      (numerically unchanged: 1-based-inclusive
+                //                    equals 0-based-exclusive for this convention)
+                // e.g. begin=1, end=64 → begin_0=0, end_0=64, 64 bytes [0..64)
                 (b - 1, e, true)
             }
             _ => return Err(AssemblyError::MalformedPartRange),
@@ -286,6 +294,7 @@ impl Assembler {
     }
 
     /// Total declared file size in bytes.
+    #[must_use]
     pub fn total_size(&self) -> u64 {
         self.total_size
     }
@@ -314,6 +323,7 @@ mod tests {
             part_begin: Some(begin_1),
             part_end: Some(end_1),
             crc32_verified: true,
+            whole_file_crc32: None,
         }
     }
 
@@ -331,6 +341,7 @@ mod tests {
             part_begin: None,
             part_end: None,
             crc32_verified: true,
+            whole_file_crc32: None,
         }
     }
 

@@ -110,6 +110,9 @@ pub struct YencMetadata {
 
     /// Encoded line length from the `line=` field. Informational only; the
     /// decoder does not require lines to be exactly this length.
+    ///
+    /// Stored as `u8`. Declared values larger than 255 (produced by some
+    /// non-standard encoders) are clamped to 255.
     pub line_length: u8,
 
     /// Total number of parts in a multi-part series (`total=` on `=ybegin`).
@@ -157,6 +160,20 @@ pub struct DecodedPart {
     /// encoders omit it). A CRC mismatch causes [`YencError::CrcMismatch`] to
     /// be returned as an `Err` rather than setting this to `false`.
     pub crc32_verified: bool,
+
+    /// Whole-file CRC32 from the `crc32=` field in `=yend`, if present.
+    ///
+    /// For single-part articles this is the CRC of the entire file (same as
+    /// what was verified against `data`). For multi-part articles the per-part
+    /// CRC is in `pcrc32=` (verified above); `crc32=` is the CRC of the
+    /// **complete assembled file** and cannot be verified against a single
+    /// part's payload — but it is surfaced here so that the caller or the
+    /// `yencoding-multi` assembler can use it for whole-file verification once
+    /// all parts are reassembled.
+    ///
+    /// `None` if the encoder omitted the `crc32=` field (older encoders and
+    /// some multi-part encoders that only include `pcrc32=` do this).
+    pub whole_file_crc32: Option<u32>,
 }
 
 /// Decode a yEnc article from raw bytes.
@@ -210,6 +227,7 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
 /// assert_eq!(part.data, b"\x00\x01\x02");
 /// assert!(part.crc32_verified);
 /// ```
+#[must_use]
 pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
     encode::encode(data, filename, line_length)
 }
@@ -270,6 +288,7 @@ pub struct EncodePartOptions<'a> {
 ///
 /// Returns the complete part article body including `=ybegin`, `=ypart`,
 /// encoded data, and `=yend` with `pcrc32=` and `crc32=`.
+#[must_use]
 pub fn encode_part(data: &[u8], opts: &EncodePartOptions<'_>) -> Vec<u8> {
     encode::encode_part(
         data,

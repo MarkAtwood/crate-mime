@@ -38,6 +38,7 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 /// # Returns
 ///
 /// A `Vec<u8>` containing the complete encoded article ready for posting.
+#[must_use]
 pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
     // Clamp to at least 2: escape pairs are 2 bytes and must fit on one line.
     let line_length = line_length.max(2) as usize;
@@ -66,6 +67,7 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
 /// Called from the public `encode_part` wrapper in `lib.rs` which groups
 /// the parameters into `EncodePartOptions` to satisfy the argument-count lint.
 #[allow(clippy::too_many_arguments)]
+#[must_use]
 pub fn encode_part(
     data: &[u8],
     filename: &str,
