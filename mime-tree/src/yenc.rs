@@ -154,6 +154,7 @@ pub struct InlineYEncBlock {
 /// * Byte offsets in the returned blocks are absolute — relative to the start
 ///   of `raw`, matching the coordinate space of `part.body_range`.
 /// * No panic on any input.
+#[must_use = "the scanned yEnc blocks must be used"]
 pub fn scan_inline_yencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineYEncBlock> {
     let (offset_u32, length_u32) = part.body_range;
     let offset = offset_u32 as usize;

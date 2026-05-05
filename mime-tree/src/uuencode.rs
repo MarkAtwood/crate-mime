@@ -147,6 +147,7 @@ pub struct InlineUUBlock {
 /// assert_eq!(blocks[0].data, b"Hello");
 /// assert!(!blocks[0].is_encoding_problem);
 /// ```
+#[must_use = "the scanned UU blocks must be used"]
 pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock> {
     let (offset_u32, length_u32) = part.body_range;
     let offset = offset_u32 as usize;

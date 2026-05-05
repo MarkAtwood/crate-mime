@@ -18,6 +18,10 @@ pub struct ParsedMessage {
     /// Top-level message headers.
     pub headers: Vec<ParsedHeader>,
     /// Short preview of the message body (first ~256 chars of text content).
+    ///
+    /// `None` when there is no text body part, when the first text part is
+    /// empty, or when decoding the first text part fails (e.g. unsupported
+    /// charset or transfer-encoding error).
     pub preview: Option<String>,
     /// Non-fatal parse warnings.
     pub warnings: Vec<String>,

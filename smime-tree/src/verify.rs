@@ -11,7 +11,7 @@ use cms::{
     signed_data::{SignedData, SignerIdentifier},
 };
 use const_oid::db::{
-    rfc5911::ID_MESSAGE_DIGEST,
+    rfc5911::{ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST},
     rfc5912::{
         ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ID_SHA_256, ID_SHA_384, ID_SHA_512, RSA_ENCRYPTION,
         SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
@@ -71,6 +71,7 @@ use crate::{
 /// - The `SignedData` contains no `SignerInfo` entries.
 /// - Every signer fails verification (message-digest mismatch, bad signature,
 ///   or cert-chain error).  At least one signer must succeed for `Ok` to be returned.
+#[must_use = "discarding the VerificationResult silently ignores whether verification succeeded"]
 pub fn verify(
     signed_content: &[u8],
     signature_der: &[u8],
@@ -82,6 +83,21 @@ pub fn verify(
     let ci = ContentInfo::from_der(signature_der)?;
     let content_der = ci.content.to_der()?;
     let sd = SignedData::from_der(content_der.as_slice())?;
+
+    // RFC 5751 §2.4.1: S/MIME requires eContentType == id-data.
+    if sd.encap_content_info.econtent_type != ID_DATA {
+        return Err(SmimeError::WrongContentType(format!(
+            "expected id-data, got {}",
+            sd.encap_content_info.econtent_type
+        )));
+    }
+
+    // RFC 5751 §3.4.3 / RFC 5652 §5.2: detached signatures MUST have absent eContent.
+    if sd.encap_content_info.econtent.is_some() {
+        return Err(SmimeError::MalformedInput(
+            "detached signature must not include eContent".into(),
+        ));
+    }
 
     // Collect the certificate bag.
     let bag_certs: Vec<Certificate> = sd
@@ -285,6 +301,13 @@ fn check_message_digest(
     signed_attrs: &x509_cert::attr::Attributes,
     content_hash: &[u8],
 ) -> Result<(), SmimeError> {
+    // RFC 5652 §11.1: content-type MUST be present whenever signedAttrs are present.
+    if !signed_attrs.iter().any(|a| a.oid == ID_CONTENT_TYPE) {
+        return Err(SmimeError::MalformedInput(
+            "content-type signed attribute not found".into(),
+        ));
+    }
+
     let md_attr = signed_attrs
         .iter()
         .find(|a| a.oid == ID_MESSAGE_DIGEST)

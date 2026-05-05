@@ -315,12 +315,17 @@ impl RevocationChecker for NoRevocationCheck {
 /// Implementors supply the raw signature bytes and the signer's certificate,
 /// which is embedded in the `SignedData` structure.
 pub trait SigningKey {
-    /// Sign `data` and return the raw signature bytes.
+    /// Sign `data` and return the signature bytes.
     ///
     /// The `data` argument is the DER-encoded `SignedAttributes` structure (a SET OF Attribute
     /// per RFC 5652 §5.4), with tag byte `0x31`. The implementor must sign exactly these bytes
     /// — do not pre-hash, do not add framing. For HSM integrations, the entire byte slice must
     /// be transmitted as-is to the signing operation.
+    ///
+    /// **ECDSA format requirement**: For ECDSA keys, the returned bytes MUST be DER-encoded
+    /// (ASN.1 `SEQUENCE { r INTEGER, s INTEGER }`), as produced by RustCrypto `p256`/`p384`
+    /// signers. Raw fixed-width (`r || s`) format (IEEE P1363) is NOT accepted — `verify()`
+    /// will reject it when calling `DerSignature::try_from`.
     fn sign(&self, data: &[u8], algorithm: &DigestAlgorithm) -> Result<Vec<u8>, SmimeError>;
 
     /// The signer's X.509 certificate, included in `SignedData`.

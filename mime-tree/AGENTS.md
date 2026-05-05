@@ -18,15 +18,15 @@ pub fn decode_body_value(
     max_bytes: Option<usize>,
 ) -> Result<DecodedBodyValue, ParseError>;
 
-// Query methods on ParsedMessage
-impl ParsedMessage {
-    pub fn part(&self, id: &str) -> Option<&ParsedPart>;
-    pub fn parts(&self) -> impl Iterator<Item = &ParsedPart>;
-    pub fn body_structure(&self) -> &ParsedPart;
-    pub fn text_body(&self) -> Vec<&ParsedPart>;
-    pub fn html_body(&self) -> Vec<&ParsedPart>;
-    pub fn attachments(&self) -> Vec<&ParsedPart>;
-    pub fn preview(&self) -> Option<&str>;
+// Public fields on ParsedMessage — access directly, no methods
+pub struct ParsedMessage {
+    pub part_index: ParsedPart,       // MIME part tree rooted at the message
+    pub text_body: Vec<String>,       // Part IDs of text/plain body parts (RFC 8621 §4.1.4)
+    pub html_body: Vec<String>,       // Part IDs of text/html body parts (RFC 8621 §4.1.4)
+    pub attachments: Vec<String>,     // Part IDs of attachment parts (RFC 8621 §4.1.4)
+    pub headers: Vec<ParsedHeader>,   // Top-level message headers
+    pub preview: Option<String>,      // First ~256 chars of text content
+    pub warnings: Vec<String>,        // Non-fatal parse warnings
 }
 ```
 
