@@ -38,10 +38,14 @@ use const_oid::db::rfc5912::{
 /// `now` is embedded as the CMS signing-time attribute (RFC 5652 §11.3).
 /// Pass `SystemTime::now()` for production use, or a fixed value in tests.
 ///
-/// The digest algorithm is selected based on the signing key's certificate:
+/// The digest algorithm for each key is selected based on that key's certificate:
 /// RSA and EC P-256 use SHA-256; EC P-384 uses SHA-384.
 /// P-521 keys are not supported and will return `SmimeError::UnsupportedAlgorithm`.
-/// The key may override this via [`SigningKey::preferred_digest_algorithm`].
+/// Each key may override this via [`SigningKey::preferred_digest_algorithm`].
+///
+/// When multiple keys use different digest algorithms, the `micalg` parameter
+/// in the outer Content-Type header lists them comma-separated in first-seen order
+/// (RFC 5751 §3.4.3.2), e.g. `sha-256,sha-384`.
 ///
 /// # Output format
 ///
@@ -52,21 +56,14 @@ use const_oid::db::rfc5912::{
 /// RFC 5322 message envelope.
 pub fn sign(
     content_mime: &[u8],
-    key: &dyn SigningKey,
+    keys: &[&dyn SigningKey],
     now: SystemTime,
 ) -> Result<Vec<u8>, SmimeError> {
-    let cert = key.certificate();
-
-    // Select the digest algorithm based on the key type so that the algorithm
-    // OID in SignerInfo matches the key's security level:
-    //   RSA → SHA-256 (standard for 2048/4096-bit RSA)
-    //   EC P-256 → SHA-256  (RFC 5753 §7.1 recommendation)
-    //   EC P-384 → SHA-384  (RFC 5753 §7.1 recommendation; P-384 requires SHA-384)
-    //   EC P-521 → SHA-512  (RFC 5753 §7.1 recommendation)
-    // The key may override via preferred_digest_algorithm().
-    let digest_alg = key
-        .preferred_digest_algorithm()
-        .unwrap_or_else(|| select_digest_for_cert(cert));
+    if keys.is_empty() {
+        return Err(SmimeError::MalformedInput(
+            "sign() requires at least one signing key".into(),
+        ));
+    }
 
     // --- Step 1: build EncapsulatedContentInfo ---
     // RFC 5751 §3.4 / RFC 5652 §5.2: for multipart/signed (detached signature),
@@ -76,81 +73,118 @@ pub fn sign(
         econtent: None,
     };
 
-    // --- Step 2: hash content_mime ---
-    let msg_digest = hash_content(content_mime, &digest_alg);
+    // --- Steps 2-6: build one SignerInfo per key ---
+    //
+    // Accumulator state shared across iterations:
+    //   signer_infos_set  — the SET OF SignerInfo for SignedData
+    //   digest_alg_set    — deduplicated SET of digest AlgorithmIdentifiers (RFC 5652 §5.1)
+    //   cert_choices      — deduplicated CertificateSet (one cert per signer)
+    //   any_ski           — true if any SignerInfo used SubjectKeyIdentifier (affects SD version)
+    //   micalg_parts      — deduplicated, first-seen-order list of micalg strings (RFC 5751 §3.4.3.2)
+    let mut signer_infos_set: SignerInfos = SignerInfos(SetOfVec::new());
+    let mut digest_alg_set: DigestAlgorithmIdentifiers = SetOfVec::new();
+    let mut cert_choices: CertificateSet = CertificateSet(SetOfVec::new());
+    let mut any_ski = false;
+    // micalg_parts: Vec preserving first-seen order; entries are unique.
+    let mut micalg_parts: Vec<&'static str> = Vec::new();
 
-    // --- Step 3: build signed attributes ---
-    // RFC 5652 §11.1: content-type, §11.2: message-digest, §11.3: signing-time.
-    // SignedAttributes is a SetOfVec which sorts into canonical DER order.
-    let ct_attr = make_content_type_attribute(ID_DATA)?;
-    let md_attr = make_message_digest_attribute(&msg_digest)?;
-    let st_attr = make_signing_time_attribute(now)?;
+    for key in keys {
+        let cert = key.certificate();
 
-    let mut attrs_vec: SetOfVec<Attribute> = SetOfVec::new();
-    attrs_vec.insert(ct_attr)?;
-    attrs_vec.insert(md_attr)?;
-    attrs_vec.insert(st_attr)?;
-    let signed_attrs: SignedAttributes = attrs_vec;
+        // Select the digest algorithm based on the key type so that the algorithm
+        // OID in SignerInfo matches the key's security level:
+        //   RSA → SHA-256 (standard for 2048/4096-bit RSA)
+        //   EC P-256 → SHA-256  (RFC 5753 §7.1 recommendation)
+        //   EC P-384 → SHA-384  (RFC 5753 §7.1 recommendation; P-384 requires SHA-384)
+        //   EC P-521 → SHA-512  (RFC 5753 §7.1 recommendation)
+        // The key may override via preferred_digest_algorithm().
+        let digest_alg = key
+            .preferred_digest_algorithm()
+            .unwrap_or_else(|| select_digest_for_cert(cert));
 
-    // --- Step 4: DER-encode the SignedAttributes SET and call key.sign() ---
-    let attrs_der = signed_attrs.to_der()?;
-    let raw_sig = key.sign(&attrs_der, &digest_alg)?;
+        // Step 2: hash content_mime with this key's digest algorithm.
+        let msg_digest = hash_content(content_mime, &digest_alg);
 
-    // --- Step 5: determine signature algorithm OID from cert SPKI ---
-    // RFC 4055 §3.1: sha*WithRSAEncryption AlgorithmIdentifiers MUST include a
-    // parameters field, and it MUST be NULL.  ECDSA OIDs (RFC 5480 §2.1) MUST
-    // omit the parameters field entirely.
-    let sig_alg_oid = signature_algorithm_oid(cert, &digest_alg)?;
-    let is_rsa = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .algorithm
-        .oid
-        == RSA_ENCRYPTION;
-    let signature_algorithm = AlgorithmIdentifierOwned {
-        oid: sig_alg_oid,
-        parameters: if is_rsa { Some(Any::null()) } else { None },
-    };
+        // Step 3: build signed attributes for this signer.
+        // RFC 5652 §11.1: content-type, §11.2: message-digest, §11.3: signing-time.
+        // Each SignerInfo gets its own copy (own message-digest, same signing-time).
+        let ct_attr = make_content_type_attribute(ID_DATA)?;
+        let md_attr = make_message_digest_attribute(&msg_digest)?;
+        let st_attr = make_signing_time_attribute(now)?;
 
-    // --- Step 6: build SignerInfo ---
-    let sid = SignerIdentifier::from(cert);
-    let digest_algorithm = AlgorithmIdentifierOwned {
-        oid: digest_alg_oid(&digest_alg),
-        parameters: None,
-    };
-    // RFC 5652 §5.3: SignerInfo.version is V1 for IssuerAndSerialNumber, V3 for SKI.
-    let signer_info_version = match &sid {
-        SignerIdentifier::IssuerAndSerialNumber(_) => CmsVersion::V1,
-        SignerIdentifier::SubjectKeyIdentifier(_) => CmsVersion::V3,
-    };
-    // RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1.
-    // sign() produces exactly one SignerInfo, so the SignedData version equals it.
-    // WARNING: this shortcut is only correct for a single signer. Multi-signer
-    // support must scan all SignerInfos and use V3 if ANY one uses SKI (MIME-66i).
-    let signed_data_version = signer_info_version;
-    let signature_value = SignatureValue::new(raw_sig)?;
+        let mut attrs_vec: SetOfVec<Attribute> = SetOfVec::new();
+        attrs_vec.insert(ct_attr)?;
+        attrs_vec.insert(md_attr)?;
+        attrs_vec.insert(st_attr)?;
+        let signed_attrs: SignedAttributes = attrs_vec;
 
-    let signer_info = SignerInfo {
-        version: signer_info_version,
-        sid,
-        digest_alg: digest_algorithm.clone(),
-        signed_attrs: Some(signed_attrs),
-        signature_algorithm,
-        signature: signature_value,
-        unsigned_attrs: None,
-    };
+        // Step 4: DER-encode this signer's SignedAttributes and call key.sign().
+        let attrs_der = signed_attrs.to_der()?;
+        let raw_sig = key.sign(&attrs_der, &digest_alg)?;
+
+        // Step 5: determine signature algorithm OID from cert SPKI.
+        // RFC 4055 §3.1: sha*WithRSAEncryption AlgorithmIdentifiers MUST include a
+        // parameters field, and it MUST be NULL.  ECDSA OIDs (RFC 5480 §2.1) MUST
+        // omit the parameters field entirely.
+        let sig_alg_oid = signature_algorithm_oid(cert, &digest_alg)?;
+        let is_rsa = cert
+            .tbs_certificate()
+            .subject_public_key_info()
+            .algorithm
+            .oid
+            == RSA_ENCRYPTION;
+        let signature_algorithm = AlgorithmIdentifierOwned {
+            oid: sig_alg_oid,
+            parameters: if is_rsa { Some(Any::null()) } else { None },
+        };
+
+        // Step 6: build SignerInfo for this key.
+        let sid = SignerIdentifier::from(cert);
+        let digest_algorithm = AlgorithmIdentifierOwned {
+            oid: digest_alg_oid(&digest_alg),
+            parameters: None,
+        };
+        // RFC 5652 §5.3: SignerInfo.version is V1 for IssuerAndSerialNumber, V3 for SKI.
+        let signer_info_version = match &sid {
+            SignerIdentifier::IssuerAndSerialNumber(_) => CmsVersion::V1,
+            SignerIdentifier::SubjectKeyIdentifier(_) => CmsVersion::V3,
+        };
+        if matches!(signer_info_version, CmsVersion::V3) {
+            any_ski = true;
+        }
+        let signature_value = SignatureValue::new(raw_sig)?;
+
+        let signer_info = SignerInfo {
+            version: signer_info_version,
+            sid,
+            digest_alg: digest_algorithm.clone(),
+            signed_attrs: Some(signed_attrs),
+            signature_algorithm,
+            signature: signature_value,
+            unsigned_attrs: None,
+        };
+
+        // Accumulate: SetOfVec::insert() silently ignores duplicates.
+        signer_infos_set.0.insert(signer_info)?;
+        digest_alg_set.insert(digest_algorithm)?;
+        cert_choices
+            .0
+            .insert(CertificateChoices::Certificate(cert.clone()))?;
+
+        // Accumulate micalg in first-seen order (deduplicated).
+        let micalg_str = micalg_param(&digest_alg);
+        if !micalg_parts.contains(&micalg_str) {
+            micalg_parts.push(micalg_str);
+        }
+    }
 
     // --- Step 7: build SignedData ---
-    let mut digest_alg_set: DigestAlgorithmIdentifiers = SetOfVec::new();
-    digest_alg_set.insert(digest_algorithm)?;
-
-    let mut cert_choices: CertificateSet = CertificateSet(SetOfVec::new());
-    cert_choices
-        .0
-        .insert(CertificateChoices::Certificate(cert.clone()))?;
-
-    let mut signer_infos_set: SignerInfos = SignerInfos(SetOfVec::new());
-    signer_infos_set.0.insert(signer_info)?;
+    // RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1.
+    let signed_data_version = if any_ski {
+        CmsVersion::V3
+    } else {
+        CmsVersion::V1
+    };
 
     let signed_data = SignedData {
         version: signed_data_version,
@@ -171,7 +205,8 @@ pub fn sign(
     let p7s_der = content_info.to_der()?;
 
     // --- Step 9: build multipart/signed MIME output ---
-    let micalg = micalg_param(&digest_alg);
+    // RFC 5751 §3.4.3.2: micalg is comma-separated list of unique digest alg names.
+    let micalg = micalg_parts.join(",");
     let boundary = random_boundary(content_mime)?;
     let p7s_b64 = BASE64.encode(&p7s_der);
     let p7s_b64_wrapped = wrap_base64(&p7s_b64, 76);

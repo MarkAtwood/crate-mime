@@ -21,7 +21,7 @@ pub trait SigningKey {
 // Four operations — all synchronous, all return owned bytes
 pub fn verify(signed_content: &[u8], signature_der: &[u8], trust_anchors: &[Certificate], now: SystemTime, revocation: &dyn RevocationChecker) -> Result<VerificationResult, SmimeError>;
 pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>, SmimeError>;
-pub fn sign(content_mime: &[u8], key: &dyn SigningKey, now: SystemTime) -> Result<Vec<u8>, SmimeError>;
+pub fn sign(content_mime: &[u8], keys: &[&dyn SigningKey], now: SystemTime) -> Result<Vec<u8>, SmimeError>;
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError>;
 ```
 
