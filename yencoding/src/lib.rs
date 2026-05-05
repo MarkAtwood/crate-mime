@@ -214,8 +214,8 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
 ///
 /// - `data` — raw bytes to encode. May be empty.
 /// - `filename` — written verbatim to `name=` on `=ybegin`.
-/// - `line_length` — encoded bytes per line. Use [`DEFAULT_LINE_LENGTH`] (128)
-///   unless you have a specific reason to deviate.
+/// - `line_length` — encoded bytes per line. Values below 2 are clamped to 2.
+///   Use [`DEFAULT_LINE_LENGTH`] (128) unless you have a specific reason to deviate.
 ///
 /// # Examples
 ///
@@ -277,8 +277,8 @@ pub struct EncodePartOptions<'a> {
     /// Compute this from the full unsplit data before calling. The decoded
     /// counterpart is [`DecodedPart::whole_file_crc32`].
     pub whole_file_crc32: u32,
-    /// Encoded bytes per line. Use [`DEFAULT_LINE_LENGTH`] (128) for the
-    /// standard value.
+    /// Encoded bytes per line. Values below 2 are clamped to 2.
+    /// Use [`DEFAULT_LINE_LENGTH`] (128) for the standard value.
     pub line_length: u8,
 }
 

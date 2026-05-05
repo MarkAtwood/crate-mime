@@ -296,6 +296,12 @@ pub trait RevocationChecker {
 ///
 /// Use this when revocation checking is managed out-of-band, not required
 /// for the deployment, or during testing with synthetic certificates.
+///
+/// # Security
+///
+/// **This disables all certificate revocation checks.** Use only in environments where
+/// revocation is verified by other means, or in testing. Never use in production without
+/// explicit awareness that revoked certificates will be accepted.
 pub struct NoRevocationCheck;
 
 impl RevocationChecker for NoRevocationCheck {
@@ -310,6 +316,11 @@ impl RevocationChecker for NoRevocationCheck {
 /// which is embedded in the `SignedData` structure.
 pub trait SigningKey {
     /// Sign `data` and return the raw signature bytes.
+    ///
+    /// The `data` argument is the DER-encoded `SignedAttributes` structure (a SET OF Attribute
+    /// per RFC 5652 §5.4), with tag byte `0x31`. The implementor must sign exactly these bytes
+    /// — do not pre-hash, do not add framing. For HSM integrations, the entire byte slice must
+    /// be transmitted as-is to the signing operation.
     fn sign(&self, data: &[u8], algorithm: &DigestAlgorithm) -> Result<Vec<u8>, SmimeError>;
 
     /// The signer's X.509 certificate, included in `SignedData`.

@@ -11,12 +11,8 @@ readme = "README.md"
 keywords = ["uuencode", "uudecode", "email", "encoding", "usenet"]
 categories = ["email", "encoding"]
 
-[dependencies]
-serde = { version = "1", features = ["derive"], optional = true }
-
 [features]
 default = []
-serde = ["dep:serde"]
 
 [dev-dependencies]
 # none needed yet

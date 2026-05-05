@@ -1185,6 +1185,128 @@ fn test_decrypt_openssl_kari_p256() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Tests O-Q: negative tests for tampered cryptographic inputs
+//
+// These tests verify that the library rejects tampered inputs rather than
+// silently returning incorrect results.  Each test flips one byte in the
+// middle of a cryptographic payload and asserts that the operation fails.
+//
+// All three use the same OpenSSL-generated fixtures as the happy-path tests
+// (no new fixture generation needed).
+// ---------------------------------------------------------------------------
+
+/// Test O: verify() rejects a tampered signature blob.
+///
+/// One byte in the middle of the DER-encoded CMS SignedData is flipped.
+/// The signature bytes no longer match the signed attributes, so RSA
+/// signature verification must fail → AllSignersFailed.
+#[test]
+fn test_verify_tampered_sig_bytes() {
+    let ca_cert_der = from_hex(CA_CERT_HEX);
+    let ca_cert = Certificate::from_der(&ca_cert_der).expect("parse CA cert");
+
+    let mut sig_der = from_hex(SIG_RSA_DER_HEX);
+
+    // Flip one byte near the end of the DER blob where the RSA signature value
+    // lives.  The last ~256 bytes of a 2048-bit RSA SignedData are the
+    // signature octets; flipping anywhere in that region corrupts the signature
+    // without touching the DER framing that wraps it.
+    let flip_pos = sig_der.len() - 64;
+    sig_der[flip_pos] ^= 0xff;
+
+    let result = verify(
+        b"Test message content",
+        &sig_der,
+        &[ca_cert],
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
+        &NoRevocationCheck,
+    );
+
+    match result {
+        Err(SmimeError::AllSignersFailed(_)) => {}
+        Ok(vr) if !vr.is_verified() => {}
+        Ok(vr) => panic!(
+            "expected verification failure for tampered sig_bytes, got Ok with verified=true; \
+             signers: {:?}",
+            vr.signers
+        ),
+        Err(e) => {
+            panic!("expected AllSignersFailed for tampered sig_bytes, got other error: {e:?}")
+        }
+    }
+}
+
+/// Test P: verify() rejects unmodified sig_bytes when the signed content is tampered.
+///
+/// The signed content bytes are changed (one byte flipped) while the original
+/// DER signature blob is kept intact.  The SHA-256 digest of the modified
+/// content no longer matches the messageDigest signed attribute, so the
+/// message-digest check must fail → AllSignersFailed.
+#[test]
+fn test_verify_tampered_content() {
+    let ca_cert_der = from_hex(CA_CERT_HEX);
+    let ca_cert = Certificate::from_der(&ca_cert_der).expect("parse CA cert");
+
+    let sig_der = from_hex(SIG_RSA_DER_HEX);
+
+    // Original signed content was b"Test message content".
+    // Flip the first byte to produce different content with a different digest.
+    let mut tampered_content = b"Test message content".to_vec();
+    tampered_content[0] ^= 0x01;
+
+    let result = verify(
+        &tampered_content,
+        &sig_der,
+        &[ca_cert],
+        std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_893_456_000),
+        &NoRevocationCheck,
+    );
+
+    match result {
+        Err(SmimeError::AllSignersFailed(_)) => {}
+        Ok(vr) if !vr.is_verified() => {}
+        Ok(vr) => panic!(
+            "expected verification failure for tampered content, got Ok with verified=true; \
+             signers: {:?}",
+            vr.signers
+        ),
+        Err(e) => panic!("expected AllSignersFailed for tampered content, got other error: {e:?}"),
+    }
+}
+
+/// Test Q: decrypt() returns an error when the ciphertext is tampered.
+///
+/// One byte near the end of the DER-encoded EnvelopedData is flipped,
+/// corrupting the AES-128-CBC ciphertext.  PKCS#7 unpadding must fail,
+/// returning an Err.  The exact variant is not asserted — any error is
+/// acceptable; the important property is that Ok is not returned.
+#[test]
+fn test_decrypt_tampered_ciphertext() {
+    let rsa_key_der = from_hex(RSA_KEY_PKCS8_HEX);
+    let private_key = RsaPrivateKey::from_pkcs8_der(&rsa_key_der).expect("parse RSA private key");
+
+    let rsa_cert_der = from_hex(RSA_CERT_HEX);
+    let cert = Certificate::from_der(&rsa_cert_der).expect("parse RSA cert");
+
+    let key = TestRsaDecryptionKey { private_key, cert };
+
+    let mut encrypted_der = from_hex(ENCRYPTED_RSA_DER_HEX);
+
+    // The AES-128-CBC ciphertext is in the last ~32 bytes of the EnvelopedData.
+    // Flipping a byte there corrupts the PKCS#7 padding block, causing
+    // unpadding to fail without touching any DER framing.
+    let flip_pos = encrypted_der.len() - 8;
+    encrypted_der[flip_pos] ^= 0xff;
+
+    let result = decrypt(&encrypted_der, &key);
+
+    assert!(
+        result.is_err(),
+        "decrypt() must return Err for tampered ciphertext, but returned Ok"
+    );
+}
+
 /// Test M: verify() fails when the supplied trust anchor does not anchor the chain.
 ///
 /// The leaf cert is passed as the trust anchor instead of the root.  The chain

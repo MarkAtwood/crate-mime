@@ -57,7 +57,7 @@ use crate::part::ParsedPart;
 /// All byte offsets are **absolute** — they are in the same coordinate space
 /// as `ParsedPart::body_range` and the `raw` buffer passed to
 /// [`scan_inline_yencode()`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct InlineYEncBlock {
     /// Byte offset of the `=ybegin` line within `raw`.
     ///

@@ -140,9 +140,9 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             // NOTE: key is exactly 32 bytes (passed as key_len to encrypt_aes_cbc)
             // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
             let k = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(key)
-                .expect("key is exactly 32 bytes = AES-256 key size");
+                .unwrap_or_else(|_| unreachable!("AES key is exactly the declared size"));
             let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv)
-                .expect("iv is exactly 16 bytes = AES block size");
+                .unwrap_or_else(|_| unreachable!("AES IV is exactly the declared size"));
             cbc::Encryptor::<aes::Aes256>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
         })?
     } else {
@@ -150,9 +150,9 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             // NOTE: key is exactly 16 bytes (passed as key_len to encrypt_aes_cbc)
             // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
             let k = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(key)
-                .expect("key is exactly 16 bytes = AES-128 key size");
+                .unwrap_or_else(|_| unreachable!("AES key is exactly the declared size"));
             let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv)
-                .expect("iv is exactly 16 bytes = AES block size");
+                .unwrap_or_else(|_| unreachable!("AES IV is exactly the declared size"));
             cbc::Encryptor::<aes::Aes128>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
         })?
     };
@@ -535,7 +535,7 @@ fn build_mime(der: &[u8]) -> Vec<u8> {
         // b64 is a String, so its byte slices are always valid UTF-8.
         folded.push_str(
             core::str::from_utf8(chunk)
-                .expect("base64 output is a String — from_utf8 always succeeds"),
+                .unwrap_or_else(|_| unreachable!("base64 output is always valid UTF-8")),
         );
         folded.push_str("\r\n");
     }

@@ -10,7 +10,7 @@ use crate::{MultiUuError, PartCollection};
 /// `data` may contain a compressed archive. **This crate never decompresses
 /// the output.** Apply independent size and resource limits before
 /// decompressing to protect against decompression-bomb attacks.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ReassembledFile {
     /// Filename extracted from the `begin` line of the first UU part.
     ///
@@ -147,8 +147,8 @@ pub fn reassemble(collection: &PartCollection) -> Result<ReassembledFile, MultiU
     for part_num in &present {
         let entry = collection
             .get(*part_num)
-            .expect("present_parts listed a part that get() cannot find");
-        let block = uuencoding::decode(&entry.body_bytes).map_err(MultiUuError::DecodeError)?;
+            .unwrap_or_else(|| unreachable!("present_parts listed a part that get() cannot find"));
+        let block = uuencoding::decode(&entry.body_bytes)?;
 
         if first {
             filename = block.metadata.filename;

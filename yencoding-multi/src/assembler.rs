@@ -21,10 +21,10 @@ use crate::error::AssemblyError;
 /// The caller:
 /// 1. Creates an `Assembler` with the total file size (from `=ybegin size=`).
 /// 2. Calls [`add_part`][Self::add_part] for each decoded part as it arrives
-///    (in any order).
-/// 3. Optionally sets the expected whole-file CRC32 with
-///    [`set_expected_crc32`][Self::set_expected_crc32].
-/// 4. Polls [`is_complete`][Self::is_complete] and calls
+///    (in any order). If a part carries a `whole_file_crc32`, the assembler
+///    records it automatically for use at `finish()` time — no separate call
+///    to [`set_expected_crc32`][Self::set_expected_crc32] is needed.
+/// 3. Polls [`is_complete`][Self::is_complete] and calls
 ///    [`finish`][Self::finish] when all parts have arrived.
 ///
 /// # Byte offset convention
@@ -104,6 +104,12 @@ impl Assembler {
     /// `=ypart begin=/end=`) determine where the decoded bytes are written
     /// into the file buffer.
     ///
+    /// If `part.whole_file_crc32` is `Some`, this method automatically records
+    /// it as the expected whole-file CRC32 (equivalent to calling
+    /// [`set_expected_crc32`][Self::set_expected_crc32]). If a previous part
+    /// already recorded a different CRC, `Err(`[`AssemblyError::InconsistentCrc`]`)` is
+    /// returned and the part is **not** added.
+    ///
     /// # Errors
     ///
     /// - [`AssemblyError::OutOfRange`] — the part's byte range extends beyond
@@ -112,6 +118,8 @@ impl Assembler {
     ///   a previously added part.
     /// - [`AssemblyError::DataLengthMismatch`] — the part's decoded data length
     ///   does not match its declared `begin`/`end` range.
+    /// - [`AssemblyError::InconsistentCrc`] — this part's `whole_file_crc32`
+    ///   conflicts with the CRC already recorded from a previous part.
     ///
     /// # Per-part CRC and `crc32_verified`
     ///
@@ -122,13 +130,6 @@ impl Assembler {
     /// `crc32_verified = false` means only that **no per-part CRC was present**
     /// in the article (e.g. an older encoder that omitted `pcrc32=`), not that a
     /// CRC check failed silently.
-    ///
-    /// When no `pcrc32=` is present the only file-integrity safety net is the
-    /// whole-file CRC32 checked by [`finish`][Self::finish]. If you need
-    /// integrity guarantees for encoders that omit per-part CRCs, always call
-    /// [`set_expected_crc32`][Self::set_expected_crc32] before calling `finish()`.
-    /// The value to pass is `part.whole_file_crc32` when it is `Some` — the
-    /// last part in a multi-part series typically carries this field.
     ///
     /// # Notes
     ///
@@ -211,6 +212,20 @@ impl Assembler {
                     existing: a..b,
                     new: begin_0..end_0,
                 });
+            }
+        }
+
+        // Auto-extract whole-file CRC32 if the part carries one.
+        if let Some(part_crc) = part.whole_file_crc32 {
+            match self.expected_crc32 {
+                None => self.expected_crc32 = Some(part_crc),
+                Some(existing) if existing != part_crc => {
+                    return Err(AssemblyError::InconsistentCrc {
+                        first: existing,
+                        new: part_crc,
+                    });
+                }
+                Some(_) => {} // already set to the same value — nothing to do
             }
         }
 
@@ -624,6 +639,138 @@ mod tests {
         // the 512 MiB cap check.
         let result = Assembler::new(1024);
         assert!(result.is_ok(), "1 KiB assembler must be accepted");
+    }
+
+    // -----------------------------------------------------------------------
+    // Auto-extract whole_file_crc32 from add_part
+    // -----------------------------------------------------------------------
+
+    fn make_part_with_crc(data: &[u8], begin_1: u64, end_1: u64, crc: Option<u32>) -> DecodedPart {
+        DecodedPart {
+            data: data.to_vec(),
+            metadata: YencMetadata {
+                filename: "test.bin".to_string(),
+                size: 128,
+                line_length: 128,
+                total_parts: Some(2),
+            },
+            part: None,
+            part_begin: Some(begin_1),
+            part_end: Some(end_1),
+            crc32_verified: true,
+            whole_file_crc32: crc,
+        }
+    }
+
+    #[test]
+    fn add_part_auto_extracts_whole_file_crc32() {
+        // Oracle: CRC32 of [0u8; 8] computed independently.
+        // python3 -c "import binascii; print(hex(binascii.crc32(bytes(8)) & 0xffffffff))"
+        // → 0x6522df69
+        let crc: u32 = 0x6522_df69;
+        let data = vec![0u8; 4];
+
+        let mut a = Assembler::new(8).unwrap();
+        // First part carries the whole-file CRC; assembler must record it.
+        let p1 = make_part_with_crc(&data, 1, 4, Some(crc));
+        a.add_part(&p1).unwrap();
+        assert_eq!(
+            a.expected_crc32,
+            Some(crc),
+            "add_part must auto-extract whole_file_crc32"
+        );
+    }
+
+    #[test]
+    fn add_part_consistent_crc_accepted() {
+        // Two parts both carrying the same CRC — must succeed.
+        let crc: u32 = 0x6522_df69;
+        let data = vec![0u8; 4];
+
+        let mut a = Assembler::new(8).unwrap();
+        a.add_part(&make_part_with_crc(&data, 1, 4, Some(crc)))
+            .unwrap();
+        a.add_part(&make_part_with_crc(&data, 5, 8, Some(crc)))
+            .unwrap();
+        // No error: both parts agree.
+        assert_eq!(a.expected_crc32, Some(crc));
+    }
+
+    #[test]
+    fn add_part_inconsistent_crc_returns_error() {
+        // Two parts with different whole_file_crc32 values — second must fail.
+        let crc_a: u32 = 0x1234_5678;
+        let crc_b: u32 = 0xdead_beef;
+        let data = vec![0u8; 4];
+
+        let mut a = Assembler::new(8).unwrap();
+        a.add_part(&make_part_with_crc(&data, 1, 4, Some(crc_a)))
+            .unwrap();
+        let err = a
+            .add_part(&make_part_with_crc(&data, 5, 8, Some(crc_b)))
+            .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                AssemblyError::InconsistentCrc {
+                    first: 0x1234_5678,
+                    new: 0xdead_beef
+                }
+            ),
+            "expected InconsistentCrc, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn add_part_no_crc_in_part_leaves_expected_crc_unchanged() {
+        // A part with whole_file_crc32 = None must not clear an already-set CRC.
+        let crc: u32 = 0x1234_5678;
+        let data = vec![0u8; 4];
+
+        let mut a = Assembler::new(8).unwrap();
+        a.set_expected_crc32(crc);
+        // Part without CRC — must not disturb the already-set value.
+        a.add_part(&make_part_with_crc(&data, 1, 4, None)).unwrap();
+        assert_eq!(
+            a.expected_crc32,
+            Some(crc),
+            "None whole_file_crc32 must not clear expected_crc32"
+        );
+    }
+
+    #[test]
+    fn add_part_auto_crc_verified_at_finish() {
+        // End-to-end: add_part auto-extracts CRC, finish() verifies it.
+        // Oracle: CRC32 of [0u8; 4] = ?
+        // python3 -c "import binascii; print(hex(binascii.crc32(bytes(4)) & 0xffffffff))"
+        // → 0x2144df1c
+        let data = vec![0u8; 4];
+        let correct_crc = crc32fast::hash(&data);
+
+        let mut a = Assembler::new(4).unwrap();
+        let p = make_part_with_crc(&data, 1, 4, Some(correct_crc));
+        // Use single-part style (None, None) so no =ypart range conversion needed.
+        // Actually make_part_with_crc uses begin/end so we need a single-part version:
+        let p_single = DecodedPart {
+            data: data.clone(),
+            metadata: YencMetadata {
+                filename: "test.bin".to_string(),
+                size: 4,
+                line_length: 128,
+                total_parts: None,
+            },
+            part: None,
+            part_begin: None,
+            part_end: None,
+            crc32_verified: true,
+            whole_file_crc32: Some(correct_crc),
+        };
+        a.add_part(&p_single).unwrap();
+        // CRC should have been auto-extracted; finish() must succeed.
+        let result = a.finish().unwrap();
+        assert_eq!(result, data);
+        // Suppress unused variable warning
+        let _ = p;
     }
 
     // -----------------------------------------------------------------------
