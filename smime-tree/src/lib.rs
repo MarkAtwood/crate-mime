@@ -49,6 +49,10 @@
 //! RSA-PKCS1v15-SHA256 and ECDSA-P256-SHA256. Chains through P-384 or other algorithm
 //! intermediate CAs will fail with [`CertChainError::SignatureVerification`]. This affects
 //! many real-world certificate hierarchies.
+//!
+//! * **RSA key transport uses PKCS#1 v1.5** (`ktri`), not RSAES-OAEP. PKCS#1 v1.5 is
+//!   deprecated by RFC 8017 in favour of OAEP and is susceptible to Bleichenbacher
+//!   padding oracle attacks in interactive decryption scenarios.
 
 mod cert;
 mod decrypt;

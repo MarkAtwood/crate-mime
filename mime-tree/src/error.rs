@@ -15,7 +15,7 @@ pub enum ParseError {
     InvalidRange {
         offset: u32,
         length: u32,
-        available: usize,
+        available: u64,
     },
 }
 

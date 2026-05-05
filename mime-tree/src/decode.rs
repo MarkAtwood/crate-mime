@@ -29,13 +29,13 @@ pub fn decode_body_value(
     let end = offset.checked_add(length).ok_or(ParseError::InvalidRange {
         offset: offset_u32,
         length: length_u32,
-        available: raw.len(),
+        available: raw.len() as u64,
     })?;
     if end > raw.len() {
         return Err(ParseError::InvalidRange {
             offset: offset_u32,
             length: length_u32,
-            available: raw.len(),
+            available: raw.len() as u64,
         });
     }
     let body_bytes = &raw[offset..end];

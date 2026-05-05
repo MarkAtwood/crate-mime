@@ -246,7 +246,17 @@ impl Assembler {
     /// needs no parts).
     #[must_use]
     pub fn is_complete(&self) -> bool {
-        self.missing_ranges().is_empty()
+        if self.total_size == 0 {
+            return true; // edge case: zero-byte file is always complete
+        }
+        let mut cursor: u64 = 0;
+        for (&start, &end) in &self.covered {
+            if start > cursor {
+                return false; // gap found
+            }
+            cursor = end;
+        }
+        cursor >= self.total_size
     }
 
     /// Returns the 0-based byte ranges within `[0, total_size)` not yet covered
@@ -286,11 +296,12 @@ impl Assembler {
     ///
     /// # Integrity note
     ///
-    /// If no expected CRC32 was set (via [`set_expected_crc32`][Self::set_expected_crc32]),
-    /// this function cannot detect corruption in parts whose articles lacked a
-    /// `pcrc32=` field — `yencoding::decode()` only verifies integrity when a
-    /// per-part CRC is present. For maximum reliability, always provide the
-    /// whole-file CRC32 from the `crc32=` field in the final part's `=yend` line.
+    /// If any part supplied to [`add_part`][Self::add_part] carried a
+    /// `whole_file_crc32`, the CRC was automatically extracted and will be verified here.
+    /// Call [`set_expected_crc32`][Self::set_expected_crc32] only when you have the expected
+    /// CRC from an out-of-band source (e.g., an NZB file) that the parts themselves did not
+    /// carry.  If no expected CRC was registered by either path, the data is returned without
+    /// CRC verification and you should use your own integrity check.
     ///
     /// On success the assembler is consumed and the buffer is returned without
     /// copying.
@@ -745,12 +756,10 @@ mod tests {
         // python3 -c "import binascii; print(hex(binascii.crc32(bytes(4)) & 0xffffffff))"
         // → 0x2144df1c
         let data = vec![0u8; 4];
-        let correct_crc = crc32fast::hash(&data);
+        let correct_crc: u32 = 0x2144_df1c; // CRC32 of [0u8; 4]: python3 -c "import binascii; print(hex(binascii.crc32(bytes(4)) & 0xffffffff))"
 
         let mut a = Assembler::new(4).unwrap();
-        let p = make_part_with_crc(&data, 1, 4, Some(correct_crc));
         // Use single-part style (None, None) so no =ypart range conversion needed.
-        // Actually make_part_with_crc uses begin/end so we need a single-part version:
         let p_single = DecodedPart {
             data: data.clone(),
             metadata: YencMetadata {
@@ -769,8 +778,6 @@ mod tests {
         // CRC should have been auto-extracted; finish() must succeed.
         let result = a.finish().unwrap();
         assert_eq!(result, data);
-        // Suppress unused variable warning
-        let _ = p;
     }
 
     // -----------------------------------------------------------------------

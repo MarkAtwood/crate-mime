@@ -49,10 +49,12 @@
 //! // Imagine these raw article bytes come from an NNTP server.
 //! let raw_articles: Vec<Vec<u8>> = todo!("fetch from NNTP");
 //! let total_file_size: u64 = todo!("from =ybegin size= or NZB");
-//! let whole_file_crc32: Option<u32> = todo!("from last-part =yend crc32= or NZB");
+//! let whole_file_crc32_from_nzb: Option<u32> = todo!("from NZB; parts carry their own CRC");
 //!
 //! let mut assembler = Assembler::new(total_file_size).expect("total_size too large");
-//! if let Some(crc) = whole_file_crc32 {
+//! // CRC from parts is extracted automatically by add_part(); call set_expected_crc32()
+//! // only when you have the CRC from an out-of-band source such as an NZB file.
+//! if let Some(crc) = whole_file_crc32_from_nzb {
 //!     assembler.set_expected_crc32(crc);
 //! }
 //!
