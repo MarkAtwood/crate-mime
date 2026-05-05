@@ -92,12 +92,12 @@ pub enum KeyEncryptionAlgorithm {
     RsaPkcs1v15,
     /// RSA-OAEP key transport (RFC 8017).
     RsaOaep,
-    /// ECDH-ES key agreement (RFC 5753) with the specified curve.
+    /// Reserved for future ECDH-ES key agreement support. Never produced by
+    /// the current implementation of `decrypt()`; present for forward
+    /// compatibility only.
     ///
-    /// Reserved; never passed to [`DecryptionKey::decrypt_cek`] by `decrypt()`.
     /// ECDH key agreement is handled via [`DecryptionKey::agree_ecdh`] instead.
     /// `decrypt_cek()` implementations do not need to handle this variant.
-    #[doc(hidden)]
     EcdhEs { curve: EcCurve },
 }
 

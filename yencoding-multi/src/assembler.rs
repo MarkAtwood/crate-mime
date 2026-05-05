@@ -44,6 +44,9 @@ pub struct Assembler {
     /// Sorted map of covered intervals: key = 0-based start, value = 0-based end
     /// (exclusive). Using `BTreeMap<u64, u64>` lets us quickly find the
     /// predecessor/successor of any new interval for overlap/gap detection.
+    ///
+    /// The BTreeMap maps 0-based inclusive start → 0-based exclusive end.
+    /// Converted from yEnc's 1-based inclusive `begin`/`end` by `begin - 1` and `end`.
     covered: BTreeMap<u64, u64>,
 
     /// Whole-file CRC32, if known. Set by `set_expected_crc32()` or extracted
@@ -414,6 +417,24 @@ mod tests {
         a.add_part(&make_part(&[0u8; 3], 4, 6)).unwrap();
         assert!(a.missing_ranges().is_empty());
         assert!(a.is_complete());
+    }
+
+    #[test]
+    fn adjacent_touching_parts_no_gap() {
+        // Two back-to-back parts whose ranges share an endpoint:
+        // part 1 covers [0..4) in 0-based → yEnc begin=1 end=4
+        // part 2 covers [4..8) in 0-based → yEnc begin=5 end=8
+        // end of part 1 (4) == begin of part 2 (4): they touch but do not overlap.
+        let mut a = Assembler::new(8).unwrap();
+        a.add_part(&make_part(&[0u8; 4], 1, 4)).unwrap();
+        a.add_part(&make_part(&[0u8; 4], 5, 8)).unwrap();
+        assert!(
+            a.missing_ranges().is_empty(),
+            "adjacent parts must leave no gap"
+        );
+        assert!(a.is_complete(), "assembler must be complete");
+        a.finish()
+            .expect("finish must succeed for complete assembler");
     }
 
     // -----------------------------------------------------------------------

@@ -530,6 +530,21 @@ mod tests {
     }
 
     // ------------------------------------------------------------------
+    // looks_like_filename — path separator branch
+    // ------------------------------------------------------------------
+
+    /// Strings containing '/' or '\' are unconditionally accepted as filenames
+    /// regardless of whether they have an extension, because a path separator
+    /// is strong evidence of an actual path.
+    #[test]
+    fn looks_like_filename_path_separator() {
+        assert!(looks_like_filename("some/path/file.rar"));
+        assert!(looks_like_filename("/absolute/path"));
+        // Backslash path (Windows-style) is also accepted.
+        assert!(looks_like_filename("some\\path\\file.rar"));
+    }
+
+    // ------------------------------------------------------------------
     // looks_like_filename — decimal numbers are not filenames (592.9)
     // ------------------------------------------------------------------
 

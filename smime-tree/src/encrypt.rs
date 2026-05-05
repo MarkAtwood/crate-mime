@@ -92,6 +92,10 @@ struct EccCmsSharedInfo {
 /// - **AES-256-CBC** is used when any recipient is P-384 (P-384 provides ~192-bit
 ///   security; pairing it with AES-128 would be a security-level mismatch).
 ///
+/// When a mixed list of RSA and P-384 recipients is supplied, AES-256-CBC is
+/// used throughout; each RSA recipient receives the 256-bit CEK wrapped with
+/// RSA PKCS#1 v1.5.
+///
 /// # EnvelopedData version (RFC 5652 §6.1)
 ///
 /// - `V0` when all recipients are KTRI (RSA key transport).

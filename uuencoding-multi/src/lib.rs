@@ -102,11 +102,11 @@
 //! }
 //! ```
 
-pub(crate) mod collection;
-pub(crate) mod error;
-pub(crate) mod reassemble;
-pub(crate) mod subject;
-pub(crate) mod toc;
+mod collection;
+mod error;
+mod reassemble;
+mod subject;
+mod toc;
 
 pub use collection::{PartCollection, PartEntry};
 pub use error::MultiUuError;

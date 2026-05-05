@@ -311,6 +311,37 @@ mod tests {
     }
 
     // ------------------------------------------------------------------
+    // Truncated UU body — all parts present but missing `end` terminator
+    // ------------------------------------------------------------------
+
+    /// All parts are present (no gap) but part 2's body has its ` \nend\n`
+    /// terminator stripped, so uuencoding::decode returns is_truncated=true.
+    /// The result must have is_truncated=true and missing_parts empty.
+    #[test]
+    fn truncated_uu_body_with_all_parts_present() {
+        // PART2_BODY ends with: <data line> + " \n" + "end\n"
+        // Strip the last 6 bytes (" \nend\n") to remove the terminator.
+        let truncated_part2: Vec<u8> = PART2_BODY[..PART2_BODY.len() - 6].to_vec();
+
+        let mut c = PartCollection::with_total(3);
+        c.add(make_entry(1, PART1_BODY)).unwrap();
+        c.add(PartEntry {
+            part_number: 2,
+            body_bytes: truncated_part2,
+            subject: None,
+        })
+        .unwrap();
+        c.add(make_entry(3, PART3_BODY)).unwrap();
+
+        let result = reassemble(&c).unwrap();
+        assert!(result.is_truncated, "body missing `end` must be truncated");
+        assert!(
+            result.missing_parts.is_empty(),
+            "all parts were present; missing_parts must be empty"
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Decode error on first part
     // ------------------------------------------------------------------
 

@@ -204,6 +204,13 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 ///
 /// Passing `None` is equivalent to calling [`decode`].
 ///
+/// # Complexity note
+///
+/// The input is split into lines up front before any limit check takes effect,
+/// so time and space complexity are O(`input.len()`) regardless of `max_bytes`.
+/// For large inputs where only a small prefix is needed, prefer to pre-slice
+/// the input to a conservative upper bound before calling this function.
+///
 /// # Errors
 ///
 /// Same as [`decode`].
