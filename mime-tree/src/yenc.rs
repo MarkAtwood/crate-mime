@@ -268,8 +268,15 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
             match find_yend_end(slice) {
                 Some(consumed) => (part, consumed, false),
                 None => {
+                    // yencoding::decode() succeeded, so =yend was definitely
+                    // present in the slice — find_yend_end() returning None
+                    // here is a logic error in this module.
+                    debug_assert!(
+                        false,
+                        "find_yend_end returned None after successful decode — logic error"
+                    );
                     let consumed = find_line_end(slice, 0);
-                    (part, consumed, true)
+                    (part, consumed, false)
                 }
             }
         }
@@ -288,11 +295,10 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
 ///
 /// Matches `=yend` only when followed by a space, `\r`, `\n`, or end-of-slice
 /// — the same boundary requirement that `yencoding::decode` uses internally
-/// via `strip_keyword(line, b"=yend ")`.  Without this guard, an encoded data
-/// line whose first two bytes decode via the `=X` escape path to bytes that
-/// spell `yend` (i.e. a line starting with `=y`) could be misidentified as
-/// the terminator, causing `find_yend_end` to return a different position than
-/// `yencoding::decode` found, and making `begin_length` wrong.
+/// via `strip_keyword(line, b"=yend ")`.  This guard is a safety margin for
+/// non-compliant encoders: compliant yEnc encoders cannot produce a data line
+/// starting with `=y` because `=` (0x3D) is always escaped, so no well-formed
+/// data line can begin with a literal `=` character.
 fn find_yend_end(slice: &[u8]) -> Option<usize> {
     let needle = b"=yend";
     let mut pos = 0;

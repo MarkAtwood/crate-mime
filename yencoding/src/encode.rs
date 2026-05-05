@@ -203,6 +203,15 @@ mod tests {
     }
 
     #[test]
+    fn encode_escapes_cr() {
+        // Oracle: byte 227 + 42 = 269 mod 256 = 13 (CR) → escape as '=' + (13+64='M')
+        // python3: chr((227+42)%256) == '\r', chr(13+64) == 'M'
+        let mut out = Vec::new();
+        encode_body(&[227], 128, &mut out);
+        assert_eq!(&out[..2], b"=M");
+    }
+
+    #[test]
     fn encode_escapes_eq() {
         // byte 19 + 42 = 61 = '=' → escape as '=' + (61+64) = '}'
         let mut out = Vec::new();
@@ -244,9 +253,10 @@ mod tests {
 
     #[test]
     fn encode_all_bytes_round_trip() {
-        // Oracle: encode all 256 bytes, decode, should get the same 256 bytes.
-        // The encoded form is the oracle for the decoder, not the other way around.
-        // We verify against the Python algorithm: (b+42)%256, escape if needed.
+        // Oracle applied to mandatory-escape bytes only (NUL/LF/CR/=): the Python
+        // algorithm (b+42)%256, then escape if in {0,10,13,61}, is the reference.
+        // Dot and TAB at line-start escaping uses round-trip consistency (covered
+        // by fixture tests); they are not independently verified here.
         let raw: Vec<u8> = (0u8..=255).collect();
         // Build expected using Python algorithm
         let mut expected_encoded = Vec::new();

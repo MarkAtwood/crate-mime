@@ -229,6 +229,7 @@ impl Assembler {
     ///
     /// When `total_size` is 0 this always returns `true` (a zero-byte file
     /// needs no parts).
+    #[must_use]
     pub fn is_complete(&self) -> bool {
         self.missing_ranges().is_empty()
     }
@@ -237,6 +238,7 @@ impl Assembler {
     /// by any added part, in ascending order.
     ///
     /// An empty `Vec` means the file is complete.
+    #[must_use]
     pub fn missing_ranges(&self) -> Vec<Range<u64>> {
         let mut gaps = Vec::new();
         let mut cursor: u64 = 0;
