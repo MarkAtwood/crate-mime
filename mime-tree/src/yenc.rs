@@ -270,13 +270,18 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
                 None => {
                     // yencoding::decode() succeeded, so =yend was definitely
                     // present in the slice — find_yend_end() returning None
-                    // here is a logic error in this module.
+                    // here is a logic error in this module.  The decoded bytes
+                    // are valid, but we cannot report a correct begin_length
+                    // (consumed = only the =ybegin line, not the full block),
+                    // so the slice invariant would be violated.  Mark as
+                    // is_encoding_problem=true to signal that the offset
+                    // metadata is unreliable.
                     debug_assert!(
                         false,
                         "find_yend_end returned None after successful decode — logic error"
                     );
                     let consumed = find_line_end(slice, 0);
-                    (part, consumed, false)
+                    (part, consumed, true)
                 }
             }
         }
