@@ -10,6 +10,12 @@ use std::fmt;
 /// `Ok(VerificationResult)` is returned only when at least one signer
 /// verified successfully.  Per-signer detail (including failures for other
 /// signers) is available in the `signers` vec.
+///
+/// # Security
+///
+/// [`is_verified`][Self::is_verified] returns `true` if **any one** signer passed
+/// verification.  For messages with multiple signers, inspect [`signers`][Self::signers]
+/// individually to confirm all expected signers are present and valid.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct VerificationResult {
@@ -117,9 +123,6 @@ pub enum CertChainError {
     },
     /// Certificate chain exceeds the maximum allowed depth.
     TooDeep,
-    /// A certificate in the bag has a subject DN that cannot be DER-encoded,
-    /// making it impossible to use as an intermediate in chain building.
-    SubjectParseError(String),
     /// Other chain validation error (DER encoding failures, etc.).
     Other(String),
 }
@@ -161,9 +164,6 @@ impl fmt::Display for CertChainError {
             ),
             CertChainError::TooDeep => {
                 write!(f, "certificate chain exceeds the maximum allowed depth")
-            }
-            CertChainError::SubjectParseError(msg) => {
-                write!(f, "bag certificate has unparseable subject DN: {msg}")
             }
             CertChainError::Other(msg) => write!(f, "{msg}"),
         }

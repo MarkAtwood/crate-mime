@@ -298,30 +298,73 @@ mod tests {
 
     #[test]
     fn encode_all_bytes_round_trip() {
-        // Oracle applied to mandatory-escape bytes only (NUL/LF/CR/=): the Python
-        // algorithm (b+42)%256, then escape if in {0,10,13,61}, is the reference.
-        // Dot (raw 0x04) and TAB (raw 0xDF) at line-start escapes are verified
-        // by the independent-oracle tests above (encode_dot_at_line_start_uses_escape
-        // and encode_tab_at_line_start_uses_escape) and are not re-verified here.
+        // Oracle: Python algorithm (b+42)%256, escape if encoded byte is in
+        // {0,10,13,61} (NUL/LF/CR/=).  '.' and TAB are only escaped at col==0;
+        // their mid-line treatment is verified by independent tests above.
+        //
+        // We use line_length=128 (DEFAULT_LINE_LENGTH).  With 256 raw bytes and
+        // 4 mandatory-escape bytes (each adding 1 byte), the total encoded body
+        // is 260 bytes spread over multiple lines.  We extract all data lines
+        // (strip =ybegin and =yend), concatenate them (stripping per-line \r\n),
+        // and compare the concatenated bytes against the oracle.
+        //
+        // '.' (raw 0x04) and TAB (raw 0xDF) are NOT at col 0 of any line for
+        // this 256-byte input with line_length=128 (they fall mid-line), so the
+        // oracle correctly omits their line-start escapes.
         let raw: Vec<u8> = (0u8..=255).collect();
-        // Build expected using Python algorithm
+        let line_length: u8 = 128;
+
+        // Build expected encoded body bytes using the Python oracle.
         let mut expected_encoded = Vec::new();
         for &b in &raw {
             let v = b.wrapping_add(42);
             if matches!(v, 0 | 10 | 13 | 61) {
                 expected_encoded.push(b'=');
                 expected_encoded.push(v.wrapping_add(64));
-            } else if v == b'.' || v == 0x09 {
-                // These would be escaped at line start but not mid-line.
-                // Since we have many bytes, they won't all land at col=0.
-                // Just push them unescaped for this oracle comparison.
-                expected_encoded.push(v);
             } else {
+                // '.' and TAB land mid-line here — not escaped.
                 expected_encoded.push(v);
             }
         }
-        // The encode/decode round-trip must be correct regardless.
-        let encoded = encode(&raw, "all.bin", 128);
+
+        let encoded = encode(&raw, "all.bin", line_length);
+
+        // Extract body: find the end of the =ybegin line, then the start of
+        // the =yend line.  Everything in between is data lines, each ending
+        // with \r\n.  Concatenate them (stripping the per-line \r\n) to get
+        // the flat byte stream.
+        let ybegin_end = encoded
+            .windows(2)
+            .position(|w| w == b"\r\n")
+            .expect("no \\r\\n after =ybegin")
+            + 2;
+        let yend_start = {
+            // Find the last \r\n before =yend.
+            let needle = b"\r\n=yend";
+            encoded
+                .windows(needle.len())
+                .rposition(|w| w == needle)
+                .expect("no \\r\\n=yend in output")
+                + 2 // advance past the \r\n to point at '='
+        };
+        let body_section = &encoded[ybegin_end..yend_start];
+
+        // Concatenate all data lines, stripping their \r\n endings.
+        let mut actual_encoded: Vec<u8> = Vec::new();
+        for line in body_section.split(|&b| b == b'\n') {
+            // Each line ends with \r before the \n (we split on \n alone).
+            let line = line.strip_suffix(b"\r").unwrap_or(line);
+            if !line.is_empty() {
+                actual_encoded.extend_from_slice(line);
+            }
+        }
+
+        assert_eq!(
+            actual_encoded, expected_encoded,
+            "encoded body bytes do not match oracle"
+        );
+
+        // Round-trip must also be correct.
         let decoded = decode(&encoded).expect("round-trip decode failed");
         assert_eq!(decoded.data, raw, "all-bytes round-trip failed");
     }

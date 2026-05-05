@@ -77,6 +77,15 @@ struct EccCmsSharedInfo {
 /// must add message-level headers (`From`, `To`, `Subject`, etc.) when assembling
 /// the full outgoing message.
 ///
+/// # Security
+///
+/// RSA recipients use PKCS#1 v1.5 key transport (`KeyTransRecipientInfo`), which is
+/// deprecated by [RFC 8017 §7.2](https://www.rfc-editor.org/rfc/rfc8017#section-7.2) in
+/// favour of RSAES-OAEP.  PKCS#1 v1.5 encryption is vulnerable to Bleichenbacher-style
+/// padding oracle attacks when the decryption result is observable.  For new deployments,
+/// OAEP (`id-RSAES-OAEP`) is strongly preferred; PKCS#1 v1.5 is retained here for
+/// compatibility with existing S/MIME infrastructure.
+///
 /// # Content encryption algorithm selection
 ///
 /// - **AES-128-CBC** is used when all recipients are RSA or P-256.

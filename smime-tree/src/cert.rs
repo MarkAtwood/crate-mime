@@ -132,23 +132,17 @@ fn build_chain<'a>(
         .collect::<Result<HashSet<Vec<u8>>, SmimeError>>()?;
 
     // Pre-compute a subject-DER → cert map for the bag so the inner find is O(1)
-    // rather than O(N) with a DER encode per cert per iteration.  A cert whose
-    // subject DER cannot be encoded is a malformed input; we propagate the error
-    // rather than silently skipping the cert (which could hide chain-building bugs).
+    // rather than O(N) with a DER encode per cert per iteration.
+    //
+    // Certs whose subject DER re-encoding fails are skipped: they cannot be looked
+    // up by subject, so they cannot participate in the chain walk regardless. A
+    // malformed extraneous cert must not prevent validation of the rest of the chain.
+    // This is safe because chain building only looks up issuers by subject DN, and
+    // any cert we cannot re-encode its subject for cannot appear as an issuer match.
     let bag_by_subject: HashMap<Vec<u8>, &Certificate> = bag
         .iter()
-        .map(|c| {
-            c.tbs_certificate()
-                .subject()
-                .to_der()
-                .map(|s| (s, c))
-                .map_err(|e| {
-                    SmimeError::CertChain(CertChainError::SubjectParseError(format!(
-                        "bag cert subject DER encode failed: {e}"
-                    )))
-                })
-        })
-        .collect::<Result<HashMap<Vec<u8>, &Certificate>, SmimeError>>()?;
+        .filter_map(|c| c.tbs_certificate().subject().to_der().ok().map(|s| (s, c)))
+        .collect();
 
     let mut current = signer_cert;
     for _ in 0..MAX_DEPTH {

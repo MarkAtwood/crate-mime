@@ -9,16 +9,13 @@ use regex::Regex;
 ///
 /// # Field invariants
 ///
-/// - `base_subject` is never empty when `SubjectParts` is returned (the only
-///   way to get an empty or no-marker subject back is if `parse_subject`
-///   returns `Some` with `part_index = None`).
 /// - `part_total` is always `Some` when `part_index` is `Some`, because every
 ///   supported marker format includes the total count.
 #[derive(Debug)]
 pub struct SubjectParts {
-    /// Subject line with the part-number marker removed and surrounding
-    /// whitespace trimmed. Safe to use as a collection grouping key because
-    /// all parts of the same series share the same base subject.
+    /// The subject with all `Re:`/`Fwd:` prefixes and the part-number marker stripped.
+    /// Never empty; [`parse_subject`] returns `None` rather than returning an empty
+    /// `base_subject`.
     pub base_subject: String,
     /// 1-based part number extracted from the marker. `Some(0)` indicates a
     /// TOC post (e.g. `(00/17)`). `None` when no recognised marker was found.
