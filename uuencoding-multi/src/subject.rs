@@ -27,24 +27,25 @@ fn patterns() -> &'static [Pattern; 5] {
         [
             // 1. Parenthesised fraction: (03/17) or ( 3 / 17 )
             Pattern {
-                re: Regex::new(r"\(\s*(\d{1,6})\s*/\s*(\d{1,6})\s*\)").unwrap(),
+                re: Regex::new(r"\([ \t]*([0-9]{1,6})[ \t]*/[ \t]*([0-9]{1,6})[ \t]*\)").unwrap(),
             },
             // 2. Bracketed fraction: [2/4] — require digit on both sides so
             //    [BINARY] is not matched.
             Pattern {
-                re: Regex::new(r"\[\s*(\d{1,6})\s*/\s*(\d{1,6})\s*\]").unwrap(),
+                re: Regex::new(r"\[[ \t]*([0-9]{1,6})[ \t]*/[ \t]*([0-9]{1,6})[ \t]*\]").unwrap(),
             },
-            // 3. English "Part N/M" (case-insensitive via (?i))
+            // 3. English "Part N/M" (case-insensitive)
             Pattern {
-                re: Regex::new(r"(?i)\bpart\s+(\d{1,6})\s*/\s*(\d{1,6})\b").unwrap(),
+                re: Regex::new(r"(?i)\bpart[ \t]+([0-9]{1,6})[ \t]*/[ \t]*([0-9]{1,6})\b").unwrap(),
             },
             // 4. English "Part N of M" / "Part3of17" (case-insensitive)
             Pattern {
-                re: Regex::new(r"(?i)\bpart\s*(\d{1,6})\s*of\s*(\d{1,6})\b").unwrap(),
+                re: Regex::new(r"(?i)\bpart[ \t]*([0-9]{1,6})[ \t]*of[ \t]*([0-9]{1,6})\b")
+                    .unwrap(),
             },
             // 5. Dash-separated fraction: " - 03/17"
             Pattern {
-                re: Regex::new(r"\s+-\s+(\d{1,6})\s*/\s*(\d{1,6})\b").unwrap(),
+                re: Regex::new(r"[ \t]+-[ \t]+([0-9]{1,6})[ \t]*/[ \t]*([0-9]{1,6})\b").unwrap(),
             },
         ]
     })
@@ -59,7 +60,7 @@ fn yenc_re() -> &'static Regex {
 // Strips common reply/forward prefixes (case-insensitive) repeatedly.
 fn strip_prefixes(s: &str) -> &str {
     static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"(?i)^(re|fwd?)\s*:\s*").unwrap());
+    let re = RE.get_or_init(|| Regex::new(r"(?i)^(re|fwd?)[ \t]*:[ \t]*").unwrap());
 
     let mut cur = s;
     loop {

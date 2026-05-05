@@ -10,6 +10,7 @@ use p256::ecdsa::{DerSignature as P256DerSig, VerifyingKey as P256VerifyingKey};
 use p384::ecdsa::{DerSignature as P384DerSig, VerifyingKey as P384VerifyingKey};
 use rsa::{pkcs1v15, pkcs8::DecodePublicKey, RsaPublicKey};
 use sha2::digest::Digest;
+use signature::Verifier as _;
 use x509_cert::Certificate;
 
 use crate::SmimeError;
@@ -58,7 +59,8 @@ pub(crate) fn verify_ecdsa_p256(
     let verifying_key =
         P256VerifyingKey::from_sec1_bytes(pub_bytes).map_err(|e| err(e.to_string()))?;
     let sig = P256DerSig::try_from(sig_bytes).map_err(|e| err(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &sig)
+    verifying_key
+        .verify(tbs_bytes, &sig)
         .map_err(|e| err(format!("ECDSA P-256 sig verify: {e}")))
 }
 
@@ -80,6 +82,7 @@ pub(crate) fn verify_ecdsa_p384(
     let verifying_key =
         P384VerifyingKey::from_sec1_bytes(pub_bytes).map_err(|e| err(e.to_string()))?;
     let sig = P384DerSig::try_from(sig_bytes).map_err(|e| err(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &sig)
+    verifying_key
+        .verify(tbs_bytes, &sig)
         .map_err(|e| err(format!("ECDSA P-384 sig verify: {e}")))
 }

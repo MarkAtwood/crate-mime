@@ -83,7 +83,8 @@ fn re_format1() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
         // Captures: 1=filename, rest parsed manually for size/parts.
-        Regex::new(r"(?i)^(\S+)\s+(.+)$").unwrap()
+        // \S and \s replaced with ASCII equivalents; (?i-u) for ASCII-only case-fold.
+        Regex::new(r"(?i)^([^ \t\r\n]+)[ \t]+(.+)$").unwrap()
     })
 }
 
@@ -91,25 +92,30 @@ fn re_format1() -> &'static Regex {
 /// The line starts with a zero-padded (or plain) part range.
 fn re_format3_prefix() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"^(\d{1,6})-(\d{1,6})\s+(\S+)\s*(.*)$").unwrap())
+    RE.get_or_init(|| {
+        Regex::new(r"^([0-9]{1,6})-([0-9]{1,6})[ \t]+([^ \t\r\n]+)[ \t]*(.*)$").unwrap()
+    })
 }
 
 /// Format 2: `filename.tar.gz (1234567 bytes)` — parenthesised size.
 fn re_format2() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)^(\S+)\s*\(\s*(\d+)\s*(bytes?|b|kb|mb)\s*\)\s*$").unwrap())
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)^([^ \t\r\n]+)[ \t]*\([ \t]*([0-9]+)[ \t]*(bytes?|b|kb|mb)[ \t]*\)[ \t]*$")
+            .unwrap()
+    })
 }
 
 /// Size token: one or more digits followed by a unit.
 fn re_size_token() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)\b(\d+)\s*(bytes?|b|kb|mb)\b").unwrap())
+    RE.get_or_init(|| Regex::new(r"(?i)\b([0-9]+)[ \t]*(bytes?|b|kb|mb)\b").unwrap())
 }
 
 /// "parts N-M" token.
 fn re_parts_token() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)\bparts?\s+(\d{1,6})-(\d{1,6})\b").unwrap())
+    RE.get_or_init(|| Regex::new(r"(?i)\bparts?[ \t]+([0-9]{1,6})-([0-9]{1,6})\b").unwrap())
 }
 
 // ---------------------------------------------------------------------------

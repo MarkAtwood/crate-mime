@@ -52,7 +52,7 @@ RUSTDOCFLAGS="--cfg docsrs -D warnings" cargo +nightly doc --no-deps --all-featu
 cargo +<msrv> test
 ```
 
-MSRV: 1.75 (mime-tree), 1.85 (smime-tree).
+MSRV: 1.85 (both crates).
 
 ## Standards Reference
 

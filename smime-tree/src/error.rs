@@ -57,6 +57,10 @@ pub enum CertChainError {
         not_after: String,
     },
     /// All trust anchors matching the issuer DN are outside their validity period.
+    ///
+    /// Present only for deserialization compatibility with data produced by older versions
+    /// of this crate; never emitted by the current validator.  Match [`CertChainError::TooDeep`]
+    /// or [`CertChainError::CertificateExpired`] for the equivalent current failure modes.
     #[deprecated = "never produced by the current pkix-chain-based validator; match TooDeep or CertificateExpired instead"]
     AllTrustAnchorsExpired {
         /// Issuer DN for which all matching trust anchors were expired.
@@ -68,6 +72,10 @@ pub enum CertChainError {
         subject: String,
     },
     /// A `pathLen` constraint in a CA certificate was violated.
+    ///
+    /// Present only for deserialization compatibility with data produced by older versions
+    /// of this crate; never emitted by the current validator.  Match
+    /// [`CertChainError::TooDeep`] for the equivalent current failure mode.
     #[deprecated = "never produced by the current pkix-chain-based validator; match TooDeep instead"]
     PathLenViolated {
         /// Number of intermediate CA certificates below the constrained issuer.
