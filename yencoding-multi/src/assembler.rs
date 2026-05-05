@@ -465,6 +465,22 @@ mod tests {
         assert_eq!(result, data);
     }
 
+    #[test]
+    fn finish_zero_size_succeeds_with_empty_vec() {
+        // A zero-size assembler is immediately complete (no parts needed).
+        // finish() must return Ok(vec![]) without any add_part() calls.
+        let a = Assembler::new(0).unwrap();
+        assert!(
+            a.is_complete(),
+            "zero-size assembler must be immediately complete"
+        );
+        let result = a.finish().unwrap();
+        assert!(
+            result.is_empty(),
+            "finish() on zero-size assembler must return empty vec"
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Byte content tests
     // -----------------------------------------------------------------------

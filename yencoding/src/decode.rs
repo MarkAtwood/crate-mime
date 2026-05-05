@@ -145,15 +145,19 @@ fn finish_decode(
 ) -> Result<DecodedPart, YencError> {
     let yend = parse_yend(lossy_str(yend_raw).trim())?;
 
-    // CRC32 verification: prefer pcrc32 (per-part) for multi-part articles,
-    // fall back to crc32 for single-part.
+    // CRC32 verification: use the field appropriate to the article type.
     //
-    // For multi-part articles, only pcrc32 is meaningful — crc32 is the
-    // whole-file CRC and cannot be verified against a single part's payload.
+    // Single-part: check crc32= (whole-file CRC, which equals the part CRC for
+    // a single-part article).  pcrc32= is not defined for single-part articles;
+    // if a non-compliant encoder writes both, ignore pcrc32= to avoid verifying
+    // against the wrong value.
+    //
+    // Multi-part: check pcrc32= (per-part CRC).  crc32= is the whole-file CRC
+    // and cannot be verified against a single part's payload.
     let crc_to_check = if part.is_some() {
         yend.pcrc32
     } else {
-        yend.pcrc32.or(yend.crc32)
+        yend.crc32
     };
     let crc32_verified;
     if let Some(expected) = crc_to_check {
@@ -753,6 +757,33 @@ mod tests {
         assert!(
             !part.crc32_verified,
             "crc32_verified should be false when only whole-file crc32= is present"
+        );
+    }
+
+    #[test]
+    fn decode_single_part_ignores_pcrc32_uses_crc32() {
+        // A single-part article that has BOTH pcrc32= (wrong value) and crc32=
+        // (correct value). The decoder must check only crc32= and succeed.
+        //
+        // This ensures that pcrc32= is never used for single-part verification.
+        //
+        // Payload: bytes [0, 1, 2] → '*', '+', ','  (no escapes needed).
+        // CRC32([0,1,2]) = 0x0854897f  (python3: binascii.crc32(bytes([0,1,2])) & 0xffffffff)
+        let input: &[u8] = b"=ybegin line=128 size=3 name=test.bin\n\
+                              *+,\n\
+                              =yend size=3 pcrc32=deadbeef crc32=0854897f\n";
+
+        let result = decode(input);
+        assert!(
+            result.is_ok(),
+            "expected Ok: single-part must use crc32=, not pcrc32=; got: {:?}",
+            result.err()
+        );
+        let part = result.unwrap();
+        assert_eq!(part.data, &[0u8, 1, 2]);
+        assert!(
+            part.crc32_verified,
+            "crc32_verified must be true when crc32= is correct"
         );
     }
 }
