@@ -373,6 +373,74 @@ mod tests {
         assert_eq!(msg.attachments, vec!["2".to_owned()]);
     }
 
+    /// Test 8 — multipart/alternative → multipart/mixed → image/gif.
+    ///
+    /// Structure:
+    ///   multipart/alternative (root, id=""):
+    ///     - multipart/mixed (id="1"):
+    ///         - image/gif (id="1.1")
+    ///
+    /// Walk trace:
+    ///   parse_structure([alt], "mixed", false, Some(tb), Some(hb), att)
+    ///     → alt is_multipart → recurse([mixed], "alternative", true, ...)
+    ///       → mixed is_multipart → recurse([gif], "mixed", true, ...)
+    ///         → gif: is_inline=true (inline media, i==0, no attachment disp)
+    ///           → multipart_type != "alternative" → skip alt-specific branch
+    ///           → in_alternative=true: content_type is neither text/plain nor
+    ///             text/html → neither nullification fires
+    ///           → pushes to both text_body ("1.1") and html_body ("1.1")
+    ///           → text_body.is_none() || html_body.is_none() = false → no
+    ///             push to attachments
+    ///       → end-of-alternative: both lists active; both gained one part →
+    ///         neither cross-population fires (both sides grew)
+    ///
+    /// Actual behaviour: image/gif lands in BOTH text_body and html_body.
+    /// Attachments is empty — no attachment disposition, so it is treated as
+    /// inline content duplicated across both body lists.
+    ///
+    /// Oracle: code-path analysis of walk.rs — the in_alternative branch only
+    /// nullifies the opposite list when content_type is text/plain or text/html;
+    /// for other inline media types neither nullification fires and the double
+    /// push (lines 138-143) executes with both lists still Some.
+    #[test]
+    fn alternative_mixed_image_gif_goes_to_both_body_lists() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"outer\"\r\n",
+            "\r\n",
+            "--outer\r\n",
+            "Content-Type: multipart/mixed; boundary=\"inner\"\r\n",
+            "\r\n",
+            "--inner\r\n",
+            "Content-Type: image/gif\r\n",
+            "\r\n",
+            "<gif data>\r\n",
+            "--inner--\r\n",
+            "--outer--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        // The image/gif part id is "1.1":
+        //   root alt="" → child mixed="1" → child gif="1.1"
+        assert_eq!(
+            msg.text_body,
+            vec!["1.1".to_owned()],
+            "image/gif inside alt→mixed should appear in text_body"
+        );
+        assert_eq!(
+            msg.html_body,
+            vec!["1.1".to_owned()],
+            "image/gif inside alt→mixed should appear in html_body"
+        );
+        assert!(
+            msg.attachments.is_empty(),
+            "image/gif with no attachment disposition should not be in attachments; got: {:?}",
+            msg.attachments
+        );
+    }
+
     /// Test 7 — in_alternative nullification: mixed-within-alternative sets
     /// html_body to None when a text/plain is found.
     ///

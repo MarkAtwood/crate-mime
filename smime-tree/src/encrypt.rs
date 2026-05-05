@@ -93,14 +93,25 @@ struct EccCmsSharedInfo {
 /// Returns `SmimeError::NoRecipients` when `recipients` is empty.
 /// Returns `SmimeError::UnsupportedAlgorithm` for any certificate whose
 /// subject public key algorithm is not RSA, P-256, or P-384.
+/// Returns `SmimeError::RngFailure` when the OS RNG fails during:
+/// - CEK/IV generation (via `getrandom` in `encrypt_aes_cbc`), or
+/// - the 256-byte RNG preflight check that precedes RSA PKCS#1v15 key
+///   transport (in `build_rsa_recipient`), or
+/// - ephemeral ECDH key generation for P-256 or P-384 recipients.
 ///
 /// # Panics
 ///
-/// Panics if the operating system random-number generator fails while
-/// encrypting for an RSA recipient.  The `rsa` crate requires a `CryptoRng`
-/// implementation and does not expose a fallible variant; OS RNG failure at
-/// this point indicates a catastrophic system state.  ECDH recipients use a
-/// fallible RNG path and return `Err` instead of panicking.
+/// **RSA PKCS#1v15 encrypt call**: after the RNG preflight check succeeds,
+/// `rsa_pub.encrypt()` is called with `UnwrapErr(SysRng)`, which panics if
+/// the OS RNG fails at that point.  The `rsa` crate does not expose a
+/// fallible encrypt variant.  A preflight check of 256 bytes immediately
+/// before the call covers all practical failure scenarios; the residual panic
+/// window is a narrow TOCTOU gap that would only trigger on catastrophic
+/// OS-level RNG failure after the preflight succeeds.
+///
+/// All other RNG uses in this function (CEK/IV generation, ECDH ephemeral
+/// key generation) go through `getrandom` directly and return
+/// `Err(SmimeError::RngFailure)` rather than panicking.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError> {
     if recipients.is_empty() {
         return Err(SmimeError::NoRecipients);

@@ -30,6 +30,9 @@ pub struct DecodedBodyValue {
     pub value: String,
     /// True if `max_bytes` was reached before the full body was decoded.
     pub is_truncated: bool,
-    /// True if the charset conversion encountered unmappable characters.
+    /// True if the charset conversion encountered unmappable or replacement
+    /// characters. Note: also set when `max_bytes` truncates a multi-byte
+    /// character sequence mid-codepoint; in that case the flag reflects the
+    /// truncation artifact, not underlying data corruption.
     pub is_encoding_problem: bool,
 }
