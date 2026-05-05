@@ -136,14 +136,36 @@ impl Assembler {
         // Convert 1-based yEnc offsets to 0-based internal offsets.
         // A single-part article has no =ypart, so begin/end are both None.
         // Having only one of the two set is a malformed part.
-        let (begin_0, end_0) = match (part.part_begin, part.part_end) {
-            (None, None) => (0u64, part.data.len() as u64),
-            (Some(b), Some(e)) => (b.saturating_sub(1), e),
+        let (begin_0, end_0, is_multi_part) = match (part.part_begin, part.part_end) {
+            (None, None) => (0u64, part.data.len() as u64, false),
+            (Some(b), Some(e)) => {
+                // yEnc begin= is 1-based and must be ≥ 1.  begin=0 is not a
+                // valid yEnc offset; reject it rather than silently treating it
+                // as begin=1 via saturating_sub.
+                if b == 0 {
+                    return Err(AssemblyError::MalformedPartRange);
+                }
+                (b - 1, e, true)
+            }
             _ => return Err(AssemblyError::MalformedPartRange),
         };
 
         // Validate range against declared total size.
-        if end_0 > self.total_size || begin_0 > end_0 {
+        //
+        // For multi-part articles: use begin_0 >= end_0 to also reject zero-
+        // length ranges (begin_0 == end_0), which cannot carry any data bytes
+        // and are not valid per the yEnc spec.
+        //
+        // For single-part articles (is_multi_part == false): begin_0 is always
+        // 0 and end_0 = data.len(), so zero-length means an empty file — which
+        // is legitimate (total_size == 0 assemblers are valid).  Use the strict
+        // begin_0 > end_0 check in that case.
+        let range_invalid = if is_multi_part {
+            begin_0 >= end_0
+        } else {
+            begin_0 > end_0
+        };
+        if end_0 > self.total_size || range_invalid {
             return Err(AssemblyError::OutOfRange {
                 begin: begin_0,
                 end: end_0,
@@ -471,7 +493,7 @@ mod tests {
     #[test]
     fn data_length_mismatch_rejected() {
         let mut a = Assembler::new(10).unwrap();
-        // Claims begin=1 end=5 (4-byte range) but supplies 3 bytes.
+        // Claims begin=1 end=4 (4-byte range: bytes 0..4) but supplies 3 bytes.
         let part = make_part(&[0u8; 3], 1, 4);
         let err = a.add_part(&part).unwrap_err();
         assert!(matches!(
@@ -514,6 +536,38 @@ mod tests {
         part.part_begin = None; // only end is set
         let err = a.add_part(&part).unwrap_err();
         assert!(matches!(err, AssemblyError::MalformedPartRange));
+    }
+
+    #[test]
+    fn begin_zero_is_malformed() {
+        // yEnc begin= is 1-based; begin=0 is not a valid offset per the spec.
+        // It must be rejected with MalformedPartRange rather than silently
+        // treated as begin=1.
+        let mut a = Assembler::new(10).unwrap();
+        let mut part = make_part(&[0u8; 5], 1, 5);
+        part.part_begin = Some(0); // invalid: 0 is not a legal 1-based offset
+        let err = a.add_part(&part).unwrap_err();
+        assert!(
+            matches!(err, AssemblyError::MalformedPartRange),
+            "begin=0 must return MalformedPartRange, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn zero_length_range_is_out_of_range() {
+        // A multi-part article with begin=1, end=0 would compute
+        // begin_0=0, end_0=0.  A zero-length range cannot carry any data
+        // bytes and is rejected as OutOfRange.
+        let mut a = Assembler::new(10).unwrap();
+        let mut part = make_part(&[], 1, 5); // start with a valid part
+        part.part_begin = Some(3);
+        part.part_end = Some(2); // end < begin → zero-length after conversion: begin_0=2, end_0=2
+        let err = a.add_part(&part).unwrap_err();
+        // begin_0 (2) >= end_0 (2): rejected as OutOfRange
+        assert!(
+            matches!(err, AssemblyError::OutOfRange { .. }),
+            "zero-length range must return OutOfRange, got: {err:?}"
+        );
     }
 
     #[test]

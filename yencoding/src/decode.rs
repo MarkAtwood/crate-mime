@@ -82,6 +82,12 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
     // Step 3: Decode data lines until =yend.
     // -----------------------------------------------------------------------
     let mut decoded: Vec<u8> = Vec::new();
+    // Track a lone '=' that was the last byte of a data line. Per the yEnc
+    // spec the encoder must never produce a split escape, but some encoders do
+    // when the encoded byte stream is sliced at a fixed column boundary.  We
+    // carry the pending-escape flag across line boundaries so the escape
+    // target at the start of the next line is decoded correctly.
+    let mut pending_escape = false;
 
     // Process the held line first (if we peeked past =ypart and found data).
     if let Some(line) = first_data_line {
@@ -99,7 +105,7 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
                 part_end,
             );
         }
-        decode_line(line, &mut decoded);
+        decode_line(line, &mut decoded, &mut pending_escape);
     }
 
     loop {
@@ -117,7 +123,7 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
                 part_end,
             );
         }
-        decode_line(line, &mut decoded);
+        decode_line(line, &mut decoded, &mut pending_escape);
     }
 }
 
@@ -201,7 +207,14 @@ fn finish_decode(
 ///   first dot stripped before decoding.
 /// - Escape: `=X` → `(X - 106) mod 256`.
 /// - Normal: `b` → `(b - 42) mod 256`.
-pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) {
+///
+/// `pending_escape` carries a lone `=` that ended the **previous** line across
+/// the line boundary. If `*pending_escape` is `true` on entry, the first
+/// non-framing byte of this line is consumed as the escape target. This handles
+/// the split-escape case that arises when a conforming encoder slices the
+/// encoded byte stream at a fixed column and an escape pair (`=X`) straddles a
+/// line boundary.
+pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>, pending_escape: &mut bool) {
     // Strip leading dot-stuff: NNTP adds a '.' before any data line starting
     // with '.'. The resulting '.' is not part of the yEnc encoded data.
     let line = if line.len() >= 2 && line[0] == b'.' && line[1] == b'.' {
@@ -212,6 +225,24 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) {
 
     let mut i = 0;
     let len = line.len();
+
+    // If the previous line ended with a lone '=', the first non-framing byte
+    // on this line is its escape target.
+    if *pending_escape {
+        *pending_escape = false;
+        // Skip over any leading framing bytes (\r, \n, \0) — they are not the
+        // escape target, they are artifacts of the line terminator.
+        while i < len && matches!(line[i], b'\r' | b'\n' | b'\0') {
+            i += 1;
+        }
+        if i < len {
+            out.push(line[i].wrapping_sub(106));
+            i += 1;
+        }
+        // If the line was entirely framing bytes, the escape is simply lost
+        // (the encoder violated the spec; best effort is to discard it).
+    }
+
     while i < len {
         let b = line[i];
         match b {
@@ -222,16 +253,17 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) {
             // Escape sequence: next byte has 64 additional subtracted.
             // (b - 42 - 64) = (b - 106) mod 256
             // Guard: if the next byte is a framing byte (\r, \n, \0), the '='
-            // is a lone/trailing escape — discard it rather than consuming the
-            // framing byte as an escape target (which would emit a garbage byte).
+            // is a lone/trailing escape.  Set pending_escape so the target is
+            // picked up from the start of the next line.
             b'=' if i + 1 < len && !matches!(line[i + 1], b'\r' | b'\n' | b'\0') => {
                 let next = line[i + 1];
                 out.push(next.wrapping_sub(106));
                 i += 2;
             }
-            // Trailing lone '=' at end of line: discard. Per spec the encoder
-            // must not produce this, but we handle it defensively.
+            // Trailing lone '=' at end of line (before \r\n or at EOF of line):
+            // the escape target is on the next line — defer it.
             b'=' => {
+                *pending_escape = true;
                 i += 1;
             }
             // Normal byte: subtract 42 (mod 256).
@@ -315,8 +347,10 @@ mod tests {
         // b'+' (0x2B) = 1, etc.
         let encoded = b"*+,-";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         assert_eq!(out, &[0, 1, 2, 3]);
+        assert!(!pe);
     }
 
     #[test]
@@ -327,8 +361,10 @@ mod tests {
         // in the single_part.yenc fixture.
         let encoded = b"=}";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         assert_eq!(out, &[19]);
+        assert!(!pe);
     }
 
     #[test]
@@ -336,7 +372,8 @@ mod tests {
         // \r\n at end of line are framing, not data.
         let encoded = b"*+\r\n";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         assert_eq!(out, &[0, 1]);
     }
 
@@ -345,7 +382,8 @@ mod tests {
         // NUL in the encoded stream is discarded.
         let encoded = b"*\x00+";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         assert_eq!(out, &[0, 1]);
     }
 
@@ -355,7 +393,8 @@ mod tests {
         // '..' → '.' → decoded = ('.' - 42) = (46 - 42) = 4
         let encoded = b"..+";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         // First '.' stripped (dot-stuff), remaining '.+':
         // '.' = 46, (46 - 42) = 4; '+' = 43, (43 - 42) = 1
         assert_eq!(out, &[4, 1]);
@@ -366,7 +405,8 @@ mod tests {
         // A single leading dot is NOT stripped — only '..' at start triggers it.
         let encoded = b".+";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         // '.' = 46, (46 - 42) = 4; '+' = 43, (43 - 42) = 1
         assert_eq!(out, &[4, 1]);
     }
@@ -389,48 +429,88 @@ mod tests {
             }
         }
         let mut decoded = Vec::new();
-        decode_line(&encoded, &mut decoded);
+        let mut pe = false;
+        decode_line(&encoded, &mut decoded, &mut pe);
         assert_eq!(decoded, raw, "all-bytes round-trip failed");
     }
 
     #[test]
-    fn decode_line_trailing_lone_eq_discarded() {
-        // A trailing lone '=' at end of line (malformed — encoder shouldn't
-        // produce this) is discarded rather than panicking.
+    fn decode_line_trailing_lone_eq_sets_pending_escape() {
+        // A trailing lone '=' at end of line sets pending_escape for the next line.
+        // The output of this line is just the bytes before '='.
         let encoded = b"*=";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out); // must not panic
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
         assert_eq!(out, &[0]); // only '*' decoded
+        assert!(pe, "trailing '=' must set pending_escape");
     }
 
     #[test]
-    fn decode_line_eq_before_cr_is_lone_escape() {
-        // '=' immediately before \r must NOT consume \r as escape target.
+    fn decode_line_split_escape_across_lines() {
+        // Oracle: raw byte 19 encodes as '=' + '}' (0x7D).
+        // If '=' is the last byte of line 1 and '}' is the first byte of line 2,
+        // the decoder must produce 19, not misinterpret '}' as normal data.
+        //
+        // Normal decode of '}' = (0x7D - 42) % 256 = (125 - 42) = 83.
+        // Escaped decode of '}' = (0x7D - 106) % 256 = 19.
+        // Oracle says the correct decoded value is 19.
+        let line1 = b"*=\r\n"; // '*' → 0, then '=' before \r\n → pending_escape
+        let line2 = b"}\r\n"; // '}' is the escape target → (0x7D - 106) = 19
+        let mut out = Vec::new();
+        let mut pe = false;
+        decode_line(line1, &mut out, &mut pe);
+        assert!(pe, "line1 must leave pending_escape set");
+        decode_line(line2, &mut out, &mut pe);
+        assert!(!pe, "line2 consumed the pending escape");
+        assert_eq!(out, &[0u8, 19], "split escape must decode correctly");
+    }
+
+    #[test]
+    fn decode_line_eq_before_cr_sets_pending_escape() {
+        // '=' immediately before \r sets pending_escape for the next line.
         // Oracle: '*' decodes to (42 - 42) = 0.  The trailing '=' before \r
-        // is a lone escape and produces no output byte.
-        // Pre-fix this produced [0, 163]: (13 - 106 + 256) % 256 = 163.
+        // is deferred to the next line.
         let encoded = b"*=\r";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
-        assert_eq!(out, &[0], "=\\r must not produce a garbage byte");
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
+        assert_eq!(
+            out,
+            &[0],
+            "=\\r must not produce a garbage byte on this line"
+        );
+        assert!(pe, "=\\r must set pending_escape");
     }
 
     #[test]
-    fn decode_line_eq_before_lf_is_lone_escape() {
-        // '=' immediately before \n must NOT consume \n as escape target.
+    fn decode_line_eq_before_lf_sets_pending_escape() {
+        // '=' immediately before \n sets pending_escape for the next line.
         let encoded = b"*=\n";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
-        assert_eq!(out, &[0], "=\\n must not produce a garbage byte");
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
+        assert_eq!(
+            out,
+            &[0],
+            "=\\n must not produce a garbage byte on this line"
+        );
+        assert!(pe, "=\\n must set pending_escape");
     }
 
     #[test]
-    fn decode_line_eq_before_nul_is_lone_escape() {
-        // '=' immediately before \0 must NOT consume \0 as escape target.
+    fn decode_line_eq_before_nul_sets_pending_escape() {
+        // '=' immediately before \0 sets pending_escape.
         let encoded = b"*=\x00";
         let mut out = Vec::new();
-        decode_line(encoded, &mut out);
-        assert_eq!(out, &[0], "=\\0 must not produce a garbage byte");
+        let mut pe = false;
+        decode_line(encoded, &mut out, &mut pe);
+        assert_eq!(
+            out,
+            &[0],
+            "=\\0 must not produce a garbage byte on this line"
+        );
+        assert!(pe, "=\\0 must set pending_escape");
     }
 
     // -----------------------------------------------------------------------
@@ -587,17 +667,20 @@ mod tests {
     }
 
     #[test]
-    fn decode_rejects_lone_eq_before_crlf() {
-        // Construct a minimal yEnc stream where '=' appears before \r\n.
-        // The '=' should be discarded (lone escape), not decode \r as a data byte.
-        // Body: just the '*' byte (encodes raw 0), then lone '=' before CRLF.
+    fn decode_eq_before_crlf_does_not_consume_framing_byte() {
+        // '=' immediately before \r\n sets pending_escape for the next line.
+        // The \r\n itself must NOT be consumed as the escape target.
+        //
+        // Body: '*' encodes raw byte 0; then lone '=' before CRLF.
+        // The pending escape is orphaned when =yend follows — the '=' target
+        // was never provided.
+        //
         // Oracle: '*' = 0x2A = 42; raw = (42 - 42) % 256 = 0.
+        // Expected: data == [0].  CRC 00000000 won't match real CRC of [0],
+        // so CrcMismatch is acceptable — what is NOT acceptable is Ok with 2 bytes.
         let input = b"=ybegin line=128 size=1 name=test\n*=\r\n=yend size=1 crc32=00000000\n";
-        // After fix: decode succeeds (or returns CrcMismatch for size=1) but does
-        // NOT produce 2 decoded bytes.
         let result = crate::decode(input);
         if let Ok(decoded) = &result {
-            // Should decode to just [0], not [0, 163]
             assert_eq!(
                 decoded.data.len(),
                 1,
@@ -606,8 +689,36 @@ mod tests {
             );
             assert_eq!(decoded.data[0], 0);
         }
-        // SizeMismatch or CrcMismatch is also acceptable (the fixture CRC is 00000000
-        // which won't match real CRC of [0]).  What is NOT acceptable is Ok with 2 bytes.
+    }
+
+    #[test]
+    fn decode_split_escape_across_lines() {
+        // Regression test for split-escape: when a yEnc encoder slices the
+        // encoded byte stream at a fixed column, an escape pair ('=' followed by
+        // the escape target) can be split across two lines.  The decoder must
+        // re-join the pair across the line boundary.
+        //
+        // Payload: [0, 19].
+        //   Byte 0  → (0 + 42) % 256 = 42 = '*'. No escaping needed.
+        //   Byte 19 → (19 + 42) % 256 = 61 = '='. Must be escaped: '=' + '}'
+        //             where '}' = (61 + 64) % 256 = 125 = 0x7D.
+        //
+        // With line_length=1 the encoded stream is cut after each data byte:
+        //   Line 1: "*\r\n"   (byte 0 encoded)
+        //   Line 2: "=\r\n"   (escape prefix for byte 19 — split here)
+        //   Line 3: "}\r\n"   (escape target for byte 19)
+        //
+        // Oracle: CRC32([0, 19]) = 0xc5675321
+        //   python3 -c "import binascii; print(hex(binascii.crc32(bytes([0,19]))&0xffffffff))"
+        let input: &[u8] =
+            b"=ybegin line=1 size=2 name=split.bin\n*\r\n=\r\n}\r\n=yend size=2 crc32=c5675321\n";
+        let part = decode(input).expect("split-escape article must decode successfully");
+        assert_eq!(
+            part.data,
+            &[0u8, 19],
+            "split-escape decode must produce correct bytes"
+        );
+        assert!(part.crc32_verified, "CRC must verify against oracle");
     }
 
     #[test]

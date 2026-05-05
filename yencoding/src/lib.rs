@@ -241,6 +241,7 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
 /// assert_eq!(p.part, Some(1));
 /// assert_eq!(p.metadata.total_parts, Some(2));
 /// ```
+#[derive(Debug, Clone)]
 pub struct EncodePartOptions<'a> {
     /// Verbatim filename for `=ybegin name=`.
     pub filename: &'a str,
