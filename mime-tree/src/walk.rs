@@ -373,7 +373,7 @@ mod tests {
         assert_eq!(msg.attachments, vec!["2".to_owned()]);
     }
 
-    /// Test 8 — multipart/alternative → multipart/mixed → image/gif.
+    /// Test 7 — multipart/alternative → multipart/mixed → image/gif.
     ///
     /// Structure:
     ///   multipart/alternative (root, id=""):
@@ -441,7 +441,7 @@ mod tests {
         );
     }
 
-    /// Test 7 — in_alternative nullification: mixed-within-alternative sets
+    /// Test 8 — in_alternative nullification: mixed-within-alternative sets
     /// html_body to None when a text/plain is found.
     ///
     /// Structure:

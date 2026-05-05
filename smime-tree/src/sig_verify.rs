@@ -37,7 +37,8 @@ where
     let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| err(e.to_string()))?;
     let verifying_key = pkcs1v15::VerifyingKey::<D>::new(rsa_pub);
     let signature = pkcs1v15::Signature::try_from(sig_bytes).map_err(|e| err(e.to_string()))?;
-    rsa::signature::Verifier::verify(&verifying_key, tbs_bytes, &signature)
+    verifying_key
+        .verify(tbs_bytes, &signature)
         .map_err(|e| err(format!("RSA sig verify: {e}")))
 }
 
