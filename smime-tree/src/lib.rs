@@ -10,7 +10,7 @@
 //!
 //! // Sign a MIME body part.
 //! // key implements SigningKey; returns multipart/signed bytes.
-//! let signed = sign(content_mime, &key, SystemTime::now()).expect("sign failed");
+//! let signed = sign(content_mime, &[&key], SystemTime::now()).expect("sign failed");
 //!
 //! // Verify a multipart/signed message.
 //! // signed_content: exact bytes of the signed part (from mime-tree byte ranges).
