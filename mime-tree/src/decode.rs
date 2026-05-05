@@ -446,8 +446,8 @@ mod tests {
     /// Body = "=41=42=43" (decodes to "ABC", 3 bytes). max_bytes = 2.
     /// 4× limit = 8 bytes; body is 9 bytes → input_was_limited = true.
     /// Decoded preview of first 8 bytes ("=41=42=4") in Robust mode = "AB" (2 bytes).
-    /// decoded.len() = 2 = max_bytes = 2 → guard does NOT re-decode (2 is not < 2).
-    /// Step 2: decoded.len() (2) == max_bytes (2), not > n → falls to _ branch → is_truncated = input_was_limited = true.
+    /// decoded.len() = 2 = max_bytes = 2 → guard fires (2 <= 2), re-decodes full body ("=41=42=43" → "ABC", 3 bytes).
+    /// Step 2: decoded.len() (3) > max_bytes (2) → is_truncated = true.
     /// Full body decodes to "ABC" (3 > 2), so truncation is correct.
     #[test]
     fn test_qp_real_truncation_not_suppressed() {
