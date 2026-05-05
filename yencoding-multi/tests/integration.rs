@@ -362,8 +362,13 @@ fn zero_byte_file() {
 
 #[test]
 fn sweep_sizes_round_trip() {
-    // For each total payload size in [0, 4, 8, ..., 128], split into 1, 2,
-    // or 3 parts and verify full round-trip.
+    // Property / consistency test: for each total payload size in [0, 4, 8, ..., 128],
+    // split into 1, 2, or 3 parts and verify round-trip.
+    //
+    // Note: encode_and_assemble() uses crc32fast::hash() for the expected CRC, and
+    // finish() uses crc32fast::hash() internally — so CRC32 polynomial correctness is
+    // NOT independently verified here.  Independent oracle evidence lives in the
+    // three_parts_in_order test (hardcoded Python-derived CRC 0xb095_e0e9).
     for total in (0u8..=127).step_by(4) {
         for parts in 1..=3usize {
             if total as usize > 0 && parts > total as usize {
