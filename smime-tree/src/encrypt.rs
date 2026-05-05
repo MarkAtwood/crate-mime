@@ -299,10 +299,15 @@ fn build_rsa_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, 
         SmimeError::MalformedInput(format!("RSA public key in recipient cert: {e}"))
     })?;
 
+    // UnwrapErr panics (rather than returning Err) when the OS RNG fails, so
+    // RNG failures here propagate as a panic, not as SmimeError::RngFailure.
+    // The map_err below converts non-RNG errors (e.g. key-size / data-too-long)
+    // into SmimeError::Other.  The preflight above ensures getrandom
+    // is operational before reaching this point.
     let mut rng = UnwrapErr(SysRng);
     let encrypted_key = rsa_pub
         .encrypt(&mut rng, Pkcs1v15Encrypt, cek)
-        .map_err(|e| SmimeError::RngFailure(format!("RSA PKCS#1v15 encrypt: {e}")))?;
+        .map_err(|e| SmimeError::Other(format!("RSA PKCS#1v15 encrypt: {e}")))?;
 
     let ias = IssuerAndSerialNumber {
         issuer: cert.tbs_certificate().issuer().clone(),

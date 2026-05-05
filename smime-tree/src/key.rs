@@ -93,7 +93,11 @@ pub enum KeyEncryptionAlgorithm {
     /// RSA-OAEP key transport (RFC 8017).
     RsaOaep,
     /// ECDH-ES key agreement (RFC 5753) with the specified curve.
-    /// Reserved; currently not produced by `decrypt()`. See type-level doc.
+    ///
+    /// Reserved; never passed to [`DecryptionKey::decrypt_cek`] by `decrypt()`.
+    /// ECDH key agreement is handled via [`DecryptionKey::agree_ecdh`] instead.
+    /// `decrypt_cek()` implementations do not need to handle this variant.
+    #[doc(hidden)]
     EcdhEs { curve: EcCurve },
 }
 
