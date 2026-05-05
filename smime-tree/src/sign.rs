@@ -97,10 +97,19 @@ pub fn sign(
     let raw_sig = key.sign(&attrs_der, &digest_alg)?;
 
     // --- Step 5: determine signature algorithm OID from cert SPKI ---
+    // RFC 4055 §3.1: sha*WithRSAEncryption AlgorithmIdentifiers MUST include a
+    // parameters field, and it MUST be NULL.  ECDSA OIDs (RFC 5480 §2.1) MUST
+    // omit the parameters field entirely.
     let sig_alg_oid = signature_algorithm_oid(cert, &digest_alg)?;
+    let is_rsa = cert
+        .tbs_certificate()
+        .subject_public_key_info()
+        .algorithm
+        .oid
+        == RSA_ENCRYPTION;
     let signature_algorithm = AlgorithmIdentifierOwned {
         oid: sig_alg_oid,
-        parameters: None,
+        parameters: if is_rsa { Some(Any::null()) } else { None },
     };
 
     // --- Step 6: build SignerInfo ---
@@ -116,6 +125,8 @@ pub fn sign(
     };
     // RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1.
     // sign() produces exactly one SignerInfo, so the SignedData version equals it.
+    // WARNING: this shortcut is only correct for a single signer. Multi-signer
+    // support must scan all SignerInfos and use V3 if ANY one uses SKI (MIME-66i).
     let signed_data_version = signer_info_version;
     let signature_value = SignatureValue::new(raw_sig)?;
 

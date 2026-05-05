@@ -15,6 +15,7 @@ use crate::{
 /// `Err(ParseError::NoHeaders)` when mail-parser cannot find any headers.
 /// All other malformed input produces a best-effort `ParsedMessage` with
 /// `warnings` populated.
+#[must_use = "the parsed message must be used"]
 pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     if raw.is_empty() {
         return Err(ParseError::EmptyInput);
@@ -65,6 +66,7 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
 /// Decode the body of a parsed part.
 ///
 /// Transfer-encoding decode and charset conversion are performed on demand.
+#[must_use = "the decoded body value must be used"]
 pub fn decode_body_value(
     raw: &[u8],
     part: &ParsedPart,

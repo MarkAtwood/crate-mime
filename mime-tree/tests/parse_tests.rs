@@ -310,6 +310,11 @@ fn test_smime_parts_are_opaque_leaves() {
         !msg.html_body.contains(&"1".to_owned()),
         "S/MIME part must not appear in html_body"
     );
+    assert_eq!(
+        msg.attachments,
+        vec!["1".to_owned()],
+        "S/MIME part must go to attachments"
+    );
 }
 
 // ---------------------------------------------------------------------------

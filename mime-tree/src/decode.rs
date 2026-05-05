@@ -107,13 +107,16 @@ pub fn decode_body_value(
                         qp_input.to_vec()
                     }
                 };
-            // If the pre-truncated slice decoded to fewer bytes than max_bytes
-            // but the input was cut short, the truncation may be a false
-            // positive (soft line-breaks beyond the limit decode to nothing).
+            // If the pre-truncated slice decoded to at most max_bytes bytes but
+            // the input was cut short, the truncation may be a false positive
+            // (soft line-breaks beyond the limit decode to nothing).  The
+            // equality case (decoded == n) must also re-decode: without a
+            // full-body pass we cannot tell whether the true output is exactly
+            // n bytes (is_truncated=false) or more (is_truncated=true).
             // Decode the full body and let Step 2 measure the real length.
             if input_was_limited {
                 if let Some(n) = max_bytes {
-                    if decoded_preview.len() < n {
+                    if decoded_preview.len() <= n {
                         input_was_limited = false;
                         match quoted_printable::decode(
                             body_bytes,
@@ -402,6 +405,37 @@ mod tests {
         assert!(
             !result.is_truncated,
             "is_truncated must be false: full body decodes to 1 byte, which fits in max_bytes=2"
+        );
+        assert!(!result.is_encoding_problem);
+    }
+
+    /// QP body that decodes to *exactly* max_bytes bytes with input_was_limited=true.
+    ///
+    /// This is the off-by-one case: `decoded_preview.len() == max_bytes`.
+    /// The old `< n` guard would not fire here, so Step 2 would see
+    /// `decoded.len() == n`, fall into the `_` branch, and return
+    /// `is_truncated = input_was_limited = true` — which is wrong.
+    ///
+    /// Body: "ab" (2 literal bytes) + 20 soft line-breaks (=\r\n × 20 = 60 bytes)
+    /// = 62 total encoded bytes.  Full decode: "ab" (2 bytes).
+    /// max_bytes = 2: 4× limit = 8 bytes; body > 8 → input_was_limited=true.
+    /// Decoded preview (first 8 bytes = "ab=\r\n=\r") in Robust mode = "ab" (2 bytes).
+    /// decoded_preview.len() == max_bytes == 2 → guard MUST fire and re-decode.
+    /// is_truncated must be FALSE.
+    #[test]
+    fn test_qp_exact_max_bytes_no_false_truncation() {
+        // Body: "ab" + 20 soft line-breaks ("=\r\n" × 20) = 62 total encoded bytes.
+        // Full decode = "ab" = exactly max_bytes=2 bytes.
+        let mut body = b"ab".to_vec();
+        for _ in 0..20 {
+            body.extend_from_slice(b"=\r\n");
+        }
+        let (raw, part) = make_part(&body, TransferEncoding::QuotedPrintable, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, Some(2)).unwrap();
+        assert_eq!(result.value, "ab", "decoded value must be 'ab'");
+        assert!(
+            !result.is_truncated,
+            "is_truncated must be false: full body decodes to exactly max_bytes=2 bytes"
         );
         assert!(!result.is_encoding_problem);
     }

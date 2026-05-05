@@ -34,6 +34,7 @@ impl VerificationResult {
     /// that all expected signers are present and valid.
     ///
     /// [`signers`]: VerificationResult::signers
+    #[must_use]
     pub fn is_verified(&self) -> bool {
         self.signers.iter().any(|s| s.verified)
     }
