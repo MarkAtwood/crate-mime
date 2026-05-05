@@ -1270,6 +1270,7 @@ dependencies = [
  "sha2 0.11.0",
  "signature 3.0.0-rc.10",
  "spki 0.8.0",
+ "subtle",
  "tempfile",
  "x509-cert 0.2.5",
  "x509-cert 0.3.0-rc.4",
@@ -1374,9 +1375,6 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "uuencoding"
 version = "0.3.0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "uuencoding-multi"

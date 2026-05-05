@@ -367,9 +367,7 @@ fn random_boundary(content: &[u8]) -> Result<String, SmimeError> {
             return Ok(boundary);
         }
     }
-    Err(SmimeError::RngFailure(
-        "MIME boundary collision: failed to generate a unique boundary after 8 attempts".into(),
-    ))
+    Err(SmimeError::BoundaryCollision)
 }
 
 /// Wrap a base64 string at `width` characters per line using CRLF line endings.
@@ -379,7 +377,7 @@ fn wrap_base64(b64: &str, width: usize) -> String {
         // b64 is a &str, so its byte slices are always valid UTF-8.
         out.push_str(
             core::str::from_utf8(chunk)
-                .expect("base64 output is a str — from_utf8 always succeeds"),
+                .unwrap_or_else(|_| unreachable!("base64 output is always valid UTF-8")),
         );
         out.push_str("\r\n");
     }

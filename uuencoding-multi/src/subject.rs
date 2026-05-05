@@ -2,7 +2,31 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use crate::SubjectParts;
+/// Fields extracted from a parsed Usenet/email subject line.
+///
+/// Returned by [`parse_subject`]. The `base_subject` field can be used as a
+/// stable grouping key across parts of the same series.
+///
+/// # Field invariants
+///
+/// - `base_subject` is never empty when `SubjectParts` is returned (the only
+///   way to get an empty or no-marker subject back is if `parse_subject`
+///   returns `Some` with `part_index = None`).
+/// - `part_total` is always `Some` when `part_index` is `Some`, because every
+///   supported marker format includes the total count.
+#[derive(Debug)]
+pub struct SubjectParts {
+    /// Subject line with the part-number marker removed and surrounding
+    /// whitespace trimmed. Safe to use as a collection grouping key because
+    /// all parts of the same series share the same base subject.
+    pub base_subject: String,
+    /// 1-based part number extracted from the marker. `Some(0)` indicates a
+    /// TOC post (e.g. `(00/17)`). `None` when no recognised marker was found.
+    pub part_index: Option<u32>,
+    /// Total number of parts as declared in the subject marker.
+    /// Always `Some` when `part_index` is `Some`; `None` otherwise.
+    pub part_total: Option<u32>,
+}
 
 // ---------------------------------------------------------------------------
 // Compiled-once regex patterns
@@ -181,6 +205,10 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
     }
 
     let stripped = strip_prefixes(subject).trim();
+
+    if stripped.is_empty() {
+        return None;
+    }
 
     for pat in patterns() {
         if let Some(caps) = pat.re.captures(stripped) {
@@ -473,5 +501,17 @@ mod tests {
         let p = parts("myfile.bin (2/5)");
         assert!(!p.base_subject.ends_with('-'));
         assert!(!p.base_subject.ends_with(' '));
+    }
+
+    // ------------------------------------------------------------------
+    // All-prefix input stripped to empty → None
+    // Invariant: base_subject must never be empty.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn parse_subject_returns_none_for_all_prefix_input() {
+        assert!(parse_subject("Re: ").is_none());
+        assert!(parse_subject("Fwd: Re: ").is_none());
+        assert!(parse_subject("   ").is_none());
     }
 }

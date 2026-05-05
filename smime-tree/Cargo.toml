@@ -31,6 +31,7 @@ spki = { version = "0.8" }
 signature = { version = "=3.0.0-rc.10" }
 getrandom = { version = "0.4", features = ["sys_rng"] }
 serde = { version = "1", features = ["derive"] }
+subtle = { version = "2" }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 mime-tree = { version = "0.2.0", path = "../mime-tree" }
 # Certificate chain validation via the PKIX crate family.

@@ -46,7 +46,7 @@ use crate::part::ParsedPart;
 /// All byte offsets are **absolute** — they are in the same coordinate space
 /// as `ParsedPart::body_range` and the `raw` buffer passed to
 /// [`scan_inline_uuencode()`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct InlineUUBlock {
     /// Byte offset of the `begin NNN filename` line within `raw`.
     ///

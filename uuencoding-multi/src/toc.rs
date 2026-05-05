@@ -83,7 +83,6 @@ fn re_format1() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
         // Captures: 1=filename, rest parsed manually for size/parts.
-        // \S and \s replaced with ASCII equivalents; (?i-u) for ASCII-only case-fold.
         Regex::new(r"(?i)^([^ \t\r\n]+)[ \t]+(.+)$").unwrap()
     })
 }

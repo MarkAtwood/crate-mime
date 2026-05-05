@@ -19,6 +19,15 @@ pub struct VerificationResult {
 
 impl VerificationResult {
     /// Returns `true` if at least one signer verified successfully.
+    ///
+    /// # Security
+    ///
+    /// This method returns `true` if **any one** signer's certificate and signature verified
+    /// successfully. In a message with multiple signers, some may have failed verification.
+    /// For security-critical decisions, inspect the [`signers`] field directly and verify
+    /// that all expected signers are present and valid.
+    ///
+    /// [`signers`]: VerificationResult::signers
     pub fn is_verified(&self) -> bool {
         self.signers.iter().any(|s| s.verified)
     }
@@ -108,6 +117,9 @@ pub enum CertChainError {
     },
     /// Certificate chain exceeds the maximum allowed depth.
     TooDeep,
+    /// A certificate in the bag has a subject DN that cannot be DER-encoded,
+    /// making it impossible to use as an intermediate in chain building.
+    SubjectParseError(String),
     /// Other chain validation error (DER encoding failures, etc.).
     Other(String),
 }
@@ -150,6 +162,9 @@ impl fmt::Display for CertChainError {
             CertChainError::TooDeep => {
                 write!(f, "certificate chain exceeds the maximum allowed depth")
             }
+            CertChainError::SubjectParseError(msg) => {
+                write!(f, "bag certificate has unparseable subject DN: {msg}")
+            }
             CertChainError::Other(msg) => write!(f, "{msg}"),
         }
     }
@@ -186,6 +201,9 @@ pub enum SmimeError {
     /// The `ContentInfo` content type is not what this operation expects.
     /// For example, passing a `SignedData` blob to `decrypt()`.
     WrongContentType(String),
+    /// The content contains a MIME boundary that matches the generated separator even after
+    /// 8 random retries. This is extraordinarily unlikely in practice.
+    BoundaryCollision,
 }
 
 impl fmt::Display for SmimeError {
@@ -206,6 +224,10 @@ impl fmt::Display for SmimeError {
             SmimeError::DecryptionFailed(msg) => write!(f, "decryption failed: {msg}"),
             SmimeError::Other(msg) => write!(f, "{msg}"),
             SmimeError::WrongContentType(msg) => write!(f, "wrong content type: {msg}"),
+            SmimeError::BoundaryCollision => write!(
+                f,
+                "could not generate a unique MIME boundary after 8 retries"
+            ),
             SmimeError::AllSignersFailed(signers) => {
                 let first_error = signers
                     .first()

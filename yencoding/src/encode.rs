@@ -33,7 +33,8 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 /// - `filename` — written verbatim to the `name=` field of `=ybegin`.
 ///   No validation is performed; control characters should be avoided.
 /// - `line_length` — maximum number of encoded bytes per line (1–255).
-///   Pass `DEFAULT_LINE_LENGTH` (128) for the standard value.
+///   Values below 2 are clamped to 2 (escape pairs are 2 bytes and must
+///   fit on one line). Pass `DEFAULT_LINE_LENGTH` (128) for the standard value.
 ///
 /// # Returns
 ///
@@ -251,12 +252,57 @@ mod tests {
         assert_eq!(&out[10..12], b"\r\n");
     }
 
+    // -----------------------------------------------------------------------
+    // Independent-oracle tests for dot and TAB escapes at line start.
+    // Oracle: manual calculation from the yEnc spec — no decode() call.
+    //
+    // Escape rule: if `encoded` (= raw + 42 mod 256) equals 0x2E ('.') or
+    // 0x09 (TAB) at column 0, emit '=' (0x3D) followed by (encoded + 64) % 256.
+    //
+    // Dot case:  raw = 0x04 → encoded = 0x2E ('.') → escape char = 0x6E ('n')
+    //            emitted bytes: b'=' b'n' = [0x3D, 0x6E]
+    //
+    // TAB case:  raw = 0xDF (223) → encoded = 0x09 (TAB) → escape char = 0x49 ('I')
+    //            emitted bytes: b'=' b'I' = [0x3D, 0x49]
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn encode_dot_at_line_start_uses_escape() {
+        // Oracle: raw byte 0x04, encoded = (0x04 + 42) % 256 = 0x2E = '.'
+        // At column 0 this must be escaped: '=' + (0x2E + 64) % 256 = '=' + 'n'
+        // Expected encoded body line: b"=n\r\n"
+        let mut out = Vec::new();
+        encode_body(&[0x04u8], 128, &mut out);
+        // First two bytes of output (before CRLF) must be the escape pair.
+        assert_eq!(
+            &out[..2],
+            b"=n",
+            "dot (raw 0x04) at line start must encode as '=n'"
+        );
+    }
+
+    #[test]
+    fn encode_tab_at_line_start_uses_escape() {
+        // Oracle: raw byte 0xDF (223), encoded = (223 + 42) % 256 = 0x09 = TAB
+        // At column 0 this must be escaped: '=' + (0x09 + 64) % 256 = '=' + 'I'
+        // Expected encoded body line: b"=I\r\n"
+        let mut out = Vec::new();
+        encode_body(&[0xDFu8], 128, &mut out);
+        // First two bytes of output (before CRLF) must be the escape pair.
+        assert_eq!(
+            &out[..2],
+            b"=I",
+            "TAB (raw 0xDF) at line start must encode as '=I'"
+        );
+    }
+
     #[test]
     fn encode_all_bytes_round_trip() {
         // Oracle applied to mandatory-escape bytes only (NUL/LF/CR/=): the Python
         // algorithm (b+42)%256, then escape if in {0,10,13,61}, is the reference.
-        // Dot and TAB at line-start escaping uses round-trip consistency (covered
-        // by fixture tests); they are not independently verified here.
+        // Dot (raw 0x04) and TAB (raw 0xDF) at line-start escapes are verified
+        // by the independent-oracle tests above (encode_dot_at_line_start_uses_escape
+        // and encode_tab_at_line_start_uses_escape) and are not re-verified here.
         let raw: Vec<u8> = (0u8..=255).collect();
         // Build expected using Python algorithm
         let mut expected_encoded = Vec::new();

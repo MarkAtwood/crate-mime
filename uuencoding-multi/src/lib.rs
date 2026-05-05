@@ -111,31 +111,5 @@ pub(crate) mod toc;
 pub use collection::{PartCollection, PartEntry};
 pub use error::MultiUuError;
 pub use reassemble::{reassemble, ReassembledFile};
-pub use subject::parse_subject;
+pub use subject::{parse_subject, SubjectParts};
 pub use toc::{parse_toc, ParsedToc, TocEntry};
-
-/// Fields extracted from a parsed Usenet/email subject line.
-///
-/// Returned by [`parse_subject`]. The `base_subject` field can be used as a
-/// stable grouping key across parts of the same series.
-///
-/// # Field invariants
-///
-/// - `base_subject` is never empty when `SubjectParts` is returned (the only
-///   way to get an empty or no-marker subject back is if `parse_subject`
-///   returns `Some` with `part_index = None`).
-/// - `part_total` is always `Some` when `part_index` is `Some`, because every
-///   supported marker format includes the total count.
-#[derive(Debug)]
-pub struct SubjectParts {
-    /// Subject line with the part-number marker removed and surrounding
-    /// whitespace trimmed. Safe to use as a collection grouping key because
-    /// all parts of the same series share the same base subject.
-    pub base_subject: String,
-    /// 1-based part number extracted from the marker. `Some(0)` indicates a
-    /// TOC post (e.g. `(00/17)`). `None` when no recognised marker was found.
-    pub part_index: Option<u32>,
-    /// Total number of parts as declared in the subject marker.
-    /// Always `Some` when `part_index` is `Some`; `None` otherwise.
-    pub part_total: Option<u32>,
-}

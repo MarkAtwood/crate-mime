@@ -19,6 +19,7 @@ use const_oid::db::{
 };
 use der::{asn1::OctetString, Decode, Encode};
 use sha2::{Digest, Sha256, Sha384, Sha512};
+use subtle::ConstantTimeEq as _;
 use x509_cert::Certificate;
 
 use crate::{
@@ -304,7 +305,7 @@ fn check_message_digest(
         .as_bytes()
         .to_vec();
 
-    if expected_bytes != content_hash {
+    if bool::from(!expected_bytes.ct_eq(content_hash)) {
         return Err(SmimeError::SignatureVerification);
     }
 

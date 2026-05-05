@@ -52,14 +52,21 @@ fn is_inline_media_type(media_type: &str) -> bool {
 /// further pushes to that list are suppressed and inline media goes to
 /// attachments instead.
 ///
+/// JavaScript `null` assignment (`htmlBody = null`) is a local variable rebind
+/// that does not propagate to the caller's scope.  We model this by wrapping
+/// `&mut Vec` references in fresh `Option` locals when recursing into multipart
+/// children: pushes to the underlying `Vec` still propagate (same allocation),
+/// but setting the `Option` to `None` inside the callee does not affect the
+/// caller's `Option`.
+///
 /// The loop variable `i` (index into `parts`) is the 0-based position of
 /// each part within its sibling list, used for the `multipart/related` rule.
-fn parse_structure<'a>(
+fn parse_structure(
     parts: &[ParsedPart],
     multipart_type: &str,
     in_alternative: bool,
-    text_body: &mut Option<&'a mut Vec<String>>,
-    html_body: &mut Option<&'a mut Vec<String>>,
+    text_body: &mut Option<&mut Vec<String>>,
+    html_body: &mut Option<&mut Vec<String>>,
     attachments: &mut Vec<String>,
 ) {
     // Snapshot lengths at entry — used at the end of multipart/alternative
@@ -94,12 +101,20 @@ fn parse_structure<'a>(
                 .map(|(_, sub)| sub)
                 .unwrap_or("mixed");
             let new_in_alternative = in_alternative || sub_multipart_type == "alternative";
+            // Per RFC 8621 §4.1.4 JavaScript semantics: `htmlBody = null` inside
+            // a recursive call is a local variable rebind and does NOT propagate
+            // back to the caller.  We model this by reborrowing the inner Vec
+            // references into fresh Option locals: pushes to the underlying Vec
+            // propagate (same allocation), but setting the Option to None in the
+            // callee leaves the caller's Option unchanged.
+            let mut sub_text = text_body.as_deref_mut();
+            let mut sub_html = html_body.as_deref_mut();
             parse_structure(
                 &part.children,
                 sub_multipart_type,
                 new_in_alternative,
-                text_body,
-                html_body,
+                &mut sub_text,
+                &mut sub_html,
                 attachments,
             );
         } else if is_inline {
@@ -398,10 +413,14 @@ mod tests {
     /// Attachments is empty — no attachment disposition, so it is treated as
     /// inline content duplicated across both body lists.
     ///
-    /// Oracle: code-path analysis of walk.rs — the in_alternative branch only
-    /// nullifies the opposite list when content_type is text/plain or text/html;
-    /// for other inline media types neither nullification fires and the double
-    /// push (lines 138-143) executes with both lists still Some.
+    /// Oracle: RFC 8621 §4.1.4 — image/gif is isInlineMediaType, so it is
+    /// isInline. Inside the nested mixed container (inAlternative=true), the
+    /// in_alternative nullification branch only fires for text/plain or
+    /// text/html; gif triggers neither. Both textBody and htmlBody are still
+    /// non-null, so the RFC's `if(textBody) textBody.push(part)` and
+    /// `if(htmlBody) htmlBody.push(part)` both execute, placing "1.1" in both
+    /// lists. The end-of-alternative cross-population does not fire because
+    /// both lists gained one entry.
     #[test]
     fn alternative_mixed_image_gif_goes_to_both_body_lists() {
         let raw = concat!(
@@ -441,22 +460,28 @@ mod tests {
         );
     }
 
-    /// Test 8 — in_alternative nullification: mixed-within-alternative sets
-    /// html_body to None when a text/plain is found.
+    /// Test 8 — in_alternative nullification is local to the recursive call.
     ///
     /// Structure:
     ///   multipart/alternative:
-    ///     - multipart/mixed:
-    ///         - text/plain   ← sets html_body=None (in_alternative=true, not in alternative)
-    ///     - text/html        ← html_body is None; nothing pushed
+    ///     - multipart/mixed (id="1"):
+    ///         - text/plain (id="1.1")  ← inside mixed, inAlternative=true;
+    ///                                     sets htmlBody=null LOCALLY
+    ///     - text/html (id="2")         ← back in alternative; htmlBody is still
+    ///                                     live because the null was local to the
+    ///                                     nested call; pushed to htmlBody
     ///
-    /// Expected: text_body = ["1.1"], html_body = [], attachments = []
+    /// Expected: text_body = ["1.1"], html_body = ["2"], attachments = []
     ///
-    /// Oracle: RFC 8621 §4.1.4 — when in_alternative is set and the current
-    /// multipart is not "alternative", encountering text/plain sets htmlBody to
-    /// null (preventing html parts at the same level from populating htmlBody).
+    /// Oracle: RFC 8621 §4.1.4 — in the JavaScript pseudocode, `htmlBody = null`
+    /// inside a recursive `parseStructure` call is a local variable rebind; it
+    /// does NOT propagate to the caller's `htmlBody` variable.  Therefore the
+    /// outer alternative call's htmlBody is still the live array when the
+    /// text/html sibling (id="2") is processed, and that part is pushed to it.
+    /// The end-of-alternative cross-population does not fire because both lists
+    /// gained at least one part.
     #[test]
-    fn alternative_mixed_subtree_nullifies_html_body() {
+    fn alternative_mixed_subtree_nullification_is_local() {
         let raw = concat!(
             "From: a@b.com\r\n",
             "MIME-Version: 1.0\r\n",
@@ -473,17 +498,17 @@ mod tests {
             "--outer\r\n",
             "Content-Type: text/html\r\n",
             "\r\n",
-            "<p>This html is suppressed because html_body was nullified</p>\r\n",
+            "<p>HTML at alternative level; htmlBody is still live</p>\r\n",
             "--outer--\r\n"
         )
         .as_bytes();
 
         let msg = parse(raw).expect("parse failed");
         assert_eq!(msg.text_body, vec!["1.1".to_owned()]);
-        assert!(
-            msg.html_body.is_empty(),
-            "html_body should be empty after nullification; got: {:?}",
-            msg.html_body
+        assert_eq!(
+            msg.html_body,
+            vec!["2".to_owned()],
+            "html_body should contain text/html part '2'; nullification in nested call is local"
         );
         assert!(msg.attachments.is_empty());
     }

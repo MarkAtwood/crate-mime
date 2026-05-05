@@ -42,6 +42,13 @@
 //!   - Encrypt/decrypt: AES-128-CBC (RSA/P-256 recipients), AES-256-CBC (P-384 recipients).
 //!   - Key transport: RSA PKCS#1 v1.5 (`KeyTransRecipientInfo`).
 //!   - Key agreement: ECDH P-256 + AES-128-KW, ECDH P-384 + AES-256-KW (`KeyAgreeRecipientInfo`).
+//!
+//! # Known Limitations
+//!
+//! **Certificate chain validation** (via `pkix-chain`) only verifies CA signatures using
+//! RSA-PKCS1v15-SHA256 and ECDSA-P256-SHA256. Chains through P-384 or other algorithm
+//! intermediate CAs will fail with [`CertChainError::SignatureVerification`]. This affects
+//! many real-world certificate hierarchies.
 
 mod cert;
 mod decrypt;

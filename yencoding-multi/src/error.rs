@@ -71,6 +71,17 @@ pub enum AssemblyError {
     /// A `DecodedPart` with only one of the two fields set indicates a corrupt
     /// or incorrectly constructed part.
     MalformedPartRange,
+
+    /// Two parts carry conflicting whole-file CRC32 values.
+    ///
+    /// [`Assembler::add_part`][crate::Assembler::add_part] auto-extracts the
+    /// `crc32=` whole-file CRC from each part that carries it.  If a later part
+    /// reports a different value than one already recorded, the series is
+    /// internally inconsistent and the assembly must be aborted.
+    ///
+    /// `first` is the CRC recorded from an earlier part; `new` is the
+    /// conflicting value from the current part.
+    InconsistentCrc { first: u32, new: u32 },
 }
 
 impl std::fmt::Display for AssemblyError {
@@ -129,6 +140,12 @@ impl std::fmt::Display for AssemblyError {
             AssemblyError::MalformedPartRange => write!(
                 f,
                 "part_begin and part_end must both be Some or both be None"
+            ),
+            AssemblyError::InconsistentCrc { first, new } => write!(
+                f,
+                "inconsistent whole-file CRC32 across parts: \
+                 first seen {first:#010x}, new part reports {new:#010x} — \
+                 corrupt or mismatched article series"
             ),
         }
     }
