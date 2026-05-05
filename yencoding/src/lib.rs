@@ -274,7 +274,8 @@ pub struct EncodePartOptions<'a> {
     /// 1-based byte offset in the full file where this part ends, inclusive (`=ypart end=`).
     pub end: u64,
     /// CRC32 of the **complete** file, written as `crc32=` in `=yend`.
-    /// Compute this from the full unsplit data before calling.
+    /// Compute this from the full unsplit data before calling. The decoded
+    /// counterpart is [`DecodedPart::whole_file_crc32`].
     pub whole_file_crc32: u32,
     /// Encoded bytes per line. Use [`DEFAULT_LINE_LENGTH`] (128) for the
     /// standard value.
