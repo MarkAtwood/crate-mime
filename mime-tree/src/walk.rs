@@ -460,7 +460,50 @@ mod tests {
         );
     }
 
-    /// Test 8 — in_alternative nullification is local to the recursive call.
+    /// Test 8 — application/octet-stream without Content-Disposition goes to attachments.
+    ///
+    /// Structure: multipart/mixed → application/octet-stream (no Content-Disposition)
+    /// Expected: text_body = [], html_body = [], attachments = ["1"]
+    ///
+    /// Oracle: RFC 8621 §4.1.4 isInline requires the content type to be
+    /// text/plain, text/html, or an inline media type (image/*, audio/*, video/*).
+    /// application/octet-stream matches none of these, so isInline = false
+    /// regardless of whether a Content-Disposition header is present.
+    /// The part therefore goes directly to attachments.
+    #[test]
+    fn octet_stream_no_disposition_goes_to_attachments() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/mixed; boundary=\"b\"\r\n",
+            "\r\n",
+            "--b\r\n",
+            "Content-Type: application/octet-stream\r\n",
+            "\r\n",
+            "<binary data>\r\n",
+            "--b--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        assert!(
+            msg.text_body.is_empty(),
+            "text_body must be empty; got: {:?}",
+            msg.text_body
+        );
+        assert!(
+            msg.html_body.is_empty(),
+            "html_body must be empty; got: {:?}",
+            msg.html_body
+        );
+        assert_eq!(
+            msg.attachments,
+            vec!["1".to_owned()],
+            "application/octet-stream without Content-Disposition must go to attachments"
+        );
+    }
+
+    /// Test 9 — in_alternative nullification is local to the recursive call.
     ///
     /// Structure:
     ///   multipart/alternative:

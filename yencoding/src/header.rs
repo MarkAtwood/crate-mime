@@ -114,17 +114,27 @@ pub(crate) fn parse_yend(payload: &str) -> Result<YendFields, YencError> {
 
 /// Find the byte position of `name=` in a ybegin payload, handling it as a
 /// special last-field (value extends to EOL, may contain spaces).
+///
+/// Matches `name=` at the start of the payload, preceded by a space, or
+/// preceded by a tab (some non-standard encoders use tab as the field
+/// separator instead of space).
 fn find_name_param(payload: &str) -> Option<usize> {
     // Walk through space-delimited tokens looking for one that starts with
     // "name=". Once found, return its start position within `payload`.
-    // We look for " name=" or beginning-of-string "name=" to avoid matching
-    // a hypothetical "xname=" token.
+    // We look for " name=" or "\tname=" or beginning-of-string "name=" to
+    // avoid matching a hypothetical "xname=" token.
     if payload.starts_with("name=") {
         return Some(0);
     }
     // Find " name=" — a space followed by "name=".
-    let needle = " name=";
-    payload.find(needle).map(|pos| pos + 1) // +1 to skip the leading space
+    if let Some(pos) = payload.find(" name=") {
+        return Some(pos + 1); // +1 to skip the leading space
+    }
+    // Find "\tname=" — a tab followed by "name=" (non-standard but handled).
+    if let Some(pos) = payload.find("\tname=") {
+        return Some(pos + 1); // +1 to skip the leading tab
+    }
+    None
 }
 
 /// Apply parsed key=value tokens (excluding `name=`) to a `YbeginFields`.
@@ -294,5 +304,42 @@ mod tests {
     fn yend_invalid_crc_is_error() {
         let err = parse_yend("size=64 crc32=GGGGGGGG").unwrap_err();
         assert!(matches!(err, YencError::InvalidHeader { field } if field == "crc32"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Gap 1: tab-separated name= field
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ybegin_tab_before_name_is_handled() {
+        // Some non-standard encoders use a tab rather than a space before name=.
+        // The parser handles this: "\tname=" is recognised the same as " name=".
+        //
+        // Input (raw bytes): "line=128 size=3\tname=hello.bin"
+        // The tab is used as the separator before name=.
+        let f = parse_ybegin("line=128 size=3\tname=hello.bin").unwrap();
+        assert_eq!(
+            f.name.as_deref(),
+            Some("hello.bin"),
+            "tab-separated name= must be parsed correctly"
+        );
+        assert_eq!(f.size, Some(3));
+        assert_eq!(f.line_length, Some(128));
+    }
+
+    // -----------------------------------------------------------------------
+    // Gap 2: line= value > 255 clamped to 255
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn parse_ybegin_line_length_clamped_to_255() {
+        // Oracle: any line= value > 255 is clamped to 255 (stored as u8).
+        // Non-standard encoders occasionally write large line= values.
+        let f = parse_ybegin("line=300 size=10 name=test.bin").unwrap();
+        assert_eq!(
+            f.line_length,
+            Some(255),
+            "line= value 300 must be clamped to 255"
+        );
     }
 }

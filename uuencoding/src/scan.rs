@@ -6,7 +6,7 @@ use crate::{BlockMetadata, ScannedBlock, UuError};
 /// Collect all UU blocks found in `input`, returning them in order.
 ///
 /// This is a non-lazy helper: it walks the entire input once and builds a Vec.
-/// `scan()` in lib.rs wraps this in `.into_iter()`.
+/// `scan()` in lib.rs returns this Vec directly.
 pub(crate) fn scan_impl(input: &[u8]) -> Vec<Result<ScannedBlock, UuError>> {
     let mut results = Vec::new();
     let mut pos = 0usize; // current byte position in `input`

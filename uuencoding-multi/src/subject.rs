@@ -447,6 +447,15 @@ mod tests {
         assert!(parse_subject("[2/4]").is_none());
     }
 
+    /// A subject that is entirely a "Part N of M" or "Part N/M" marker with no
+    /// surrounding text strips to empty after removing the marker.
+    /// Invariant: base_subject must never be empty → returns None.
+    #[test]
+    fn bare_part_marker_only_returns_none() {
+        assert!(parse_subject("Part 1 of 3").is_none());
+        assert!(parse_subject("Part 1/3").is_none());
+    }
+
     // ------------------------------------------------------------------
     // Re: / Fwd: prefix stripping
     // ------------------------------------------------------------------

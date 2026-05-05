@@ -12,7 +12,7 @@ use const_oid::db::{
     rfc5753,
     rfc5911::{
         ID_AES_128_CBC, ID_AES_128_GCM, ID_AES_128_WRAP, ID_AES_256_CBC, ID_AES_256_GCM,
-        ID_AES_256_WRAP,
+        ID_AES_256_WRAP, ID_ENVELOPED_DATA,
     },
     rfc5912::{ID_RSAES_OAEP, RSA_ENCRYPTION},
 };
@@ -26,9 +26,6 @@ use crate::key::{
     DecryptionKey, KariAlgorithm, KariKeyAgreement, KeyEncryptionAlgorithm, KeyWrapAlgorithm,
     RecipientIdentifier,
 };
-
-// OID for EnvelopedData content type (RFC 5652 section 3): 1.2.840.113549.1.7.3
-const ID_ENVELOPED_DATA: der::asn1::ObjectIdentifier = const_oid::db::rfc5911::ID_ENVELOPED_DATA;
 
 /// Decrypt an S/MIME `EnvelopedData` blob.
 ///

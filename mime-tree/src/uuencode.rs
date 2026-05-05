@@ -537,6 +537,31 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // TV-b64-solo: body contains only a begin-base64 block, no UU block follows.
+    //
+    // scan_inline_uuencode must return exactly one item with is_encoding_problem=true.
+    // This tests the case from test_begin_base64_is_encoding_problem stripped of
+    // the trailing valid UU block, to confirm the scanner does not drop the error
+    // item or return an empty Vec when nothing follows the begin-base64 block.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_begin_base64_only_block() {
+        let body = b"begin-base64 644 file.gif\nSGVsbG8=\n====\n";
+        let (raw, part) = make_part(b"", body);
+
+        let blocks = scan_inline_uuencode(&raw, &part);
+        assert_eq!(
+            blocks.len(),
+            1,
+            "expected exactly 1 item for a solo begin-base64 block"
+        );
+        assert!(
+            blocks[0].is_encoding_problem,
+            "begin-base64 block must have is_encoding_problem=true"
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // begin-base64 with prefix: begin_offset reflects actual position
     // -----------------------------------------------------------------------
     #[test]

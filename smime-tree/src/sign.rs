@@ -116,8 +116,6 @@ pub fn sign(
     };
     // RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1.
     // sign() produces exactly one SignerInfo, so the SignedData version equals it.
-    // If multi-signer support is added later, iterate all signers: use V3 if any
-    // uses SubjectKeyIdentifier, else V1.
     let signed_data_version = signer_info_version;
     let signature_value = SignatureValue::new(raw_sig)?;
 

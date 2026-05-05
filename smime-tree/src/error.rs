@@ -84,7 +84,7 @@ pub enum CertChainError {
     /// Present only for deserialization compatibility with data produced by older versions
     /// of this crate; never emitted by the current validator.  Match [`CertChainError::TooDeep`]
     /// or [`CertChainError::CertificateExpired`] for the equivalent current failure modes.
-    #[deprecated = "never produced by the current pkix-chain-based validator; match TooDeep or CertificateExpired instead"]
+    #[deprecated(since = "0.2.0", note = "match CertificateExpired instead")]
     AllTrustAnchorsExpired {
         /// Issuer DN for which all matching trust anchors were expired.
         issuer: String,

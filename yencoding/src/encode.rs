@@ -43,7 +43,7 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
     // Clamp to at least 2: escape pairs are 2 bytes and must fit on one line.
     let line_length = line_length.max(2) as usize;
-    let mut out = Vec::with_capacity(data.len() * 11 / 10 + 128);
+    let mut out = Vec::with_capacity(data.len().saturating_mul(11) / 10 + 128);
 
     // =ybegin header (single-part: no part= or total= fields)
     out.extend_from_slice(
@@ -82,7 +82,7 @@ pub fn encode_part(
 ) -> Vec<u8> {
     // Clamp to at least 2: escape pairs are 2 bytes and must fit on one line.
     let line_length = line_length.max(2) as usize;
-    let mut out = Vec::with_capacity(data.len() * 11 / 10 + 256);
+    let mut out = Vec::with_capacity(data.len().saturating_mul(11) / 10 + 256);
 
     // =ybegin header (multi-part: includes part= and total= fields)
     out.extend_from_slice(
