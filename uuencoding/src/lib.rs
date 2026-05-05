@@ -243,6 +243,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
 /// let encoded = uuencoding::encode(b"Cat", "cat.txt", 0o644);
 /// assert_eq!(encoded, b"begin 644 cat.txt\n#0V%T\n`\nend\n");
 /// ```
+#[must_use]
 pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
     encode::encode(data, filename, mode)
 }
@@ -285,6 +286,7 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
 /// assert_eq!(block.metadata.filename, "hello.txt");
 /// assert_eq!(block.begin_offset, 7);
 /// ```
+#[must_use]
 pub fn scan(input: &[u8]) -> Vec<Result<ScannedBlock, UuError>> {
     scan::scan_impl(input)
 }

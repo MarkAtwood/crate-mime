@@ -44,6 +44,14 @@ pub struct SignerResult {
 /// Returned inside [`SmimeError::CertChain`].  Callers can match on this enum
 /// to distinguish specific failure modes (e.g. expired certificate vs. missing
 /// trust anchor) without parsing error strings.
+///
+/// # Compatibility stubs
+///
+/// Two variants — `AllTrustAnchorsExpired` and `PathLenViolated` — are marked
+/// `#[deprecated]` and are **never emitted** by the current validator.  They
+/// exist solely so that serialized data produced by older versions of this crate
+/// can be deserialized without error.  New code should not match on them; see
+/// each variant's deprecation message for the current equivalent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum CertChainError {
