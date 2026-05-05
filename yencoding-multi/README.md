@@ -32,7 +32,7 @@ let part2 = decode(raw_article_2).unwrap();
 
 // 2. Set up the assembler with the total file size.
 let total_size = part1.metadata.size; // from =ybegin size=
-let mut assembler = Assembler::new(total_size);
+let mut assembler = Assembler::new(total_size).expect("total_size too large for this platform");
 
 // 3. Add parts in any order.
 assembler.add_part(&part1).unwrap();
@@ -51,6 +51,9 @@ if assembler.is_complete() {
 pub enum AssemblyError {
     OverlappingPart { existing: Range<u64>, new: Range<u64> },
     OutOfRange { begin: u64, end: u64, total_size: u64 },
+    DataLengthMismatch { declared_range_len: usize, actual_data_len: usize },
+    MalformedPartRange,
+    TotalSizeTooLarge { total_size: u64 },
     CrcMismatch { expected: u32, actual: u32 },
     Incomplete { missing: Vec<Range<u64>> },
 }

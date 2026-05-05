@@ -57,7 +57,7 @@ use crate::part::ParsedPart;
 /// All byte offsets are **absolute** — they are in the same coordinate space
 /// as `ParsedPart::body_range` and the `raw` buffer passed to
 /// [`scan_inline_yencode()`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InlineYEncBlock {
     /// Byte offset of the `=ybegin` line within `raw`.
     ///
@@ -258,8 +258,20 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
         Ok(part) => {
             // Find where =yend line ends within slice so the caller knows
             // how many bytes to skip.
-            let consumed = find_yend_end(slice).unwrap_or(slice.len());
-            (part, consumed, false)
+            //
+            // If yencoding::decode() succeeded, =yend was definitely in the
+            // slice and find_yend_end() must find it too. If it somehow returns
+            // None that is a logic error: fall back to advancing past =ybegin
+            // only (rather than consuming the whole remaining body) and mark
+            // the block as an encoding problem so the caller is not silently
+            // misled.
+            match find_yend_end(slice) {
+                Some(consumed) => (part, consumed, false),
+                None => {
+                    let consumed = find_line_end(slice, 0);
+                    (part, consumed, true)
+                }
+            }
         }
         Err(e) => {
             // Build a sentinel DecodedPart for the error case.
@@ -273,15 +285,31 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
 
 /// Find the byte offset just past the `=yend` line in `slice`.
 /// Returns `None` if no `=yend` line is found (truncated article).
+///
+/// Matches `=yend` only when followed by a space, `\r`, `\n`, or end-of-slice
+/// — the same boundary requirement that `yencoding::decode` uses internally
+/// via `strip_keyword(line, b"=yend ")`.  Without this guard, an encoded data
+/// line whose first two bytes decode via the `=X` escape path to bytes that
+/// spell `yend` (i.e. a line starting with `=y`) could be misidentified as
+/// the terminator, causing `find_yend_end` to return a different position than
+/// `yencoding::decode` found, and making `begin_length` wrong.
 fn find_yend_end(slice: &[u8]) -> Option<usize> {
     let needle = b"=yend";
     let mut pos = 0;
     while pos < slice.len() {
-        if slice[pos..].starts_with(needle) {
-            // Advance to end of this line.
-            return Some(find_line_end(slice, pos));
+        let rest = &slice[pos..];
+        if rest.starts_with(needle) {
+            // Require the keyword to be followed by a delimiter so we don't
+            // match =yend inside an encoded data line.
+            let after = rest.get(needle.len()).copied();
+            match after {
+                None | Some(b' ') | Some(b'\r') | Some(b'\n') => {
+                    return Some(find_line_end(slice, pos));
+                }
+                _ => {} // false match — continue scanning
+            }
         }
-        match slice[pos..].iter().position(|&b| b == b'\n') {
+        match rest.iter().position(|&b| b == b'\n') {
             Some(rel) => pos += rel + 1,
             None => break,
         }
@@ -542,6 +570,20 @@ mod tests {
         assert_eq!(blocks[0].part_end, Some(3));
         assert_eq!(blocks[0].file_size, 6);
         assert!(blocks[0].crc32_verified);
+        // Oracle: bytes [0,1,2] are the decoded payload of this part.
+        assert_eq!(
+            blocks[0].data,
+            &[0u8, 1, 2],
+            "decoded bytes must match oracle"
+        );
+        // Slice invariant: raw[begin_offset..begin_offset+begin_length] == encoded
+        let start = blocks[0].begin_offset as usize;
+        let end = start + blocks[0].begin_length as usize;
+        assert_eq!(
+            &raw[start..end],
+            encoded.as_slice(),
+            "slice invariant must hold for multi-part block"
+        );
     }
 
     // Integration test: full parse() → scan_inline_yencode() pipeline
