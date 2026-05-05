@@ -45,12 +45,13 @@
 //!
 //! # Security note
 //!
-//! Decoded output can be substantially larger than the encoded input (ratio
-//! approaches 3:4 in the limit). Always apply a size budget **before** passing
-//! decoded bytes to a decompressor or any other secondary processor. If decoded
-//! bytes are a compressed archive, decompression is the caller's responsibility
-//! and must be guarded against decompression bombs. This crate does not
-//! decompress and does not impose size limits.
+//! UUencoding expands data by approximately 4/3 (three raw bytes become four
+//! encoded bytes, plus line-length overhead). Decoded output is therefore
+//! *smaller* than the encoded input. However, decoded bytes may represent a
+//! compressed archive (`.tar.gz`, `.zip`, `.rar`, etc.). Any subsequent
+//! decompression is the caller's responsibility and must be independently
+//! guarded against decompression-bomb attacks. This crate does not decompress
+//! and does not impose size limits.
 //!
 //! # Quick start
 //!

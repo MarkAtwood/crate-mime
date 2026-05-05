@@ -193,6 +193,7 @@ fn finish_decode(
         part_begin,
         part_end,
         crc32_verified,
+        whole_file_crc32: yend.crc32,
     })
 }
 

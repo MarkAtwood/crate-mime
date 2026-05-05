@@ -341,6 +341,7 @@ fn make_error_sentinel(_err: yencoding::YencError) -> yencoding::DecodedPart {
         part_begin: None,
         part_end: None,
         crc32_verified: false,
+        whole_file_crc32: None,
     }
 }
 

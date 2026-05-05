@@ -20,9 +20,9 @@ use yencoding_multi::{Assembler, AssemblyError};
 //
 // IMPORTANT: The `whole_crc` returned here uses `crc32fast::hash` only for
 // the encode_part() API (which needs the value to write into the yEnc header).
-// The positive CRC correctness test (three_parts_in_order) does NOT rely on
-// this helper's CRC — it uses a hardcoded value from the independent Python
-// oracle instead.
+// Neither `three_parts_in_order` nor `three_parts_out_of_order` uses this
+// helper's CRC for its correctness assertion — both override it with a
+// hardcoded `EXPECTED_CRC` from the independent Python oracle.
 // ---------------------------------------------------------------------------
 fn encode_and_assemble(total_bytes: u8, num_parts: usize) -> (Assembler, Vec<u8>, u32) {
     let full: Vec<u8> = (0..total_bytes).collect();
@@ -89,8 +89,13 @@ fn three_parts_in_order() {
 #[test]
 fn three_parts_out_of_order() {
     // Oracle: bytes 0..90, 3 parts of 30.
+    // Independent CRC oracle (same data as three_parts_in_order):
+    //   python3 -c "import binascii; print(hex(binascii.crc32(bytes(range(90))) & 0xFFFFFFFF))"
+    //   → 0xb43b1251
+    const EXPECTED_CRC: u32 = 0xb43b1251;
     let full: Vec<u8> = (0u8..90).collect();
-    let whole_crc = crc32fast::hash(&full);
+    // Use the independently-verified value both for header writing and for final verification.
+    let whole_crc = EXPECTED_CRC;
 
     let make_enc = |start: usize, end: usize, part: u32| {
         let opts = EncodePartOptions {
@@ -112,7 +117,7 @@ fn three_parts_out_of_order() {
 
     // Insert in reverse order
     let mut assembler = Assembler::new(90).unwrap();
-    assembler.set_expected_crc32(whole_crc);
+    assembler.set_expected_crc32(EXPECTED_CRC);
     assembler.add_part(&p3).unwrap();
     assembler.add_part(&p1).unwrap();
     assembler.add_part(&p2).unwrap();
@@ -252,6 +257,7 @@ fn crc_mismatch_on_finish() {
         part_begin: None,
         part_end: None,
         crc32_verified: false,
+        whole_file_crc32: None,
     };
     assembler.add_part(&part).unwrap();
     assembler.set_expected_crc32(0xdeadbeef); // wrong CRC
