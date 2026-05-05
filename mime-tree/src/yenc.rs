@@ -88,6 +88,9 @@ pub struct InlineYEncBlock {
 
     /// Total declared file size in bytes, from `=ybegin size=`. For multi-part
     /// articles this is the size of the complete file, not just this part.
+    ///
+    /// When [`is_encoding_problem`] is `true`, this field is `0` and does not
+    /// reflect a declared size (the header could not be parsed).
     pub file_size: u64,
 
     /// 1-based part number from `=ybegin part=`. `None` for single-part articles.
