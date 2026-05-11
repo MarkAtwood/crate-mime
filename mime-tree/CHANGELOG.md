@@ -2,7 +2,7 @@
 
 All notable changes to `mime-tree` will be documented here.
 
-## [Unreleased]
+## [0.3.0] - 2026-05-11
 
 ### Breaking Changes
 

@@ -1,6 +1,6 @@
 [package]
 name = "smime-tree"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -33,7 +33,7 @@ getrandom = { version = "0.4", features = ["sys_rng"] }
 serde = { version = "1", features = ["derive"] }
 subtle = { version = "2" }
 zeroize = { version = "1", features = ["zeroize_derive"] }
-mime-tree = { version = "0.2.0", path = "../mime-tree" }
+mime-tree = { version = "0.3.0", path = "../mime-tree" }
 # Certificate chain validation via the PKIX crate family.
 # pkix-chain uses x509-cert 0.2 (the stable stack), while the rest of
 # smime-tree uses x509-cert 0.3.0-rc (required by the `cms` crate).
