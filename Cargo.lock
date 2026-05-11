@@ -1583,7 +1583,7 @@ dependencies = [
 
 [[package]]
 name = "yencoding"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crc32fast",
  "serde",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "yencoding-multi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crc32fast",
  "yencoding",
