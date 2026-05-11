@@ -199,6 +199,42 @@ contains the byte sequence `b"=ybegin "`.
 For multi-part reassembly, pass each `InlineYEncBlock`'s fields to
 [`yencoding_multi::Assembler`](https://crates.io/crates/yencoding-multi).
 
+## Typed header values (RFC 8621 `As*` forms)
+
+`ParsedHeader` exposes each header as a decoded raw string. For callers that need
+the RFC 8621 §4.1.2 parsed forms (the JMAP `header:<name>:as<form>` selectors),
+`parse_header_typed` takes the raw bytes of a header's field value and returns
+the requested parsed form:
+
+```rust
+use mime_tree::{parse_header_typed, HeaderForm, HeaderValueTyped};
+
+let raw_value = b" \"Alice\" <alice@example.com>, bob@example.com";
+match parse_header_typed(HeaderForm::Addresses, raw_value) {
+    HeaderValueTyped::Addresses(addrs) => {
+        for a in &addrs {
+            println!("{:?} <{:?}>", a.name, a.address);
+        }
+    }
+    _ => unreachable!(),
+}
+```
+
+| `HeaderForm` | RFC 8621 § | Output variant |
+|---|---|---|
+| `Raw` | 4.1.2.1 | `Raw(String)` — trimmed UTF-8 only, no other decoding |
+| `Addresses` | 4.1.2.3 | `Addresses(Vec<EmailAddress>)` — flat list, group structure discarded |
+| `GroupedAddresses` | 4.1.2.4 | `GroupedAddresses(Vec<AddressGroup>)` — groups preserved |
+| `MessageIds` | 4.1.2.5 | `MessageIds(Vec<String>)` — bare ids, no `<>` or CFWS |
+| `Date` | 4.1.2.6 | `DateTime(Option<HeaderDateTime>)` — `None` if unparseable |
+| `URLs` | 4.1.2.7 | `URLs(Vec<String>)` — bare URLs, no `<>` or comments |
+
+`EmailAddress`, `AddressGroup`, `HeaderDateTime`, `HeaderForm`, and
+`HeaderValueTyped` are all owned, lifetime-free, and `Serialize + Deserialize`.
+Parsing is best-effort: malformed input yields the empty result for the
+requested form (empty `Vec`, empty string, or `DateTime(None)`) — never an
+error and never a panic.
+
 ## Design invariants
 
 - **No JMAP dependency.** General-purpose MIME parser; no `jmap-mail-types`.

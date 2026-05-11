@@ -35,6 +35,7 @@
 
 mod decode;
 mod error;
+mod header_typed;
 mod message;
 mod parse;
 mod part;
@@ -43,6 +44,9 @@ mod walk;
 mod yenc;
 
 pub use error::ParseError;
+pub use header_typed::{
+    parse_header_typed, AddressGroup, EmailAddress, HeaderDateTime, HeaderForm, HeaderValueTyped,
+};
 pub use message::{DecodedBodyValue, ParsedMessage};
 pub use parse::{decode_body_value, parse};
 pub use part::{ParsedHeader, ParsedPart, TransferEncoding};
