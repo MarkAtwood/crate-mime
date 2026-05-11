@@ -2,6 +2,23 @@
 
 All notable changes to `smime-tree` will be documented here.
 
+## [0.3.1] - 2026-05-11
+
+### Fixed
+
+- Cargo dep `pkix-chain` bumped from yanked `0.1.1` to current `0.4`.
+  smime-tree 0.3.0 (and 0.2.0, 0.1.0) pinned `pkix-chain = "0.1.1"`, which was
+  yanked from crates.io on 2026-05-06 along with the entire 0.1.x line. New
+  consumers running `cargo add smime-tree` would fail dep resolution. The
+  0.3.0/0.2.0/0.1.0 releases have been yanked.
+
+### Changed
+
+- Internal: `cert.rs` switched from struct-expression construction of
+  `pkix_chain::ValidationPolicy` to the `ValidationPolicy::new(now_unix)`
+  constructor, required because pkix-path 0.3 marks the struct
+  `#[non_exhaustive]`. No public API change.
+
 ## [0.3.0] - 2026-05-11
 
 ### Added

@@ -69,11 +69,8 @@ pub(crate) fn validate_chain(
     // max_path_len is set explicitly to match build_chain::MAX_DEPTH so both limits
     // stay in sync if either changes.
     let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    let policy = pkix_chain::ValidationPolicy {
-        current_time_unix: now_unix,
-        max_path_len: MAX_DEPTH as u8,
-        ..Default::default()
-    };
+    let mut policy = pkix_chain::ValidationPolicy::new(now_unix);
+    policy.max_path_len = MAX_DEPTH as u8;
     pkix_chain::verify_chain_default(
         &chain_stable,
         &anchors_stable,
