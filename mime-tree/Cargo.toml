@@ -18,4 +18,4 @@ base64 = { version = "0.22", default-features = false, features = ["alloc"] }
 quoted_printable = "0.5"
 serde = { version = "1", features = ["derive"] }
 uuencoding = { version = "0.3.0", path = "../uuencoding" }
-yencoding = { version = "0.1.0", path = "../yencoding" }
+yencoding = { version = "0.2.0", path = "../yencoding" }
