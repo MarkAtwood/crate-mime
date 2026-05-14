@@ -60,35 +60,120 @@ pub struct AddressGroup {
     pub addresses: Vec<EmailAddress>,
 }
 
+/// Sign of a `date-time` timezone offset from GMT (RFC 5322 §3.3).
+///
+/// East of GMT corresponds to positive `+HHMM` offsets (e.g. `+0100`).
+/// West of GMT corresponds to negative `-HHMM` offsets (e.g. `-0600`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum TzSign {
+    /// Offset is east of GMT (`+HHMM`).
+    East,
+    /// Offset is west of GMT (`-HHMM`).
+    West,
+}
+
 /// An RFC 5322 §3.3 `date-time` value parsed from a header.
 ///
-/// Mirrors `mail_parser::DateTime` but is owned and lifetime-free so it can
-/// be embedded in `ParsedMessage`-adjacent state and serialized.
+/// Public fields permit serde transparency and direct field access from
+/// JMAP-shaped code. The fields mirror `mail_parser::DateTime` 1-to-1
+/// **except** for `tz_sign`, which is an explicit enum rather than a
+/// bool. This is a deliberate API choice — see `TzSign` — and means
+/// `HeaderDateTime` and `mail_parser::DateTime` are not bit-identical
+/// even though they round-trip via [`HeaderDateTime::from_mail_parser`]
+/// / [`HeaderDateTime::to_mail_parser`].
+///
+/// # Wire-format dependency on mail-parser
+///
+/// [`Self::to_rfc3339`] and [`Self::to_timestamp`] delegate to
+/// `mail_parser::DateTime`'s formatters. The exact strings produced by
+/// `to_rfc3339`, and the exact value produced by `to_timestamp` for
+/// edge-case input, are therefore defined by the pinned mail-parser
+/// version. mime-tree's Cargo.toml uses a caret range (`mail-parser =
+/// "0.11"`) so 0.11.x patch updates can in principle change the output
+/// without a mime-tree version bump. Downstream callers that persist
+/// these strings (database keys, JMAP wire responses, indexed columns)
+/// SHOULD pin mail-parser tightly if they require byte-stable output
+/// across mime-tree patch bumps.
+///
+/// # Field invariants
+///
+/// `parse_header_typed` only constructs `HeaderDateTime` values that
+/// passed mail-parser's validation: `year >= 1900`, `month ∈ 1..=12`,
+/// `day ∈ 1..=31` (calendar-validated), `hour ∈ 0..=23`,
+/// `minute ∈ 0..=59`, `second ∈ 0..=60` (RFC 5322 §4.3 leap second),
+/// `tz_hour ∈ 0..=23`, `tz_minute ∈ 0..=59`.
+///
+/// Direct construction with public fields can produce out-of-range
+/// values. The behaviour of `to_rfc3339` and `to_timestamp` on such
+/// values is unspecified — output may be syntactically malformed
+/// RFC 3339 or a meaningless `i64`. Callers that build `HeaderDateTime`
+/// from external sources should validate ranges themselves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct HeaderDateTime {
+    /// Four-digit calendar year. Parser-produced values: `1900..=3000`.
     pub year: u16,
+    /// Month of the year, `1..=12` for parser-produced values.
     pub month: u8,
+    /// Day of the month, `1..=31` (calendar-validated against
+    /// `year`/`month`) for parser-produced values.
     pub day: u8,
+    /// Hour of the day, `0..=23` for parser-produced values.
     pub hour: u8,
+    /// Minute, `0..=59` for parser-produced values.
     pub minute: u8,
+    /// Second, `0..=60` for parser-produced values (RFC 5322 §4.3
+    /// allows 60 to represent a leap second).
     pub second: u8,
-    /// `true` if the offset from GMT is negative (i.e. west of GMT).
-    pub tz_before_gmt: bool,
+    /// Sign of the timezone offset from GMT.
+    pub tz_sign: TzSign,
+    /// Hours component of the timezone offset, `0..=23` for
+    /// parser-produced values.
     pub tz_hour: u8,
+    /// Minutes component of the timezone offset, `0..=59` for
+    /// parser-produced values.
     pub tz_minute: u8,
 }
 
 impl HeaderDateTime {
-    /// Render as an RFC 3339 / ISO 8601 timestamp string.
+    /// Render as an RFC 3339 / ISO 8601 §5.6 date-time string.
     ///
-    /// Delegates to mail-parser's formatter. Returns the canonical
-    /// `YYYY-MM-DDTHH:MM:SS±HH:MM` form.
+    /// # Output format
+    ///
+    /// * Non-UTC offset (any of `tz_hour`, `tz_minute` non-zero):
+    ///   `YYYY-MM-DDTHH:MM:SS±HH:MM`. Each component is zero-padded;
+    ///   `±` is `-` for west-of-GMT, `+` otherwise.
+    /// * UTC (`tz_hour == 0 && tz_minute == 0`):
+    ///   `YYYY-MM-DDTHH:MM:SSZ`. Zulu form, not `+00:00`.
+    ///
+    /// No subsecond fraction is emitted (the seconds-fraction extension
+    /// of RFC 3339 is not represented in `HeaderDateTime`).
+    ///
+    /// # Examples
+    ///
+    /// * `1997-11-21T09:55:06-06:00` for `21 Nov 1997 09:55:06 -0600`.
+    /// * `2024-01-15T12:34:56Z` for `15 Jan 2024 12:34:56 +0000`.
+    ///
+    /// # Behaviour on out-of-range input
+    ///
+    /// The exact string for out-of-range field values
+    /// (e.g. `month = 13`) is unspecified — it depends on the pinned
+    /// mail-parser version and may not be syntactically valid RFC 3339.
+    /// See the type-level docs.
     #[must_use]
     pub fn to_rfc3339(&self) -> String {
         self.to_mail_parser().to_rfc3339()
     }
 
-    /// Render as a Unix timestamp (seconds since 1970-01-01 UTC).
+    /// Render as a Unix timestamp (seconds since 1970-01-01T00:00:00Z).
+    ///
+    /// Pre-epoch dates return negative values. The result is computed
+    /// linearly from the field values without validation; on
+    /// out-of-range or otherwise invalid input (e.g. `month = 0`,
+    /// `day = 99`, year overflowing the calendar arithmetic) the
+    /// returned `i64` is unspecified and SHOULD NOT be relied upon.
+    /// See the type-level docs.
     #[must_use]
     pub fn to_timestamp(&self) -> i64 {
         self.to_mail_parser().to_timestamp()
@@ -102,7 +187,7 @@ impl HeaderDateTime {
             hour: self.hour,
             minute: self.minute,
             second: self.second,
-            tz_before_gmt: self.tz_before_gmt,
+            tz_before_gmt: matches!(self.tz_sign, TzSign::West),
             tz_hour: self.tz_hour,
             tz_minute: self.tz_minute,
         }
@@ -116,7 +201,11 @@ impl HeaderDateTime {
             hour: dt.hour,
             minute: dt.minute,
             second: dt.second,
-            tz_before_gmt: dt.tz_before_gmt,
+            tz_sign: if dt.tz_before_gmt {
+                TzSign::West
+            } else {
+                TzSign::East
+            },
             tz_hour: dt.tz_hour,
             tz_minute: dt.tz_minute,
         }
