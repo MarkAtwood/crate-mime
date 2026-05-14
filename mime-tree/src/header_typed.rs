@@ -130,7 +130,14 @@ impl HeaderDateTime {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum HeaderForm {
-    /// Trim whitespace; return the raw bytes as a UTF-8 string. (§4.1.2.1)
+    /// Trim surrounding whitespace; return the bytes as a UTF-8 string.
+    /// (§4.1.2.1)
+    ///
+    /// Non-UTF-8 bytes — legal in raw RFC 5322 but not in JMAP wire
+    /// format — are replaced with U+FFFD REPLACEMENT CHARACTER
+    /// (lossy conversion). This preserves the position and rough shape
+    /// of malformed input so callers can flag a mojibake header
+    /// without losing the rest of the field body.
     Raw,
     /// Parse as an RFC 5322 `address-list`. Group structure is discarded;
     /// only the flat list of mailboxes is returned. (§4.1.2.3)
@@ -198,9 +205,14 @@ pub enum HeaderValueTyped {
 pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueTyped {
     if matches!(form, HeaderForm::Raw) {
         // RFC 8621 §4.1.2.1: the value is the header field value with
-        // surrounding white space removed.
-        let s = std::str::from_utf8(raw_value).unwrap_or("").trim();
-        return HeaderValueTyped::Raw(s.to_owned());
+        // surrounding white space removed. Non-UTF-8 bytes are replaced
+        // with U+FFFD via `from_utf8_lossy` so malformed-but-non-empty
+        // input does not collapse into an indistinguishable empty
+        // string. This matches mail-parser's own handling of non-UTF-8
+        // header bytes (`HeaderValue::Text` is `Cow<str>` populated via
+        // `from_utf8_lossy`).
+        let s = String::from_utf8_lossy(raw_value);
+        return HeaderValueTyped::Raw(s.trim().to_owned());
     }
 
     // mail-parser's MessageStream parsers are written to consume header
