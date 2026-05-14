@@ -10,9 +10,9 @@
 //! No expected value is derived from running mime-tree itself.
 
 use mime_tree::{
-    parse_addresses, parse_date, parse_grouped_addresses, parse_header_typed, parse_message_ids,
-    parse_raw, parse_urls, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped, TzSign,
-    UnknownHeaderForm,
+    parse_addresses, parse_date, parse_grouped_addresses, parse_header_typed,
+    parse_header_typed_from, parse_message_ids, parse_raw, parse_text, parse_urls, AddressGroup,
+    EmailAddress, HeaderForm, HeaderValueTyped, TzSign, UnknownHeaderForm,
 };
 
 // ---------------------------------------------------------------------------
@@ -569,11 +569,12 @@ fn display_header_date_time_delegates_to_rfc3339() {
 // HeaderForm: Display / FromStr round-trip on JMAP form-token strings
 // ---------------------------------------------------------------------------
 
-/// Oracle: RFC 8621 §4.1.2 form-token strings: asRaw, asAddresses,
-/// asGroupedAddresses, asMessageIds, asDate, asURLs.
+/// Oracle: RFC 8621 §4.1.2 form-token strings: asRaw, asText,
+/// asAddresses, asGroupedAddresses, asMessageIds, asDate, asURLs.
 #[test]
 fn header_form_display_emits_jmap_tokens() {
     assert_eq!(format!("{}", HeaderForm::Raw), "asRaw");
+    assert_eq!(format!("{}", HeaderForm::Text), "asText");
     assert_eq!(format!("{}", HeaderForm::Addresses), "asAddresses");
     assert_eq!(
         format!("{}", HeaderForm::GroupedAddresses),
@@ -590,6 +591,7 @@ fn header_form_from_str_round_trip() {
     use std::str::FromStr;
     for f in [
         HeaderForm::Raw,
+        HeaderForm::Text,
         HeaderForm::Addresses,
         HeaderForm::GroupedAddresses,
         HeaderForm::MessageIds,
@@ -617,9 +619,7 @@ fn header_form_from_str_rejects_unknown_and_wrong_case() {
     // form-tokens are case- and prefix-sensitive per RFC 8621 §4.1.2.
     assert!(HeaderForm::from_str("Raw").is_err());
     assert!(HeaderForm::from_str("addresses").is_err());
-    // asText is reserved for RFC 8621 §4.1.2.2 (not yet implemented in
-    // this crate — see MIME-o2c.28). For now it must be rejected.
-    assert!(HeaderForm::from_str("asText").is_err());
+    assert!(HeaderForm::from_str("Text").is_err());
 }
 
 // ---------------------------------------------------------------------------
@@ -678,4 +678,129 @@ fn per_form_helpers_empty_on_malformed() {
     assert_eq!(parse_date(b" not a date"), None);
     assert!(parse_urls(b"https://example.com (no brackets)").is_empty());
     assert_eq!(parse_raw(b""), "");
+    assert_eq!(parse_text(b""), "");
+}
+
+// ---------------------------------------------------------------------------
+// asText form (RFC 8621 §4.1.2.2)
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 2047 encoded-word `=?UTF-8?Q?Hello_W=C3=B6rld?=` decodes
+/// to "Hello Wörld" (W + LATIN SMALL LETTER O WITH DIAERESIS + rld).
+/// Python: `email.header.decode_header(...)` produces the same.
+#[test]
+fn text_form_decodes_rfc2047_encoded_word() {
+    let raw = b" =?UTF-8?Q?Hello_W=C3=B6rld?=";
+
+    let parsed = parse_header_typed(HeaderForm::Text, raw);
+
+    assert_eq!(parsed, HeaderValueTyped::Text("Hello Wörld".to_owned()));
+}
+
+/// A plain unstructured header value with no encoded-words passes
+/// through (whitespace folded, leading SP stripped, no other change).
+#[test]
+fn text_form_plain_unencoded_passes_through() {
+    let raw = b" Subject of the message";
+
+    let parsed = parse_header_typed(HeaderForm::Text, raw);
+
+    assert_eq!(
+        parsed,
+        HeaderValueTyped::Text("Subject of the message".to_owned()),
+    );
+}
+
+/// Oracle: Unicode NFC normalisation. The decomposed sequence
+/// `e` (U+0065) + `combining acute` (U+0301) NFC-normalises to the
+/// precomposed `é` (U+00E9). Run a single LATIN SMALL LETTER E with
+/// COMBINING ACUTE through asText and expect the precomposed form.
+#[test]
+fn text_form_nfc_normalises_decomposed_combining_marks() {
+    // ASCII "caf" + e + combining acute. This is the NFD form.
+    let raw: &[u8] = b" caf\x65\xCC\x81";
+
+    let parsed = parse_header_typed(HeaderForm::Text, raw);
+
+    // The precomposed result should be the single code point
+    // U+00E9 (é), which in UTF-8 is 0xC3 0xA9.
+    assert_eq!(parsed, HeaderValueTyped::Text("café".to_owned()));
+
+    // Double-check: the NFC form must contain the single code point
+    // (0xC3 0xA9 bytes), not the two code points (0x65 0xCC 0x81).
+    if let HeaderValueTyped::Text(s) = parsed {
+        assert!(s.as_bytes().contains(&0xC3));
+        assert!(s.as_bytes().contains(&0xA9));
+        // Must NOT contain the combining acute byte sequence.
+        assert!(!s.as_bytes().windows(2).any(|w| w == [0xCC, 0x81]));
+    } else {
+        panic!("expected Text variant");
+    }
+}
+
+/// `parse_text` helper matches the Text variant of `parse_header_typed`.
+#[test]
+fn parse_text_helper_matches_parse_header_typed() {
+    let raw = b" Subject =?UTF-8?Q?with?= encoded";
+    let helper = parse_text(raw);
+    let full = match parse_header_typed(HeaderForm::Text, raw) {
+        HeaderValueTyped::Text(s) => s,
+        _ => unreachable!(),
+    };
+    assert_eq!(helper, full);
+}
+
+// ---------------------------------------------------------------------------
+// is_addressable filter (MIME-o2c.14)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn is_addressable_filters_display_name_only_entries() {
+    let list = vec![
+        EmailAddress::new(
+            Some("Alice".to_owned()),
+            Some("alice@example.com".to_owned()),
+        ),
+        EmailAddress::new(Some("Just A Name".to_owned()), None),
+        EmailAddress::new(None, None),
+        EmailAddress::new(None, Some("bare@example.com".to_owned())),
+    ];
+
+    let addressable: Vec<EmailAddress> = list
+        .into_iter()
+        .filter(EmailAddress::is_addressable)
+        .collect();
+
+    assert_eq!(addressable.len(), 2);
+    assert_eq!(addressable[0].address.as_deref(), Some("alice@example.com"));
+    assert_eq!(addressable[1].address.as_deref(), Some("bare@example.com"));
+}
+
+// ---------------------------------------------------------------------------
+// parse_header_typed_from: ParsedHeader composition (MIME-o2c.29)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn parse_header_typed_from_parsed_header() {
+    let raw = b"From: Alice <alice@example.com>\r\n\
+                Subject: Hello\r\n\
+                \r\n\
+                Body\r\n";
+    let msg = mime_tree::parse(raw).expect("parse");
+
+    let from = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("From"))
+        .expect("From header");
+
+    let typed = parse_header_typed_from(from, HeaderForm::Addresses);
+
+    assert_eq!(
+        typed,
+        HeaderValueTyped::Addresses(vec![EmailAddress::new(
+            Some("Alice".to_owned()),
+            Some("alice@example.com".to_owned()),
+        )]),
+    );
 }

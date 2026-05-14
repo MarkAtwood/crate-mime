@@ -5,12 +5,13 @@
 //!
 //! | RFC 8621 form        | Section    | mime-tree result variant                |
 //! |----------------------|------------|------------------------------------------|
+//! | `asRaw`              | §4.1.2.1   | [`HeaderValueTyped::Raw`]                |
+//! | `asText`             | §4.1.2.2   | [`HeaderValueTyped::Text`]               |
 //! | `asAddresses`        | §4.1.2.3   | [`HeaderValueTyped::Addresses`]          |
 //! | `asGroupedAddresses` | §4.1.2.4   | [`HeaderValueTyped::GroupedAddresses`]   |
 //! | `asMessageIds`       | §4.1.2.5   | [`HeaderValueTyped::MessageIds`]         |
 //! | `asDate`             | §4.1.2.6   | [`HeaderValueTyped::DateTime`]           |
 //! | `asURLs`             | §4.1.2.7   | [`HeaderValueTyped::URLs`]               |
-//! | `Raw`                | §4.1.2.1   | [`HeaderValueTyped::Raw`]                |
 //!
 //! The entry point is [`parse_header_typed`]. It takes the [`HeaderForm`]
 //! selector and the raw bytes of the header field value (the portion to the
@@ -21,17 +22,35 @@
 //! empty value (an empty `Vec`, an empty `Raw` string, or `DateTime(None)`
 //! for an unparseable date) — it never panics and never returns an error.
 //!
-//! These types are independent of the [`crate::ParsedHeader`] surface, which
-//! continues to expose only the decoded raw string. Add a typed view on top
-//! of an existing `ParsedHeader` by slicing the original bytes covered by
-//! [`crate::ParsedPart::header_range`] and feeding the field value to
-//! [`parse_header_typed`].
+//! These types are independent of the [`crate::ParsedHeader`] surface,
+//! which continues to expose only the decoded raw string. To layer a
+//! typed view on top of an existing `ParsedHeader`, feed its `value`
+//! bytes to [`parse_header_typed`]:
+//!
+//! ```ignore
+//! let msg = mime_tree::parse(raw)?;
+//! if let Some(h) = msg.headers.iter().find(|h| h.name.eq_ignore_ascii_case("From")) {
+//!     let addrs = mime_tree::parse_addresses(h.value.as_bytes());
+//! }
+//! ```
+//!
+//! For convenience, [`parse_header_typed_from`] is a thin wrapper that
+//! takes the `ParsedHeader` directly:
+//!
+//! ```ignore
+//! let typed = mime_tree::parse_header_typed_from(h, mime_tree::HeaderForm::Addresses);
+//! ```
+//!
+//! Either path yields the same result.
 
 use std::borrow::Cow;
 use std::fmt;
 
 use mail_parser::{parsers::MessageStream, Address, HeaderValue};
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
+
+use crate::ParsedHeader;
 
 /// A single RFC 5322 `mailbox` parsed from an `address-list`.
 ///
@@ -77,6 +96,40 @@ impl EmailAddress {
     #[must_use]
     pub fn new(name: Option<String>, address: Option<String>) -> Self {
         Self { name, address }
+    }
+
+    /// Whether this `EmailAddress` carries an `addr-spec`.
+    ///
+    /// `parse_header_typed` produces `EmailAddress` values with
+    /// `address == None` for malformed mailboxes (most commonly,
+    /// display-name-only mailboxes from non-spec-conformant clients —
+    /// e.g. a draft saved with just a typed-but-incomplete `To:`).
+    /// Such entries are unusable for sending mail, address comparison,
+    /// or addr-spec-keyed lookup.
+    ///
+    /// Use this helper to filter parsed address lists down to the
+    /// usable subset:
+    ///
+    /// ```
+    /// use mime_tree::EmailAddress;
+    ///
+    /// let parsed = vec![
+    ///     EmailAddress::new(
+    ///         Some("Alice".to_owned()),
+    ///         Some("alice@example.com".to_owned()),
+    ///     ),
+    ///     EmailAddress::new(Some("Display-Name Only".to_owned()), None),
+    /// ];
+    /// let usable: Vec<EmailAddress> = parsed
+    ///     .into_iter()
+    ///     .filter(EmailAddress::is_addressable)
+    ///     .collect();
+    /// assert_eq!(usable.len(), 1);
+    /// assert_eq!(usable[0].address.as_deref(), Some("alice@example.com"));
+    /// ```
+    #[must_use]
+    pub fn is_addressable(&self) -> bool {
+        self.address.is_some()
     }
 }
 
@@ -368,6 +421,15 @@ pub enum HeaderForm {
     /// of malformed input so callers can flag a mojibake header
     /// without losing the rest of the field body.
     Raw,
+    /// RFC 8621 §4.1.2.2 Text form. Unfold whitespace, strip the
+    /// trailing CRLF and leading SP, decode all syntactically-correct
+    /// RFC 2047 encoded-words, then Unicode-normalise the result to
+    /// NFC.
+    ///
+    /// This is the form most commonly used by JMAP clients fetching
+    /// human-readable header fields like Subject, Comments, Keywords,
+    /// and List-Id.
+    Text,
     /// Parse as an RFC 5322 `address-list`. Group structure is discarded;
     /// only the flat list of mailboxes is returned. (§4.1.2.3)
     Addresses,
@@ -395,6 +457,7 @@ impl HeaderForm {
     pub fn as_jmap_token(&self) -> &'static str {
         match self {
             HeaderForm::Raw => "asRaw",
+            HeaderForm::Text => "asText",
             HeaderForm::Addresses => "asAddresses",
             HeaderForm::GroupedAddresses => "asGroupedAddresses",
             HeaderForm::MessageIds => "asMessageIds",
@@ -432,6 +495,7 @@ impl std::str::FromStr for HeaderForm {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "asRaw" => Ok(HeaderForm::Raw),
+            "asText" => Ok(HeaderForm::Text),
             "asAddresses" => Ok(HeaderForm::Addresses),
             "asGroupedAddresses" => Ok(HeaderForm::GroupedAddresses),
             "asMessageIds" => Ok(HeaderForm::MessageIds),
@@ -475,6 +539,9 @@ impl std::str::FromStr for HeaderForm {
 pub enum HeaderValueTyped {
     /// Result of [`HeaderForm::Raw`]: the trimmed UTF-8 string.
     Raw(String),
+    /// Result of [`HeaderForm::Text`]: whitespace-unfolded, RFC 2047
+    /// decoded, NFC-normalised UTF-8 string.
+    Text(String),
     /// Result of [`HeaderForm::Addresses`].
     Addresses(Vec<EmailAddress>),
     /// Result of [`HeaderForm::GroupedAddresses`].
@@ -645,6 +712,24 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
             let s = String::from_utf8_lossy(raw_value);
             HeaderValueTyped::Raw(s.trim().to_owned())
         }
+        HeaderForm::Text => {
+            // RFC 8621 §4.1.2.2: unfold whitespace, strip trailing CRLF
+            // and leading SP, decode RFC 2047 encoded-words with known
+            // charsets, NFC-normalise the result.
+            //
+            // mail-parser's `parse_unstructured` handles unfolding,
+            // CRLF stripping, leading-SP removal, and RFC 2047 decoding
+            // in one pass — that's steps 1-4 of RFC 8621 §4.1.2.2.
+            // Step 5 (NFC) is applied here via the unicode-normalization
+            // crate.
+            let buf = crlf_terminated(raw_value);
+            let hv = MessageStream::new(&buf).parse_unstructured();
+            let decoded = match hv {
+                HeaderValue::Text(s) => s.into_owned(),
+                _ => String::new(),
+            };
+            HeaderValueTyped::Text(decoded.nfc().collect())
+        }
         HeaderForm::URLs => {
             // RFC 8621 §4.1.2.7 / RFC 2369 §2: each URL is wrapped in
             // angle brackets. RFC 8621 §4.1.2.7 mandates that any
@@ -733,6 +818,20 @@ pub fn parse_raw(raw_value: &[u8]) -> String {
     }
 }
 
+/// Parse the header field value as an RFC 8621 §4.1.2.2 Text form:
+/// whitespace unfolded, RFC 2047 encoded-words decoded, Unicode
+/// normalised to NFC.
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::Text`].
+#[must_use]
+pub fn parse_text(raw_value: &[u8]) -> String {
+    match parse_header_typed(HeaderForm::Text, raw_value) {
+        HeaderValueTyped::Text(s) => s,
+        _ => String::new(),
+    }
+}
+
 /// Parse the header field value as an RFC 8621 §4.1.2.3 Addresses form:
 /// a flat list of mailboxes with group structure discarded.
 ///
@@ -797,6 +896,19 @@ pub fn parse_urls(raw_value: &[u8]) -> Vec<String> {
         HeaderValueTyped::URLs(v) => v,
         _ => Vec::new(),
     }
+}
+
+/// Parse an existing [`ParsedHeader`]'s value into the requested
+/// RFC 8621 parsed form.
+///
+/// Composition helper: feeds `header.value.as_bytes()` to
+/// [`parse_header_typed`]. Equivalent to writing that call by hand —
+/// provided so callers do not have to remember to convert through
+/// `as_bytes()` and so the typed-header API composes cleanly with the
+/// `ParsedHeader` surface produced by [`crate::parse`].
+#[must_use]
+pub fn parse_header_typed_from(header: &ParsedHeader, form: HeaderForm) -> HeaderValueTyped {
+    parse_header_typed(form, header.value.as_bytes())
 }
 
 // ---------------------------------------------------------------------------
