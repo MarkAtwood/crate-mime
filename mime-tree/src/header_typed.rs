@@ -40,10 +40,28 @@ use serde::{Deserialize, Serialize};
 /// `name` is the optional display name. `address` is the `addr-spec`. Both
 /// are populated best-effort; either may be `None` if the original header
 /// is malformed.
+///
+/// # Equality semantics
+///
+/// The derived `PartialEq`/`Eq`/`Hash` is byte-exact on both fields. In
+/// particular, `address` comparison is case-sensitive across the entire
+/// addr-spec, even though RFC 5321 §2.4 defines the *domain* part of an
+/// addr-spec as case-insensitive — so `alice@example.com` and
+/// `alice@EXAMPLE.COM` compare as not equal and hash differently. Callers
+/// that need RFC-5321-conformant equality (HashSet dedup of recipient
+/// lists, etc.) MUST canonicalise the domain part themselves before
+/// comparing or hashing.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct EmailAddress {
-    /// Display name from the `mailbox`, RFC 2047 encoded-words already decoded.
+    /// Display name from the `mailbox`, RFC 2047 encoded-words already
+    /// decoded.
+    ///
+    /// Parser-produced values are RFC 8621 §4.1.2.3 normalised:
+    /// surrounding ASCII whitespace is trimmed from the decoded
+    /// display name. A name that is empty after trimming is mapped to
+    /// `None` (a lone empty quoted-string never surfaces as
+    /// `Some(String::new())`).
     pub name: Option<String>,
     /// `addr-spec` of the `mailbox`.
     pub address: Option<String>,
@@ -97,6 +115,10 @@ impl fmt::Display for EmailAddress {
 #[non_exhaustive]
 pub struct AddressGroup {
     /// Display name of the group, or `None` for ungrouped mailboxes.
+    ///
+    /// Parser-produced values follow the same normalisation as
+    /// [`EmailAddress::name`]: surrounding ASCII whitespace trimmed; an
+    /// empty result is mapped to `None`, not `Some(String::new())`.
     pub name: Option<String>,
     /// Mailboxes belonging to this group.
     pub addresses: Vec<EmailAddress>,
@@ -195,6 +217,24 @@ pub enum TzSign {
 /// values is unspecified — output may be syntactically malformed
 /// RFC 3339 or a meaningless `i64`. Callers that build `HeaderDateTime`
 /// from external sources should validate ranges themselves.
+///
+/// # Equality semantics
+///
+/// The derived `PartialEq`/`Eq`/`Hash` is **field-wise**, not
+/// **instant-wise**. Two `HeaderDateTime` values representing the same
+/// moment in time at different offsets compare as not-equal and hash
+/// differently. For example:
+///
+/// ```text
+///   2024-01-01T12:00:00+00:00   (12:00 UTC)
+///   2024-01-01T13:00:00+01:00   (12:00 UTC, expressed +01:00)
+/// ```
+///
+/// are the same instant but compare `!=`. Callers needing
+/// instant-equality (deduping timestamps across clients in different
+/// time zones, time-series bucketing) MUST compare
+/// [`Self::to_timestamp`] values rather than relying on the derived
+/// `PartialEq`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct HeaderDateTime {
@@ -340,6 +380,33 @@ pub enum HeaderForm {
 }
 
 /// A header field value rendered in one of the RFC 8621 parsed forms.
+///
+/// # Serde wire format
+///
+/// `HeaderValueTyped` and [`HeaderForm`] use serde's *default*
+/// representation: externally-tagged for the enum, capitalised Rust
+/// variant names. Examples:
+///
+/// ```json
+/// {"Addresses": [{"name": "Alice", "address": "alice@example.com"}]}
+/// {"DateTime": null}
+/// {"Raw": "Subject line"}
+/// "Addresses"               // serialized HeaderForm
+/// ```
+///
+/// This is a **deliberate** choice for in-crate serialization (between
+/// services, into databases). It is **not** the RFC 8621 wire format
+/// used over JMAP HTTP/JSON. RFC 8621 §4.1.2 uses property-selector
+/// strings such as `header:Subject:asAddresses` rather than serializing
+/// the form name as an enum tag. Callers exposing parsed headers to a
+/// JMAP client SHOULD map between this representation and the JMAP
+/// wire format at the API boundary; relying on the in-crate serde
+/// shape as the wire format will produce a non-conformant JMAP
+/// response.
+///
+/// Pre-1.0, this representation is subject to change. From 1.0 onward
+/// the in-crate serde format will be a stability surface and will be
+/// changed only with a major version bump.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum HeaderValueTyped {
@@ -362,14 +429,52 @@ pub enum HeaderValueTyped {
 
 /// Parse a header field value into the requested RFC 8621 parsed form.
 ///
-/// `raw_value` is the bytes of the header field value — the portion to the
-/// right of the `:` in the header line, including any folded continuation
-/// lines but excluding the header name and the trailing CRLF.
+/// `raw_value` is the bytes of the header field value — the portion to
+/// the right of the `:` in the header line, including any folded
+/// continuation lines.
 ///
-/// Parsing is best-effort. Malformed input yields the empty result for the
-/// requested form (empty `Vec`, empty string, or `DateTime(None)`).
+/// # Trailing line ending
+///
+/// A trailing CRLF (or bare LF) is **permitted but not required**:
+///
+/// * Input ending in `\r\n` is used as-is.
+/// * Input ending in `\n` is converted to `\r\n` internally.
+/// * Input with no trailing line ending has `\r\n` appended internally.
+///
+/// All three shapes produce the same result. Callers may pass the field
+/// body with or without the line ending — pick whichever is easiest to
+/// extract from the source.
+///
+/// # Best-effort parsing
+///
+/// Malformed input yields the empty result for the requested form
+/// (empty `Vec`, empty string, or `DateTime(None)`). The function never
+/// panics and never returns an error.
+///
+/// # Empty-result ambiguity
+///
+/// The empty result is the **same value** regardless of cause:
+///
+/// | Form                | Empty value             | Triggered by                                       |
+/// |---------------------|-------------------------|----------------------------------------------------|
+/// | `Raw`               | `Raw("")`               | empty, all-whitespace, or all-malformed-UTF-8 input |
+/// | `Addresses`         | `Addresses(vec![])`     | empty, malformed, or zero-mailbox input            |
+/// | `GroupedAddresses`  | `GroupedAddresses(vec![])` | same as above                                   |
+/// | `MessageIds`        | `MessageIds(vec![])`    | empty, no `<...>` brackets, all garbage            |
+/// | `Date`              | `DateTime(None)`        | empty, malformed, or all-zero day/month            |
+/// | `URLs`              | `URLs(vec![])`          | empty, no `<...>` brackets, all garbage            |
+///
+/// Callers cannot distinguish "header was present but empty" from
+/// "header was present but malformed" from "input was non-UTF-8 noise"
+/// using this API. Out-of-band signalling (e.g. recording a warning
+/// alongside the parse result) is the caller's responsibility. Future
+/// minor releases may add a parallel `parse_header_typed_strict`
+/// returning `Result` or a tuple `(HeaderValueTyped, Warnings)` —
+/// neither is exposed today.
 ///
 /// # Examples
+///
+/// ## Addresses (RFC 8621 §4.1.2.3)
 ///
 /// ```
 /// use mime_tree::{parse_header_typed, EmailAddress, HeaderForm, HeaderValueTyped};
@@ -383,6 +488,84 @@ pub enum HeaderValueTyped {
 ///         Some("James Smythe".to_owned()),
 ///         Some("james@example.com".to_owned()),
 ///     )]),
+/// );
+/// ```
+///
+/// ## GroupedAddresses (RFC 8621 §4.1.2.4)
+///
+/// ```
+/// use mime_tree::{parse_header_typed, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped};
+///
+/// let raw = b"Friends: alice@example.com, bob@example.com;";
+/// let parsed = parse_header_typed(HeaderForm::GroupedAddresses, raw);
+/// assert_eq!(
+///     parsed,
+///     HeaderValueTyped::GroupedAddresses(vec![AddressGroup::new(
+///         Some("Friends".to_owned()),
+///         vec![
+///             EmailAddress::new(None, Some("alice@example.com".to_owned())),
+///             EmailAddress::new(None, Some("bob@example.com".to_owned())),
+///         ],
+///     )]),
+/// );
+/// ```
+///
+/// ## MessageIds (RFC 8621 §4.1.2.5)
+///
+/// ```
+/// use mime_tree::{parse_header_typed, HeaderForm, HeaderValueTyped};
+///
+/// let raw = b"<abc@example.com> <def@example.com>";
+/// let parsed = parse_header_typed(HeaderForm::MessageIds, raw);
+/// assert_eq!(
+///     parsed,
+///     HeaderValueTyped::MessageIds(vec![
+///         "abc@example.com".to_owned(),
+///         "def@example.com".to_owned(),
+///     ]),
+/// );
+/// ```
+///
+/// ## Date (RFC 5322 §3.3 / RFC 3339)
+///
+/// ```
+/// use mime_tree::{parse_header_typed, HeaderForm, HeaderValueTyped};
+///
+/// let raw = b" Fri, 21 Nov 1997 09:55:06 -0600";
+/// let parsed = parse_header_typed(HeaderForm::Date, raw);
+/// if let HeaderValueTyped::DateTime(Some(dt)) = parsed {
+///     assert_eq!(dt.to_rfc3339(), "1997-11-21T09:55:06-06:00");
+/// } else {
+///     panic!("expected DateTime");
+/// }
+/// ```
+///
+/// ## URLs (RFC 8621 §4.1.2.7 / RFC 2369)
+///
+/// ```
+/// use mime_tree::{parse_header_typed, HeaderForm, HeaderValueTyped};
+///
+/// // RFC 2369 List-Help with comment after the URL.
+/// let raw = b" <mailto:list@host.com?subject=help> (List Instructions)";
+/// let parsed = parse_header_typed(HeaderForm::URLs, raw);
+/// assert_eq!(
+///     parsed,
+///     HeaderValueTyped::URLs(vec!["mailto:list@host.com?subject=help".to_owned()]),
+/// );
+/// ```
+///
+/// ## Raw (RFC 8621 §4.1.2.1)
+///
+/// ```
+/// use mime_tree::{parse_header_typed, HeaderForm, HeaderValueTyped};
+///
+/// // Surrounding whitespace stripped; no other transformation.
+/// // Encoded-words survive verbatim.
+/// let raw = b"  Subject line with =?UTF-8?Q?encoded?= words  ";
+/// let parsed = parse_header_typed(HeaderForm::Raw, raw);
+/// assert_eq!(
+///     parsed,
+///     HeaderValueTyped::Raw("Subject line with =?UTF-8?Q?encoded?= words".to_owned()),
 /// );
 /// ```
 #[must_use]
