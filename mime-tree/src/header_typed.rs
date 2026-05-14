@@ -278,12 +278,15 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
             HeaderValueTyped::DateTime(dt)
         }
         HeaderForm::URLs => {
-            // RFC 8621 §4.1.2.7 / mail-parser: URLs are parsed via the same
-            // address parser, then the `address` field of each parsed
-            // mailbox is taken as the URL string (angle brackets and
-            // comments already stripped).
-            let hv = MessageStream::new(buf).parse_address();
-            HeaderValueTyped::URLs(extract_urls(&hv))
+            // RFC 8621 §4.1.2.7 / RFC 2369 §2: each URL is wrapped in
+            // angle brackets. RFC 8621 §4.1.2.7 mandates that any
+            // value outside of the angle-bracket arguments MUST be
+            // ignored. mail-parser's address parser doesn't honour
+            // that contract (e.g. bare `https://example.com/u/abc`
+            // is treated as a malformed address with `https` as a
+            // group name), so we extract bracket contents directly
+            // rather than delegating.
+            HeaderValueTyped::URLs(extract_bracketed_urls(raw_value))
         }
     }
 }
@@ -380,23 +383,47 @@ fn extract_msg_ids(hv: &HeaderValue<'_>, had_angle_brackets: bool) -> Vec<String
     }
 }
 
-/// Extract URL strings from the result of mail-parser's address parser.
-/// Each parsed mailbox's `address` field is the URL with angle brackets and
-/// comments already stripped (RFC 2369 / RFC 8621 §4.1.2.7).
-fn extract_urls(hv: &HeaderValue<'_>) -> Vec<String> {
-    match hv {
-        HeaderValue::Address(Address::List(list)) => list
-            .iter()
-            .filter_map(|a| a.address.as_ref().map(|s| s.as_ref().to_owned()))
-            .collect(),
-        HeaderValue::Address(Address::Group(groups)) => groups
-            .iter()
-            .flat_map(|g| {
-                g.addresses
-                    .iter()
-                    .filter_map(|a| a.address.as_ref().map(|s| s.as_ref().to_owned()))
-            })
-            .collect(),
-        _ => Vec::new(),
+/// Extract URL strings from RFC 2369 / RFC 8621 §4.1.2.7 bracketed
+/// list-URL syntax.
+///
+/// Scans `raw_value` for `<...>` substrings and yields the byte sequence
+/// between each matching pair, in order. Bytes outside the brackets are
+/// ignored — including comments (`(...)`), CFWS, commas, and any
+/// malformed framing — per RFC 8621 §4.1.2.7: "Any value outside of the
+/// angle bracket arguments MUST be ignored."
+///
+/// ASCII whitespace inside a bracketed value is stripped, because RFC
+/// 3986 URIs cannot contain literal whitespace; any whitespace seen is a
+/// CRLF folding artifact. Non-UTF-8 bracket contents are dropped.
+///
+/// An unclosed `<` (no matching `>`) is ignored. An empty `<>` is
+/// ignored.
+fn extract_bracketed_urls(raw_value: &[u8]) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut iter = raw_value.iter();
+    while let Some(&b) = iter.next() {
+        if b != b'<' {
+            continue;
+        }
+        let mut url = Vec::new();
+        let mut closed = false;
+        for &b2 in iter.by_ref() {
+            if b2 == b'>' {
+                closed = true;
+                break;
+            }
+            // Drop ASCII whitespace; URIs per RFC 3986 cannot contain it
+            // literally, so any whitespace seen is CRLF folding.
+            if !matches!(b2, b' ' | b'\t' | b'\r' | b'\n') {
+                url.push(b2);
+            }
+        }
+        if !closed || url.is_empty() {
+            continue;
+        }
+        if let Ok(s) = std::str::from_utf8(&url) {
+            out.push(s.to_owned());
+        }
     }
+    out
 }
