@@ -40,20 +40,17 @@ fn addresses_rfc8621_section_4_1_2_3_example() {
     let parsed = parse_header_typed(HeaderForm::Addresses, raw);
 
     let expected = HeaderValueTyped::Addresses(vec![
-        EmailAddress {
-            name: Some("James Smythe".to_owned()),
-            address: Some("james@example.com".to_owned()),
-        },
-        EmailAddress {
-            name: None,
-            address: Some("jane@example.com".to_owned()),
-        },
-        EmailAddress {
-            // RFC 2047 encoded-word "=?UTF-8?Q?John_Sm=C3=AEth?=" decodes
-            // to "John Smîth" (U+00EE LATIN SMALL LETTER I WITH CIRCUMFLEX).
-            name: Some("John Smîth".to_owned()),
-            address: Some("john@example.com".to_owned()),
-        },
+        EmailAddress::new(
+            Some("James Smythe".to_owned()),
+            Some("james@example.com".to_owned()),
+        ),
+        EmailAddress::new(None, Some("jane@example.com".to_owned())),
+        // RFC 2047 encoded-word "=?UTF-8?Q?John_Sm=C3=AEth?=" decodes
+        // to "John Smîth" (U+00EE LATIN SMALL LETTER I WITH CIRCUMFLEX).
+        EmailAddress::new(
+            Some("John Smîth".to_owned()),
+            Some("john@example.com".to_owned()),
+        ),
     ]);
 
     assert_eq!(parsed, expected);
@@ -78,26 +75,23 @@ fn grouped_addresses_rfc8621_section_4_1_2_4_example() {
     let parsed = parse_header_typed(HeaderForm::GroupedAddresses, raw);
 
     let expected = HeaderValueTyped::GroupedAddresses(vec![
-        AddressGroup {
-            name: None,
-            addresses: vec![EmailAddress {
-                name: Some("James Smythe".to_owned()),
-                address: Some("james@example.com".to_owned()),
-            }],
-        },
-        AddressGroup {
-            name: Some("Friends".to_owned()),
-            addresses: vec![
-                EmailAddress {
-                    name: None,
-                    address: Some("jane@example.com".to_owned()),
-                },
-                EmailAddress {
-                    name: Some("John Smîth".to_owned()),
-                    address: Some("john@example.com".to_owned()),
-                },
+        AddressGroup::new(
+            None,
+            vec![EmailAddress::new(
+                Some("James Smythe".to_owned()),
+                Some("james@example.com".to_owned()),
+            )],
+        ),
+        AddressGroup::new(
+            Some("Friends".to_owned()),
+            vec![
+                EmailAddress::new(None, Some("jane@example.com".to_owned())),
+                EmailAddress::new(
+                    Some("John Smîth".to_owned()),
+                    Some("john@example.com".to_owned()),
+                ),
             ],
-        },
+        ),
     ]);
 
     assert_eq!(parsed, expected);
@@ -113,19 +107,13 @@ fn grouped_addresses_flat_list_wraps_in_anonymous_group() {
 
     let parsed = parse_header_typed(HeaderForm::GroupedAddresses, raw);
 
-    let expected = HeaderValueTyped::GroupedAddresses(vec![AddressGroup {
-        name: None,
-        addresses: vec![
-            EmailAddress {
-                name: None,
-                address: Some("alice@example.com".to_owned()),
-            },
-            EmailAddress {
-                name: None,
-                address: Some("bob@example.com".to_owned()),
-            },
+    let expected = HeaderValueTyped::GroupedAddresses(vec![AddressGroup::new(
+        None,
+        vec![
+            EmailAddress::new(None, Some("alice@example.com".to_owned())),
+            EmailAddress::new(None, Some("bob@example.com".to_owned())),
         ],
-    }]);
+    )]);
 
     assert_eq!(parsed, expected);
 }
@@ -458,4 +446,119 @@ fn public_types_round_trip_through_serde_json() {
     assert_serde::<HeaderForm>();
     assert_serde::<HeaderValueTyped>();
     assert_serde::<mime_tree::HeaderDateTime>();
+}
+
+/// Crate invariant: all public payload types are `Hash`. This test
+/// compiles only if the trait bounds hold, and exercises actual
+/// `HashSet` insertion to catch any silent issue.
+#[test]
+fn public_types_are_hash() {
+    use std::collections::HashSet;
+
+    fn assert_hash<T: std::hash::Hash + Eq>() {}
+    assert_hash::<EmailAddress>();
+    assert_hash::<AddressGroup>();
+    assert_hash::<mime_tree::HeaderDateTime>();
+    assert_hash::<HeaderForm>();
+    assert_hash::<HeaderValueTyped>();
+
+    // Round-trip insertion smoke check.
+    let mut s: HashSet<EmailAddress> = HashSet::new();
+    s.insert(EmailAddress::new(
+        Some("Alice".to_owned()),
+        Some("alice@example.com".to_owned()),
+    ));
+    s.insert(EmailAddress::new(
+        Some("Alice".to_owned()),
+        Some("alice@example.com".to_owned()),
+    ));
+    assert_eq!(s.len(), 1, "duplicate EmailAddress should dedupe via Hash");
+
+    let mut h: HashSet<HeaderValueTyped> = HashSet::new();
+    h.insert(HeaderValueTyped::Raw("foo".to_owned()));
+    h.insert(HeaderValueTyped::Raw("foo".to_owned()));
+    assert_eq!(h.len(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Display impls (RFC 5322 §3.4 mailbox / group form, RFC 3339 date)
+// ---------------------------------------------------------------------------
+
+/// Display for EmailAddress: standard `Name <addr@host>` form for the
+/// both-present case.
+#[test]
+fn display_email_address_name_and_address() {
+    let e = EmailAddress::new(
+        Some("Alice Cooper".to_owned()),
+        Some("alice@example.com".to_owned()),
+    );
+    assert_eq!(format!("{e}"), "Alice Cooper <alice@example.com>");
+}
+
+#[test]
+fn display_email_address_address_only() {
+    let e = EmailAddress::new(None, Some("bob@example.com".to_owned()));
+    assert_eq!(format!("{e}"), "bob@example.com");
+}
+
+#[test]
+fn display_email_address_name_only() {
+    let e = EmailAddress::new(Some("Display Only".to_owned()), None);
+    assert_eq!(format!("{e}"), "Display Only");
+}
+
+#[test]
+fn display_email_address_empty() {
+    let e = EmailAddress::default();
+    assert_eq!(format!("{e}"), "");
+}
+
+/// Display for AddressGroup: RFC 5322 §3.4 group form
+/// `name: mb1, mb2;` when named.
+#[test]
+fn display_address_group_named() {
+    let g = AddressGroup::new(
+        Some("Friends".to_owned()),
+        vec![
+            EmailAddress::new(None, Some("alice@example.com".to_owned())),
+            EmailAddress::new(Some("Bob".to_owned()), Some("bob@example.com".to_owned())),
+        ],
+    );
+    assert_eq!(
+        format!("{g}"),
+        "Friends: alice@example.com, Bob <bob@example.com>;"
+    );
+}
+
+/// Anonymous group renders as just the comma-joined mailbox list, no
+/// `:` and no terminating `;`.
+#[test]
+fn display_address_group_anonymous() {
+    let g = AddressGroup::new(
+        None,
+        vec![
+            EmailAddress::new(None, Some("a@example.com".to_owned())),
+            EmailAddress::new(None, Some("b@example.com".to_owned())),
+        ],
+    );
+    assert_eq!(format!("{g}"), "a@example.com, b@example.com");
+}
+
+#[test]
+fn display_address_group_empty_named() {
+    let g = AddressGroup::new(Some("Empty".to_owned()), vec![]);
+    assert_eq!(format!("{g}"), "Empty:;");
+}
+
+/// Display for HeaderDateTime delegates to to_rfc3339.
+#[test]
+fn display_header_date_time_delegates_to_rfc3339() {
+    let raw = b" Fri, 21 Nov 1997 09:55:06 -0600";
+    let parsed = parse_header_typed(HeaderForm::Date, raw);
+    let dt = match parsed {
+        HeaderValueTyped::DateTime(Some(dt)) => dt,
+        _ => unreachable!(),
+    };
+    assert_eq!(format!("{dt}"), dt.to_rfc3339());
+    assert_eq!(format!("{dt}"), "1997-11-21T09:55:06-06:00");
 }

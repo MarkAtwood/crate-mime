@@ -27,6 +27,8 @@
 //! [`crate::ParsedPart::header_range`] and feeding the field value to
 //! [`parse_header_typed`].
 
+use std::fmt;
+
 use mail_parser::{parsers::MessageStream, Address, HeaderValue};
 use serde::{Deserialize, Serialize};
 
@@ -37,12 +39,50 @@ use serde::{Deserialize, Serialize};
 /// `name` is the optional display name. `address` is the `addr-spec`. Both
 /// are populated best-effort; either may be `None` if the original header
 /// is malformed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct EmailAddress {
     /// Display name from the `mailbox`, RFC 2047 encoded-words already decoded.
     pub name: Option<String>,
     /// `addr-spec` of the `mailbox`.
     pub address: Option<String>,
+}
+
+impl EmailAddress {
+    /// Construct an `EmailAddress` from optional display name and
+    /// addr-spec.
+    ///
+    /// `EmailAddress` is `#[non_exhaustive]` so external callers cannot
+    /// use struct expression syntax. Use this constructor — or
+    /// `Default::default()` followed by field assignment — instead.
+    #[must_use]
+    pub fn new(name: Option<String>, address: Option<String>) -> Self {
+        Self { name, address }
+    }
+}
+
+impl fmt::Display for EmailAddress {
+    /// Render in RFC 5322 §3.4 mailbox-ish form.
+    ///
+    /// * Both `name` and `address` present: `Display Name <addr@host>`.
+    /// * `address` only: `addr@host` (bare addr-spec, no angle brackets).
+    /// * `name` only: `Display Name` (degenerate; not a valid RFC 5322
+    ///   mailbox, but the best a Display impl can do).
+    /// * Neither present: the empty string.
+    ///
+    /// Names are emitted verbatim. This Display impl prioritises human
+    /// readability over RFC 5322 round-trippability — names containing
+    /// `<`, `>`, `,`, or other RFC 5322 specials are not quoted. Callers
+    /// that need byte-stable round-trip into a header field MUST roll
+    /// their own serializer with proper quoting.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.name.as_deref(), self.address.as_deref()) {
+            (Some(n), Some(a)) => write!(f, "{n} <{a}>"),
+            (None, Some(a)) => f.write_str(a),
+            (Some(n), None) => f.write_str(n),
+            (None, None) => Ok(()),
+        }
+    }
 }
 
 /// A group of `EmailAddress` values, optionally named.
@@ -52,12 +92,57 @@ pub struct EmailAddress {
 /// Per RFC 8621 §4.1.2.4, consecutive mailboxes that are not part of a
 /// declared RFC 5322 `group` are still collected under an `AddressGroup`
 /// whose `name` is `None`, "to provide a uniform type".
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct AddressGroup {
     /// Display name of the group, or `None` for ungrouped mailboxes.
     pub name: Option<String>,
     /// Mailboxes belonging to this group.
     pub addresses: Vec<EmailAddress>,
+}
+
+impl AddressGroup {
+    /// Construct an `AddressGroup` from an optional group name and a
+    /// vector of mailboxes.
+    ///
+    /// `AddressGroup` is `#[non_exhaustive]` so external callers cannot
+    /// use struct expression syntax. Use this constructor — or
+    /// `Default::default()` followed by field assignment — instead.
+    #[must_use]
+    pub fn new(name: Option<String>, addresses: Vec<EmailAddress>) -> Self {
+        Self { name, addresses }
+    }
+}
+
+impl fmt::Display for AddressGroup {
+    /// Render in RFC 5322 §3.4 group form: `name: mb1, mb2;`.
+    ///
+    /// * Named group: `Friends: alice@example.com, bob@example.com;`.
+    /// * Anonymous group (`name == None`): just the comma-joined
+    ///   mailbox list, no `:` and no terminating `;`.
+    /// * Empty group: just `name:;` (or empty string for an anonymous
+    ///   empty group).
+    ///
+    /// Same caveat as `EmailAddress` Display: prioritises human
+    /// readability; not guaranteed RFC 5322 round-trippable.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(n) = &self.name {
+            write!(f, "{n}:")?;
+            if !self.addresses.is_empty() {
+                f.write_str(" ")?;
+            }
+        }
+        for (i, addr) in self.addresses.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{addr}")?;
+        }
+        if self.name.is_some() {
+            f.write_str(";")?;
+        }
+        Ok(())
+    }
 }
 
 /// Sign of a `date-time` timezone offset from GMT (RFC 5322 §3.3).
@@ -109,7 +194,7 @@ pub enum TzSign {
 /// values is unspecified — output may be syntactically malformed
 /// RFC 3339 or a meaningless `i64`. Callers that build `HeaderDateTime`
 /// from external sources should validate ranges themselves.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct HeaderDateTime {
     /// Four-digit calendar year. Parser-produced values: `1900..=3000`.
@@ -179,7 +264,7 @@ impl HeaderDateTime {
         self.to_mail_parser().to_timestamp()
     }
 
-    fn to_mail_parser(self) -> mail_parser::DateTime {
+    fn to_mail_parser(&self) -> mail_parser::DateTime {
         mail_parser::DateTime {
             year: self.year,
             month: self.month,
@@ -193,7 +278,7 @@ impl HeaderDateTime {
         }
     }
 
-    fn from_mail_parser(dt: &mail_parser::DateTime) -> Self {
+    fn from_mail_parser(dt: mail_parser::DateTime) -> Self {
         Self {
             year: dt.year,
             month: dt.month,
@@ -212,11 +297,20 @@ impl HeaderDateTime {
     }
 }
 
+impl fmt::Display for HeaderDateTime {
+    /// Render as an RFC 3339 / ISO 8601 §5.6 date-time string by
+    /// delegating to [`HeaderDateTime::to_rfc3339`]. See that method
+    /// for the exact output format and behaviour on out-of-range input.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.to_rfc3339())
+    }
+}
+
 /// Selector for the RFC 8621 parsed-form of a header value.
 ///
 /// This is the form-token from a JMAP `header:<name>:as<form>` property
 /// selector, normalised to an enum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum HeaderForm {
     /// Trim surrounding whitespace; return the bytes as a UTF-8 string.
@@ -245,7 +339,7 @@ pub enum HeaderForm {
 }
 
 /// A header field value rendered in one of the RFC 8621 parsed forms.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum HeaderValueTyped {
     /// Result of [`HeaderForm::Raw`]: the trimmed UTF-8 string.
@@ -284,10 +378,10 @@ pub enum HeaderValueTyped {
 /// let parsed = parse_header_typed(HeaderForm::Addresses, raw);
 /// assert_eq!(
 ///     parsed,
-///     HeaderValueTyped::Addresses(vec![EmailAddress {
-///         name: Some("James Smythe".to_owned()),
-///         address: Some("james@example.com".to_owned()),
-///     }]),
+///     HeaderValueTyped::Addresses(vec![EmailAddress::new(
+///         Some("James Smythe".to_owned()),
+///         Some("james@example.com".to_owned()),
+///     )]),
 /// );
 /// ```
 #[must_use]
@@ -372,7 +466,7 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
                 // braces: also reject all-zero year/month/day, which RFC
                 // 5322 §3.3 does not permit.
                 HeaderValue::DateTime(dt) if dt.year != 0 && dt.month != 0 && dt.day != 0 => {
-                    Some(HeaderDateTime::from_mail_parser(&dt))
+                    Some(HeaderDateTime::from_mail_parser(dt))
                 }
                 _ => None,
             };
