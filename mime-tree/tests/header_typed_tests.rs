@@ -271,6 +271,77 @@ fn urls_list_unsubscribe_multiple() {
     );
 }
 
+/// Oracle: RFC 8621 §4.1.2.7: "Any value outside of the angle bracket
+/// arguments MUST be ignored." A bare URL with no `<...>` framing is
+/// outside any bracket and MUST produce an empty result, not be
+/// surfaced as a URL.
+#[test]
+fn urls_bare_no_brackets_returns_empty() {
+    assert_eq!(
+        parse_header_typed(HeaderForm::URLs, b"https://example.com/u/abc"),
+        HeaderValueTyped::URLs(vec![]),
+    );
+
+    // Multiple bare URLs separated by comma — still no brackets.
+    assert_eq!(
+        parse_header_typed(HeaderForm::URLs, b"https://example.com/, http://other.com/",),
+        HeaderValueTyped::URLs(vec![]),
+    );
+}
+
+/// A URL containing commas must survive intact when bracketed.
+/// mail-parser's address parser would split on the commas; the
+/// dedicated bracket tokenizer doesn't.
+#[test]
+fn urls_with_commas_inside_brackets_preserved() {
+    let raw = b"<https://example.com/path,with,commas>";
+
+    let parsed = parse_header_typed(HeaderForm::URLs, raw);
+
+    assert_eq!(
+        parsed,
+        HeaderValueTyped::URLs(vec!["https://example.com/path,with,commas".to_owned()]),
+    );
+}
+
+/// tel: URLs (RFC 3966) are valid per RFC 2369 §2's `unknown-URL`
+/// production. Bracketed extraction must surface them without parsing.
+#[test]
+fn urls_tel_scheme_inside_brackets() {
+    let raw = b"<tel:+1-555-1234>";
+
+    let parsed = parse_header_typed(HeaderForm::URLs, raw);
+
+    assert_eq!(
+        parsed,
+        HeaderValueTyped::URLs(vec!["tel:+1-555-1234".to_owned()]),
+    );
+}
+
+/// CRLF folding inside a URL is stripped: per RFC 3986 URIs cannot
+/// contain literal whitespace, so any whitespace seen is folding.
+#[test]
+fn urls_internal_crlf_folding_stripped() {
+    let raw = b"<https://example.com/\r\n very/long/path>";
+
+    let parsed = parse_header_typed(HeaderForm::URLs, raw);
+
+    assert_eq!(
+        parsed,
+        HeaderValueTyped::URLs(vec!["https://example.com/very/long/path".to_owned()]),
+    );
+}
+
+/// An unclosed `<` produces no URL.
+#[test]
+fn urls_unclosed_bracket_ignored() {
+    let raw = b"<https://example.com/";
+
+    let parsed = parse_header_typed(HeaderForm::URLs, raw);
+
+    assert_eq!(parsed, HeaderValueTyped::URLs(vec![]));
+}
+
 // ---------------------------------------------------------------------------
 // Raw — RFC 8621 §4.1.2.1
 // ---------------------------------------------------------------------------
