@@ -46,6 +46,7 @@ mod yenc;
 pub use error::ParseError;
 pub use header_typed::{
     parse_header_typed, AddressGroup, EmailAddress, HeaderDateTime, HeaderForm, HeaderValueTyped,
+    TzSign,
 };
 pub use message::{DecodedBodyValue, ParsedMessage};
 pub use parse::{decode_body_value, parse};

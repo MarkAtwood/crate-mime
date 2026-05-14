@@ -9,7 +9,9 @@
 //!
 //! No expected value is derived from running mime-tree itself.
 
-use mime_tree::{parse_header_typed, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped};
+use mime_tree::{
+    parse_header_typed, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped, TzSign,
+};
 
 // ---------------------------------------------------------------------------
 // Addresses — RFC 8621 §4.1.2.3 worked example
@@ -212,7 +214,7 @@ fn date_rfc5322_appendix_a_1_1_example() {
     assert_eq!(dt.hour, 9);
     assert_eq!(dt.minute, 55);
     assert_eq!(dt.second, 6);
-    assert!(dt.tz_before_gmt, "1997-11-21 -0600 is west of GMT");
+    assert_eq!(dt.tz_sign, TzSign::West, "1997-11-21 -0600 is west of GMT");
     assert_eq!(dt.tz_hour, 6);
     assert_eq!(dt.tz_minute, 0);
 
@@ -220,6 +222,29 @@ fn date_rfc5322_appendix_a_1_1_example() {
     // (Python: datetime(1997,11,21,9,55,6,tzinfo=timezone(timedelta(hours=-6))).isoformat()
     // → '1997-11-21T09:55:06-06:00')
     assert_eq!(dt.to_rfc3339(), "1997-11-21T09:55:06-06:00");
+}
+
+/// Oracle: mail-parser-0.11's `DateTime::to_rfc3339` uses Zulu form `Z`
+/// for a zero offset (`tz_hour == 0 && tz_minute == 0`), not `+00:00`.
+/// Pin that behaviour in mime-tree's documented contract.
+#[test]
+fn date_utc_offset_emits_zulu_form() {
+    let raw = b" Mon, 15 Jan 2024 12:34:56 +0000";
+
+    let parsed = parse_header_typed(HeaderForm::Date, raw);
+
+    let dt = match parsed {
+        HeaderValueTyped::DateTime(Some(dt)) => dt,
+        other => panic!("expected DateTime, got {other:?}"),
+    };
+
+    // Independent oracle: ISO 8601 / RFC 3339 §5.6 — UTC is conventionally
+    // written as `Z`. Python: `datetime(...,tzinfo=timezone.utc).isoformat()`
+    // emits `+00:00`, but mail-parser canonicalises UTC to `Z`. We pin
+    // mail-parser's choice as the documented mime-tree contract.
+    assert_eq!(dt.to_rfc3339(), "2024-01-15T12:34:56Z");
+    assert_eq!(dt.tz_hour, 0);
+    assert_eq!(dt.tz_minute, 0);
 }
 
 /// Garbage in the Date field must produce `DateTime(None)`. Per crate
