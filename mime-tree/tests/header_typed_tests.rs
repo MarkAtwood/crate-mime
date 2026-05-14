@@ -163,6 +163,29 @@ fn message_ids_single_id() {
     );
 }
 
+/// Oracle: RFC 8621 §4.1.2.5 explicitly requires malformed input to
+/// yield an empty result. mail-parser's `parse_id` has a broken-client
+/// recovery branch that produces `HeaderValue::Text(<unparsed bytes>)`
+/// when no `<...>` tokens were found in the input; without a
+/// discriminator, that branch's output would leak as a one-element
+/// vec containing the raw garbage. Inputs with no angle brackets must
+/// yield an empty vec.
+#[test]
+fn message_ids_malformed_no_angle_brackets_returns_empty() {
+    // Plain garbage with no angle brackets at all.
+    assert_eq!(
+        parse_header_typed(HeaderForm::MessageIds, b" not-an-id"),
+        HeaderValueTyped::MessageIds(vec![]),
+    );
+
+    // An `@`-containing string is still invalid without angle brackets;
+    // a valid msg-id per RFC 5322 §3.6.4 requires `< ... >` framing.
+    assert_eq!(
+        parse_header_typed(HeaderForm::MessageIds, b" looks@like-an-id-but-no-brackets"),
+        HeaderValueTyped::MessageIds(vec![]),
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Date — RFC 5322 §3.3 / Appendix A.1.1 sample message
 // ---------------------------------------------------------------------------
