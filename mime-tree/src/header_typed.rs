@@ -351,6 +351,11 @@ impl fmt::Display for HeaderDateTime {
 ///
 /// This is the form-token from a JMAP `header:<name>:as<form>` property
 /// selector, normalised to an enum.
+///
+/// [`Display`](fmt::Display) emits the canonical JMAP form-token string
+/// (`asRaw`, `asAddresses`, …, `asURLs`).
+/// [`FromStr`](std::str::FromStr) accepts exactly that set of strings;
+/// any other input yields [`UnknownHeaderForm`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum HeaderForm {
@@ -377,6 +382,64 @@ pub enum HeaderForm {
     /// Parse as an RFC 2369 list of URLs. Surrounding angle brackets and
     /// comments are stripped. (§4.1.2.7)
     URLs,
+}
+
+impl HeaderForm {
+    /// Return the canonical RFC 8621 §4.1.2 form-token string for this
+    /// variant.
+    ///
+    /// The token starts with `as` (the convention used in JMAP property
+    /// selectors such as `header:Subject:asText`). Inverse of
+    /// [`HeaderForm`]'s [`FromStr`](std::str::FromStr) impl.
+    #[must_use]
+    pub fn as_jmap_token(&self) -> &'static str {
+        match self {
+            HeaderForm::Raw => "asRaw",
+            HeaderForm::Addresses => "asAddresses",
+            HeaderForm::GroupedAddresses => "asGroupedAddresses",
+            HeaderForm::MessageIds => "asMessageIds",
+            HeaderForm::Date => "asDate",
+            HeaderForm::URLs => "asURLs",
+        }
+    }
+}
+
+impl fmt::Display for HeaderForm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_jmap_token())
+    }
+}
+
+/// Error returned by [`HeaderForm`]'s [`FromStr`](std::str::FromStr) impl
+/// when the input is not a recognised JMAP form-token.
+///
+/// The wrapped string is the input as given (case-sensitive); JMAP
+/// form-tokens are case-sensitive per RFC 8621 §4.1.2.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnknownHeaderForm(pub String);
+
+impl fmt::Display for UnknownHeaderForm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown JMAP header form token: {:?}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownHeaderForm {}
+
+impl std::str::FromStr for HeaderForm {
+    type Err = UnknownHeaderForm;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "asRaw" => Ok(HeaderForm::Raw),
+            "asAddresses" => Ok(HeaderForm::Addresses),
+            "asGroupedAddresses" => Ok(HeaderForm::GroupedAddresses),
+            "asMessageIds" => Ok(HeaderForm::MessageIds),
+            "asDate" => Ok(HeaderForm::Date),
+            "asURLs" => Ok(HeaderForm::URLs),
+            _ => Err(UnknownHeaderForm(s.to_owned())),
+        }
+    }
 }
 
 /// A header field value rendered in one of the RFC 8621 parsed forms.
@@ -642,6 +705,97 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
             };
             HeaderValueTyped::DateTime(dt)
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Per-form entry points
+// ---------------------------------------------------------------------------
+//
+// Convenience wrappers over `parse_header_typed` for callers that know
+// the form statically. Each wrapper unwraps the `HeaderValueTyped`
+// variant that `parse_header_typed` is contractually required to return
+// for the matching `HeaderForm`, eliminating the boilerplate match at
+// every call site. If `parse_header_typed` ever broke that contract, the
+// wrapper returns the empty result for the form (defensive, not panic).
+
+/// Parse the header field value as an RFC 8621 §4.1.2.1 Raw form: trim
+/// surrounding whitespace, decode bytes as UTF-8 (lossy with U+FFFD on
+/// invalid sequences).
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::Raw`].
+#[must_use]
+pub fn parse_raw(raw_value: &[u8]) -> String {
+    match parse_header_typed(HeaderForm::Raw, raw_value) {
+        HeaderValueTyped::Raw(s) => s,
+        _ => String::new(),
+    }
+}
+
+/// Parse the header field value as an RFC 8621 §4.1.2.3 Addresses form:
+/// a flat list of mailboxes with group structure discarded.
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::Addresses`].
+#[must_use]
+pub fn parse_addresses(raw_value: &[u8]) -> Vec<EmailAddress> {
+    match parse_header_typed(HeaderForm::Addresses, raw_value) {
+        HeaderValueTyped::Addresses(v) => v,
+        _ => Vec::new(),
+    }
+}
+
+/// Parse the header field value as an RFC 8621 §4.1.2.4 GroupedAddresses
+/// form: preserves group structure; a flat mailbox-list is wrapped in a
+/// single anonymous group.
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::GroupedAddresses`].
+#[must_use]
+pub fn parse_grouped_addresses(raw_value: &[u8]) -> Vec<AddressGroup> {
+    match parse_header_typed(HeaderForm::GroupedAddresses, raw_value) {
+        HeaderValueTyped::GroupedAddresses(v) => v,
+        _ => Vec::new(),
+    }
+}
+
+/// Parse the header field value as an RFC 8621 §4.1.2.5 MessageIds form:
+/// `<...>`-stripped msg-id strings.
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::MessageIds`].
+#[must_use]
+pub fn parse_message_ids(raw_value: &[u8]) -> Vec<String> {
+    match parse_header_typed(HeaderForm::MessageIds, raw_value) {
+        HeaderValueTyped::MessageIds(v) => v,
+        _ => Vec::new(),
+    }
+}
+
+/// Parse the header field value as an RFC 8621 §4.1.2.6 Date form: an
+/// RFC 5322 §3.3 date-time, or `None` on parse failure.
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::Date`].
+#[must_use]
+pub fn parse_date(raw_value: &[u8]) -> Option<HeaderDateTime> {
+    match parse_header_typed(HeaderForm::Date, raw_value) {
+        HeaderValueTyped::DateTime(dt) => dt,
+        _ => None,
+    }
+}
+
+/// Parse the header field value as an RFC 8621 §4.1.2.7 URLs form: bare
+/// URL strings with surrounding angle brackets stripped (RFC 2369).
+///
+/// Convenience wrapper over [`parse_header_typed`] with
+/// [`HeaderForm::URLs`].
+#[must_use]
+pub fn parse_urls(raw_value: &[u8]) -> Vec<String> {
+    match parse_header_typed(HeaderForm::URLs, raw_value) {
+        HeaderValueTyped::URLs(v) => v,
+        _ => Vec::new(),
     }
 }
 
