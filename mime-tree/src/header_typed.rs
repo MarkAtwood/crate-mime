@@ -246,8 +246,22 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
             HeaderValueTyped::GroupedAddresses(group_addresses(&hv))
         }
         HeaderForm::MessageIds => {
+            // mail-parser's `parse_id` has a broken-client recovery
+            // branch (mail-parser-0.11/src/parsers/fields/id.rs) that
+            // returns `HeaderValue::Text` containing the unparsed bytes
+            // when no `<...>` tokens were found in the input. From the
+            // result type alone we cannot tell that case apart from the
+            // single-valid-msg-id case (`<x>` → `Text("x")`).
+            //
+            // Discriminator: a Text result is the result of bracket
+            // stripping iff the original input contained at least one
+            // `<` byte. mail-parser does not insert angle brackets that
+            // were not present in the input, so absence of `<` in the
+            // raw bytes is a sufficient signal that mail-parser cannot
+            // have produced Text via the stripping branch.
             let hv = MessageStream::new(buf).parse_id();
-            HeaderValueTyped::MessageIds(text_list(&hv))
+            let had_angle_brackets = raw_value.contains(&b'<');
+            HeaderValueTyped::MessageIds(extract_msg_ids(&hv, had_angle_brackets))
         }
         HeaderForm::Date => {
             let hv = MessageStream::new(buf).parse_date();
@@ -347,11 +361,20 @@ fn group_addresses(hv: &HeaderValue<'_>) -> Vec<AddressGroup> {
     }
 }
 
-/// Convert a `HeaderValue::Text` or `HeaderValue::TextList` into a flat
-/// `Vec<String>`. Used for [`HeaderForm::MessageIds`].
-fn text_list(hv: &HeaderValue<'_>) -> Vec<String> {
+/// Extract bare msg-id strings from a `HeaderValue` produced by
+/// mail-parser's `parse_id`.
+///
+/// `had_angle_brackets` indicates whether the original raw input
+/// contained at least one `<` byte. mail-parser's `parse_id` returns
+/// `HeaderValue::Text` both for a single valid bracket-stripped msg-id
+/// and for its broken-client recovery branch on input with no brackets at
+/// all (returning the lossy UTF-8 of the unparsed bytes). Without this
+/// discriminator, malformed input would leak the unparsed bytes into the
+/// result vec, violating the RFC 8621 §4.1.2.5 empty-on-malformed
+/// contract.
+fn extract_msg_ids(hv: &HeaderValue<'_>, had_angle_brackets: bool) -> Vec<String> {
     match hv {
-        HeaderValue::Text(s) => vec![s.as_ref().to_owned()],
+        HeaderValue::Text(s) if had_angle_brackets => vec![s.as_ref().to_owned()],
         HeaderValue::TextList(list) => list.iter().map(|s| s.as_ref().to_owned()).collect(),
         _ => Vec::new(),
     }
