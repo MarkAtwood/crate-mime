@@ -27,6 +27,7 @@
 //! [`crate::ParsedPart::header_range`] and feeding the field value to
 //! [`parse_header_typed`].
 
+use std::borrow::Cow;
 use std::fmt;
 
 use mail_parser::{parsers::MessageStream, Address, HeaderValue};
@@ -386,58 +387,37 @@ pub enum HeaderValueTyped {
 /// ```
 #[must_use]
 pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueTyped {
-    if matches!(form, HeaderForm::Raw) {
-        // RFC 8621 §4.1.2.1: the value is the header field value with
-        // surrounding white space removed. Non-UTF-8 bytes are replaced
-        // with U+FFFD via `from_utf8_lossy` so malformed-but-non-empty
-        // input does not collapse into an indistinguishable empty
-        // string. This matches mail-parser's own handling of non-UTF-8
-        // header bytes (`HeaderValue::Text` is `Cow<str>` populated via
-        // `from_utf8_lossy`).
-        let s = String::from_utf8_lossy(raw_value);
-        return HeaderValueTyped::Raw(s.trim().to_owned());
-    }
-
-    // mail-parser's MessageStream parsers are written to consume header
-    // bytes as they appear in a real RFC 5322 stream — terminated by
-    // CRLF (a line on its own ends the header, and the parser uses LF to
-    // recognise that). Callers pass the field value with no trailing
-    // CRLF; append one so the underlying parsers see a well-formed end-
-    // of-header. This is consistent with mail-parser's own use of these
-    // parsers via `MessageParser::parse`.
-    let owned: Vec<u8>;
-    let buf: &[u8] = if raw_value.ends_with(b"\r\n") {
-        raw_value
-    } else if raw_value.ends_with(b"\n") {
-        // Convert LF to CRLF so the parser sees the expected sequence.
-        owned = raw_value
-            .split_last()
-            .map(|(_, head)| {
-                let mut v = Vec::with_capacity(head.len() + 2);
-                v.extend_from_slice(head);
-                v.extend_from_slice(b"\r\n");
-                v
-            })
-            .unwrap_or_else(|| b"\r\n".to_vec());
-        &owned
-    } else {
-        owned = {
-            let mut v = Vec::with_capacity(raw_value.len() + 2);
-            v.extend_from_slice(raw_value);
-            v.extend_from_slice(b"\r\n");
-            v
-        };
-        &owned
-    };
-
     match form {
-        HeaderForm::Raw => unreachable!("handled above"),
+        HeaderForm::Raw => {
+            // RFC 8621 §4.1.2.1: the value is the header field value
+            // with surrounding white space removed. Non-UTF-8 bytes are
+            // replaced with U+FFFD via `from_utf8_lossy` so
+            // malformed-but-non-empty input does not collapse into an
+            // indistinguishable empty string. This matches mail-parser's
+            // own handling of non-UTF-8 header bytes (`HeaderValue::Text`
+            // is `Cow<str>` populated via `from_utf8_lossy`).
+            let s = String::from_utf8_lossy(raw_value);
+            HeaderValueTyped::Raw(s.trim().to_owned())
+        }
+        HeaderForm::URLs => {
+            // RFC 8621 §4.1.2.7 / RFC 2369 §2: each URL is wrapped in
+            // angle brackets. RFC 8621 §4.1.2.7 mandates that any
+            // value outside of the angle-bracket arguments MUST be
+            // ignored. mail-parser's address parser doesn't honour
+            // that contract (e.g. bare `https://example.com/u/abc`
+            // is treated as a malformed address with `https` as a
+            // group name), so we extract bracket contents directly
+            // rather than delegating.
+            HeaderValueTyped::URLs(extract_bracketed_urls(raw_value))
+        }
         HeaderForm::Addresses => {
-            let hv = MessageStream::new(buf).parse_address();
+            let buf = crlf_terminated(raw_value);
+            let hv = MessageStream::new(&buf).parse_address();
             HeaderValueTyped::Addresses(flatten_addresses(&hv))
         }
         HeaderForm::GroupedAddresses => {
-            let hv = MessageStream::new(buf).parse_address();
+            let buf = crlf_terminated(raw_value);
+            let hv = MessageStream::new(&buf).parse_address();
             HeaderValueTyped::GroupedAddresses(group_addresses(&hv))
         }
         HeaderForm::MessageIds => {
@@ -454,34 +434,30 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
             // were not present in the input, so absence of `<` in the
             // raw bytes is a sufficient signal that mail-parser cannot
             // have produced Text via the stripping branch.
-            let hv = MessageStream::new(buf).parse_id();
+            let buf = crlf_terminated(raw_value);
+            let hv = MessageStream::new(&buf).parse_id();
             let had_angle_brackets = raw_value.contains(&b'<');
             HeaderValueTyped::MessageIds(extract_msg_ids(&hv, had_angle_brackets))
         }
         HeaderForm::Date => {
-            let hv = MessageStream::new(buf).parse_date();
+            let buf = crlf_terminated(raw_value);
+            let hv = MessageStream::new(&buf).parse_date();
+            // mail-parser's `parse_date` returns `HeaderValue::Empty`
+            // when it cannot recover 6 numeric components. Belt-and-
+            // braces: also reject zero month/day, which RFC 5322 §3.3
+            // does not permit and which mail-parser can emit when its
+            // position counter advances past slots that never got
+            // numeric digits. (A zero `year` is unreachable in
+            // mail-parser-0.11: years are remapped 0..=49 → +2000,
+            // 50..=99 → +1900, so `parts[2]` is never copied through
+            // as 0.)
             let dt = match hv {
-                // mail-parser's `parse_date` returns `HeaderValue::Empty`
-                // when it cannot recover 6 numeric components. Belt-and-
-                // braces: also reject all-zero year/month/day, which RFC
-                // 5322 §3.3 does not permit.
-                HeaderValue::DateTime(dt) if dt.year != 0 && dt.month != 0 && dt.day != 0 => {
+                HeaderValue::DateTime(dt) if dt.month != 0 && dt.day != 0 => {
                     Some(HeaderDateTime::from_mail_parser(dt))
                 }
                 _ => None,
             };
             HeaderValueTyped::DateTime(dt)
-        }
-        HeaderForm::URLs => {
-            // RFC 8621 §4.1.2.7 / RFC 2369 §2: each URL is wrapped in
-            // angle brackets. RFC 8621 §4.1.2.7 mandates that any
-            // value outside of the angle-bracket arguments MUST be
-            // ignored. mail-parser's address parser doesn't honour
-            // that contract (e.g. bare `https://example.com/u/abc`
-            // is treated as a malformed address with `https` as a
-            // group name), so we extract bracket contents directly
-            // rather than delegating.
-            HeaderValueTyped::URLs(extract_bracketed_urls(raw_value))
         }
     }
 }
@@ -489,6 +465,47 @@ pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueType
 // ---------------------------------------------------------------------------
 // Conversion helpers
 // ---------------------------------------------------------------------------
+
+/// Trim ASCII whitespace from `s` and return `Some(trimmed)` if the
+/// result is non-empty, otherwise `None`.
+///
+/// Centralises the RFC 8621 §4.1.2.3 / §4.1.2.4 normalisation rule for
+/// display names ("trim surrounding white space; an empty result is
+/// `None`").
+fn trim_or_none(s: &str) -> Option<String> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_owned())
+    }
+}
+
+/// Ensure `raw_value` ends with a CRLF, returning the original bytes
+/// when it already does (no allocation), and a freshly allocated copy
+/// terminated with `\r\n` otherwise.
+///
+/// mail-parser's `MessageStream` parsers expect header field bodies in
+/// a real RFC 5322 stream — i.e. terminated by CRLF. Callers pass the
+/// field value with no trailing CRLF; this helper normalises any of
+/// {already-CRLF, LF-only, no-line-ending} to CRLF-terminated.
+fn crlf_terminated(raw_value: &[u8]) -> Cow<'_, [u8]> {
+    if raw_value.ends_with(b"\r\n") {
+        Cow::Borrowed(raw_value)
+    } else if raw_value.ends_with(b"\n") {
+        // Strip the bare LF and replace with CRLF.
+        let head = &raw_value[..raw_value.len() - 1];
+        let mut v = Vec::with_capacity(head.len() + 2);
+        v.extend_from_slice(head);
+        v.extend_from_slice(b"\r\n");
+        Cow::Owned(v)
+    } else {
+        let mut v = Vec::with_capacity(raw_value.len() + 2);
+        v.extend_from_slice(raw_value);
+        v.extend_from_slice(b"\r\n");
+        Cow::Owned(v)
+    }
+}
 
 fn convert_addr(addr: &mail_parser::Addr<'_>) -> EmailAddress {
     // RFC 8621 §4.1.2.3 mandates that for a quoted-string display name,
@@ -499,14 +516,7 @@ fn convert_addr(addr: &mail_parser::Addr<'_>) -> EmailAddress {
     // (e.g. `"  James Smythe"` parses to `Some("  James Smythe")`). Strip
     // here. An empty trimmed result is mapped to `None` so a lone empty
     // quoted-string does not surface as a phantom display name.
-    let name = addr.name.as_ref().and_then(|s| {
-        let trimmed = s.as_ref().trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_owned())
-        }
-    });
+    let name = addr.name.as_ref().and_then(|s| trim_or_none(s.as_ref()));
     EmailAddress {
         name,
         address: addr.address.as_ref().map(|s| s.as_ref().to_owned()),
@@ -544,14 +554,7 @@ fn group_addresses(hv: &HeaderValue<'_>) -> Vec<AddressGroup> {
                 // RFC 8621 §4.1.2.4: the group `name` is "processed the
                 // same as the name in the EmailAddress type" — trim white
                 // space; empty after trimming becomes None.
-                name: g.name.as_ref().and_then(|s| {
-                    let trimmed = s.as_ref().trim();
-                    if trimmed.is_empty() {
-                        None
-                    } else {
-                        Some(trimmed.to_owned())
-                    }
-                }),
+                name: g.name.as_ref().and_then(|s| trim_or_none(s.as_ref())),
                 addresses: g.addresses.iter().map(convert_addr).collect(),
             })
             .collect(),
