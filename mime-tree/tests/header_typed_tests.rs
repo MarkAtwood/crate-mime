@@ -361,6 +361,27 @@ fn raw_form_trims_whitespace_only() {
     );
 }
 
+/// Oracle: U+FFFD substitution per `String::from_utf8_lossy` (Rust std
+/// docs). A header field body containing non-UTF-8 bytes (legal in raw
+/// RFC 5322 but not in JMAP wire format) must surface with replacement
+/// characters rather than collapsing into an empty string — that
+/// collapse would be indistinguishable from a missing header.
+///
+/// Test input: `Subject: ` followed by the Latin-1 byte 0xE9 (é in
+/// ISO-8859-1, invalid as standalone UTF-8) embedded between ASCII text.
+#[test]
+fn raw_form_non_utf8_bytes_become_replacement_chars() {
+    let raw: &[u8] = b" caf\xE9 latte ";
+
+    let parsed = parse_header_typed(HeaderForm::Raw, raw);
+
+    // `String::from_utf8_lossy(b"caf\xE9 latte")` → "caf\u{FFFD} latte"
+    assert_eq!(
+        parsed,
+        HeaderValueTyped::Raw("caf\u{FFFD} latte".to_owned()),
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Empty / malformed input — best-effort, never panic
 // ---------------------------------------------------------------------------
