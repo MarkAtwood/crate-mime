@@ -10,7 +10,9 @@
 //! No expected value is derived from running mime-tree itself.
 
 use mime_tree::{
-    parse_header_typed, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped, TzSign,
+    parse_addresses, parse_date, parse_grouped_addresses, parse_header_typed, parse_message_ids,
+    parse_raw, parse_urls, AddressGroup, EmailAddress, HeaderForm, HeaderValueTyped, TzSign,
+    UnknownHeaderForm,
 };
 
 // ---------------------------------------------------------------------------
@@ -561,4 +563,119 @@ fn display_header_date_time_delegates_to_rfc3339() {
     };
     assert_eq!(format!("{dt}"), dt.to_rfc3339());
     assert_eq!(format!("{dt}"), "1997-11-21T09:55:06-06:00");
+}
+
+// ---------------------------------------------------------------------------
+// HeaderForm: Display / FromStr round-trip on JMAP form-token strings
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 8621 §4.1.2 form-token strings: asRaw, asAddresses,
+/// asGroupedAddresses, asMessageIds, asDate, asURLs.
+#[test]
+fn header_form_display_emits_jmap_tokens() {
+    assert_eq!(format!("{}", HeaderForm::Raw), "asRaw");
+    assert_eq!(format!("{}", HeaderForm::Addresses), "asAddresses");
+    assert_eq!(
+        format!("{}", HeaderForm::GroupedAddresses),
+        "asGroupedAddresses"
+    );
+    assert_eq!(format!("{}", HeaderForm::MessageIds), "asMessageIds");
+    assert_eq!(format!("{}", HeaderForm::Date), "asDate");
+    assert_eq!(format!("{}", HeaderForm::URLs), "asURLs");
+    assert_eq!(HeaderForm::Raw.as_jmap_token(), "asRaw");
+}
+
+#[test]
+fn header_form_from_str_round_trip() {
+    use std::str::FromStr;
+    for f in [
+        HeaderForm::Raw,
+        HeaderForm::Addresses,
+        HeaderForm::GroupedAddresses,
+        HeaderForm::MessageIds,
+        HeaderForm::Date,
+        HeaderForm::URLs,
+    ] {
+        let tok = f.as_jmap_token();
+        assert_eq!(
+            HeaderForm::from_str(tok).unwrap(),
+            f,
+            "round-trip for {tok}"
+        );
+    }
+}
+
+#[test]
+fn header_form_from_str_rejects_unknown_and_wrong_case() {
+    use std::str::FromStr;
+    // Unknown token.
+    assert_eq!(
+        HeaderForm::from_str("asMystery"),
+        Err(UnknownHeaderForm("asMystery".to_owned())),
+    );
+    // The bare variant name without `as` prefix is NOT accepted; JMAP
+    // form-tokens are case- and prefix-sensitive per RFC 8621 §4.1.2.
+    assert!(HeaderForm::from_str("Raw").is_err());
+    assert!(HeaderForm::from_str("addresses").is_err());
+    // asText is reserved for RFC 8621 §4.1.2.2 (not yet implemented in
+    // this crate — see MIME-o2c.28). For now it must be rejected.
+    assert!(HeaderForm::from_str("asText").is_err());
+}
+
+// ---------------------------------------------------------------------------
+// Per-form entry points
+// ---------------------------------------------------------------------------
+
+/// Each per-form helper must produce the same value as the corresponding
+/// `parse_header_typed` variant, without the boilerplate match.
+#[test]
+fn per_form_helpers_match_parse_header_typed() {
+    let raw_addr = b" Alice <alice@example.com>";
+    assert_eq!(
+        parse_addresses(raw_addr),
+        match parse_header_typed(HeaderForm::Addresses, raw_addr) {
+            HeaderValueTyped::Addresses(v) => v,
+            _ => unreachable!(),
+        }
+    );
+
+    let raw_group = b"Friends: alice@example.com, bob@example.com;";
+    assert_eq!(
+        parse_grouped_addresses(raw_group),
+        match parse_header_typed(HeaderForm::GroupedAddresses, raw_group) {
+            HeaderValueTyped::GroupedAddresses(v) => v,
+            _ => unreachable!(),
+        }
+    );
+
+    let raw_ids = b"<abc@example.com> <def@example.com>";
+    assert_eq!(
+        parse_message_ids(raw_ids),
+        vec!["abc@example.com", "def@example.com"]
+    );
+
+    let raw_date = b" Fri, 21 Nov 1997 09:55:06 -0600";
+    let dt = parse_date(raw_date).expect("valid date");
+    assert_eq!(dt.year, 1997);
+
+    let raw_urls = b"<https://example.com/>";
+    assert_eq!(
+        parse_urls(raw_urls),
+        vec!["https://example.com/".to_owned()]
+    );
+
+    let raw_raw = b"  Subject  ";
+    assert_eq!(parse_raw(raw_raw), "Subject");
+}
+
+/// Malformed input falls through to empty results for each per-form
+/// helper — same contract as `parse_header_typed`.
+#[test]
+fn per_form_helpers_empty_on_malformed() {
+    assert!(parse_addresses(b"").is_empty());
+    assert!(parse_grouped_addresses(b"").is_empty());
+    assert!(parse_message_ids(b" not-a-message-id").is_empty());
+    assert_eq!(parse_date(b" not a date"), None);
+    assert!(parse_urls(b"https://example.com (no brackets)").is_empty());
+    assert_eq!(parse_raw(b""), "");
 }
