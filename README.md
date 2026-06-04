@@ -33,7 +33,7 @@ S/MIME sign, verify, encrypt, and decrypt. Key operations are trait-based:
 in memory, a hardware token, an HSM, or a remote signing service.
 
 - **Verify** `multipart/signed` messages — certificate chain validation included
-- **Decrypt** `EnvelopedData` — RSA PKCS#1v15, RSA-OAEP, ECDH P-256/P-384
+- **Decrypt** `EnvelopedData` — RSA PKCS#1v15, ECDH P-256/P-384
 - **Sign** MIME content → `multipart/signed` output accepted by standard MUAs
 - **Encrypt** MIME content → `application/pkcs7-mime; smime-type=enveloped-data`
 
@@ -60,11 +60,9 @@ hand-rolled their own implementations using different CMS libraries.
 `smime-tree` is designed to be the shared solution once the underlying
 RustCrypto CMS/X.509 stack stabilizes.
 
-**Certificate chain validation has algorithm gaps.**
-`pkix-chain` (used for RFC 5280 path validation) currently supports only
-RSA-PKCS1v15-SHA-256 and ECDSA-P-256-SHA-256 for CA certificate signatures.
-Chains where an intermediate or root CA uses ECDSA-P-384 — common in modern
-PKIs — will fail. See [issue #1](https://github.com/MarkAtwood/crate-mime/issues/1).
+**RSA-PSS CA signatures are not supported** for certificate chain validation.
+Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
+signatures are rare in practice. File an issue if you need it.
 There is also a version-bridge overhead (DER round-trip per certificate) until
 `pkix-chain` moves to x509-cert 0.3; see [issue #2](https://github.com/MarkAtwood/crate-mime/issues/2).
 
