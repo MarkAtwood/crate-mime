@@ -222,6 +222,12 @@ fn finish_decode(
 pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>, pending_escape: &mut bool) {
     // Strip leading dot-stuff: NNTP adds a '.' before any data line starting
     // with '.'. The resulting '.' is not part of the yEnc encoded data.
+    //
+    // This MUST happen before pending-escape resolution.  Dot-stuffing is a
+    // transport-layer transformation: the NNTP server prepends a '.' that the
+    // encoder never emitted.  Removing it first recovers the encoder's
+    // original byte stream, so the pending-escape target is the byte the
+    // encoder intended, not the NNTP-added dot.
     let line = if line.len() >= 2 && line[0] == b'.' && line[1] == b'.' {
         &line[1..]
     } else {
@@ -469,6 +475,55 @@ mod tests {
         decode_line(line2, &mut out, &mut pe);
         assert!(!pe, "line2 consumed the pending escape");
         assert_eq!(out, &[0u8, 19], "split escape must decode correctly");
+    }
+
+    #[test]
+    fn decode_line_split_escape_with_dot_stuffed_target() {
+        // Verify that pending-escape interacts correctly with NNTP
+        // dot-stuffing.  The encoder produces a split escape where the target
+        // byte is '.' (0x2E), which causes NNTP to dot-stuff the next line.
+        //
+        // Encoder output:   line1 = "*=\r\n", line2 = ".+\r\n"
+        // After dot-stuff:  line1 = "*=\r\n", line2 = "..+\r\n"
+        //
+        // Dot-unstuffing must happen first (transport layer), recovering the
+        // encoder's ".+".  Then pending-escape consumes '.' as the target.
+        //
+        // Oracle: escape decode of '.' = (0x2E - 106) % 256 = 196 = 0xC4
+        //         normal  decode of '+' = (0x2B -  42) % 256 =   1
+        let line1 = b"*=\r\n"; // '*' → 0, trailing '=' → pending_escape
+        let line2 = b"..+\r\n"; // dot-stuffed; after unstuff: '.+\r\n'
+        let mut out = Vec::new();
+        let mut pe = false;
+        decode_line(line1, &mut out, &mut pe);
+        assert!(pe, "line1 must leave pending_escape set");
+        decode_line(line2, &mut out, &mut pe);
+        assert!(!pe, "line2 consumed the pending escape");
+        // '*' → 0, escape('.') → 196, '+' → 1
+        assert_eq!(
+            out,
+            &[0u8, 196, 1],
+            "dot-unstuffing must happen before pending-escape resolution"
+        );
+    }
+
+    #[test]
+    fn decode_line_split_escape_all_framing_line() {
+        // If the pending-escape target line contains only framing bytes
+        // (\r\n\0), the escape is lost (encoder violated the spec).
+        let line1 = b"*=\r\n";
+        let line2 = b"\r\n";
+        let line3 = b"+\r\n";
+        let mut out = Vec::new();
+        let mut pe = false;
+        decode_line(line1, &mut out, &mut pe);
+        assert!(pe, "line1 must leave pending_escape set");
+        decode_line(line2, &mut out, &mut pe);
+        // Escape is lost — the line was entirely framing bytes.
+        assert!(!pe, "pending_escape must be cleared even if lost");
+        // The '+' on line3 is decoded normally, not as an escape target.
+        decode_line(line3, &mut out, &mut pe);
+        assert_eq!(out, &[0u8, 1], "lost escape must not carry to line3");
     }
 
     #[test]
