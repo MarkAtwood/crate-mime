@@ -38,13 +38,17 @@ pub enum YencError {
     /// or skip.
     UnexpectedEof,
 
-    /// The decoded payload length does not match the `size=` field in `=yend`.
+    /// The decoded payload length does not match a declared `size=` field.
+    ///
+    /// Checked against `=yend size=` (per-part size) and, for single-part
+    /// articles, also cross-validated against `=ybegin size=` (total file
+    /// size, which must equal the decoded payload for single-part).
     ///
     /// This signals a truncated or corrupt article. In the presence of a valid
     /// CRC, this error would never fire (CRC already detects corruption).
     /// In the absence of a CRC, this is the only integrity check.
     SizeMismatch {
-        /// The byte count declared in `=yend size=`.
+        /// The byte count declared in `=yend size=` or `=ybegin size=`.
         expected: u64,
         /// The actual number of decoded bytes.
         actual: u64,

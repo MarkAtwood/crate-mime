@@ -185,6 +185,18 @@ fn finish_decode(
         }
     }
 
+    // For single-part articles, cross-validate =ybegin size= against the
+    // decoded payload. total_size comes from =ybegin size= and represents
+    // the complete file size. For single-part, the decoded payload IS the
+    // complete file, so they must match. For multi-part, total_size is the
+    // whole-file size which is larger than any individual part's payload.
+    if part.is_none() && data.len() as u64 != total_size {
+        return Err(YencError::SizeMismatch {
+            expected: total_size,
+            actual: data.len() as u64,
+        });
+    }
+
     Ok(DecodedPart {
         data,
         metadata: YencMetadata {
@@ -704,6 +716,26 @@ mod tests {
                 }
             ),
             "expected SizeMismatch, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn decode_ybegin_size_mismatch_single_part() {
+        // =ybegin size=100 but =yend size=4 and only 4 bytes in the data block.
+        // The =yend size= check passes (4 == 4), but the =ybegin size= cross-
+        // validation must catch the mismatch for single-part articles.
+        let input = b"=ybegin line=128 size=100 name=f.bin\n*+,-\n=yend size=4\n";
+        let err = decode(input).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                YencError::SizeMismatch {
+                    expected: 100,
+                    actual: 4
+                }
+            ),
+            "expected SizeMismatch from =ybegin size= cross-validation, got: {:?}",
             err
         );
     }
