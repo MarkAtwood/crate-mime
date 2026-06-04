@@ -191,6 +191,12 @@ fn handle_block(
     }
 
     // Standard UU block.
+    //
+    // parse_begin_line returns None only when the mode token is not valid
+    // UTF-8 (the `from_utf8().ok()?` on line 127). is_begin_line already
+    // guarantees the line starts with "begin" followed by whitespace, and
+    // is_begin_base64 has already handled the "begin-" prefix. This branch
+    // is a defensive fallback for non-UTF-8 mode bytes, not dead code.
     let metadata = match parse_begin_line(begin_line_trimmed) {
         Some(m) => m,
         None => {
