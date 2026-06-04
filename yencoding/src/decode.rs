@@ -334,8 +334,13 @@ impl<'a> LineIter<'a> {
 
 /// If `line` starts with `keyword`, return the remainder after the keyword.
 /// The keyword must end with a space (e.g. `b"=ybegin "`).
+///
+/// Note: this function strips *trailing* CR/LF before matching, but does NOT
+/// strip leading whitespace. The keyword must appear at byte offset 0 of the
+/// line. This is correct because yEnc header keywords (`=ybegin`, `=ypart`,
+/// `=yend`) always start at column 1 per the spec.
 fn strip_keyword<'a>(line: &'a [u8], keyword: &[u8]) -> Option<&'a [u8]> {
-    // Trim leading CR/LF to handle lines from a CRLF stream.
+    // Strip trailing CR/LF to handle lines from a CRLF stream.
     let line = line
         .strip_suffix(b"\r\n")
         .or_else(|| line.strip_suffix(b"\n"))
