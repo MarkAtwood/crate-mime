@@ -32,8 +32,15 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 /// **Complexity note:** the input is split into lines up-front (O(input) time
 /// and O(line-count) space) before any limit check takes effect. Only the
 /// *decoding* of data lines is bounded by `max_bytes`. For large inputs with a
-/// small limit, callers that need true O(max_bytes) behaviour should switch to
-/// a streaming line iterator approach.
+/// small limit, callers that need true O(max_bytes) behaviour should pre-slice
+/// the input to a safe upper bound before calling this function:
+///
+/// ```text
+/// upper_bound = (max_bytes / 45) * 61 + 100
+/// ```
+///
+/// where 61 = 1 length byte + 60 encoded chars per 45-byte line, and 100
+/// covers the `begin`/`end` framing plus a partial final line.
 ///
 /// Passing `None` for `max_bytes` is equivalent to calling [`decode`].
 ///
@@ -242,15 +249,13 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate
         let base = group * 4;
 
         // Fetch 4 encoded bytes, padding with 0x20 if line is short.
-        // Two independent guards:
-        //   idx < payload.len()     — prevents out-of-bounds on a truncated line
-        //   base + i < encoded_needed — prevents reading garbage chars that a
-        //                              mailer may have appended after the last
-        //                              encoded group (both must hold to use the
-        //                              real byte; either failing pads with 0x20).
+        // The index must be within both the payload (prevents out-of-bounds
+        // on a truncated line) and the declared encoded length (prevents
+        // reading garbage chars appended by mailers after the last group).
+        let bound = payload.len().min(encoded_needed);
         let get = |i: usize| -> u8 {
             let idx = base + i;
-            if idx < payload.len() && base + i < encoded_needed {
+            if idx < bound {
                 payload[idx]
             } else {
                 0x20
