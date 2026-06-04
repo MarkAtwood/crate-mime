@@ -682,3 +682,176 @@ fn test_cte_uuencode_no_warning() {
     );
     assert_eq!(msg.part_index.transfer_encoding, TransferEncoding::UUEncode);
 }
+
+// ---------------------------------------------------------------------------
+// Test 23 — NoHeaders: input with no RFC 5322 header lines
+// ---------------------------------------------------------------------------
+
+/// Oracle: input that contains no header-like lines (no "Name: value" pairs)
+/// is rejected with ParseError::NoHeaders. mail-parser returns None for such
+/// input, and parse() maps that to NoHeaders.
+#[test]
+fn test_no_headers_returns_error() {
+    // Raw bytes with no colon-separated header lines — just body text.
+    let raw = b"This is just some text with no headers at all.\r\n";
+    let err = parse(raw).unwrap_err();
+    assert_eq!(err, ParseError::NoHeaders);
+}
+
+// ---------------------------------------------------------------------------
+// Test 24 — decode_body_value InvalidRange: offset+length overflow
+// ---------------------------------------------------------------------------
+
+/// Oracle: body_range (u32::MAX, u32::MAX) overflows usize on addition.
+/// decode_body_value must return InvalidRange, not panic.
+#[test]
+fn test_decode_body_value_overflow_returns_invalid_range() {
+    let raw = b"From: a@b.c\r\nContent-Type: text/plain\r\n\r\nHello\r\n";
+    let msg = parse(raw).expect("parse must succeed");
+    let mut part = msg.part_index.clone();
+    // Forge an overflowing body_range.
+    part.body_range = (u32::MAX, u32::MAX);
+    let err = decode_body_value(raw, &part, None).unwrap_err();
+    assert!(
+        matches!(err, ParseError::InvalidRange { .. }),
+        "overflowing body_range must return InvalidRange, got: {err:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 25 — decode_body_value InvalidRange: offset+length > raw.len()
+// ---------------------------------------------------------------------------
+
+/// Oracle: body_range extends past end of raw bytes.
+/// decode_body_value must return InvalidRange.
+#[test]
+fn test_decode_body_value_past_end_returns_invalid_range() {
+    let raw = b"From: a@b.c\r\nContent-Type: text/plain\r\n\r\nHi\r\n";
+    let msg = parse(raw).expect("parse must succeed");
+    let mut part = msg.part_index.clone();
+    // Forge a body_range that extends past the raw bytes.
+    part.body_range = (0, raw.len() as u32 + 100);
+    let err = decode_body_value(raw, &part, None).unwrap_err();
+    assert!(
+        matches!(err, ParseError::InvalidRange { .. }),
+        "out-of-bounds body_range must return InvalidRange, got: {err:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 26 — multipart/related with image/jpeg first child
+// ---------------------------------------------------------------------------
+
+/// Oracle: RFC 8621 §4.1.4 isInline condition — for multipart/related,
+/// the first child (i==0) is always eligible for isInline regardless of
+/// multipartType. An image/jpeg at i==0 satisfies isInline (it is an inline
+/// media type and i==0), so it is pushed to both textBody and htmlBody.
+#[test]
+fn test_related_image_jpeg_first_child_in_both_body_lists() {
+    let raw = concat!(
+        "From: a@b.c\r\n",
+        "MIME-Version: 1.0\r\n",
+        "Content-Type: multipart/related; boundary=\"rel\"\r\n",
+        "\r\n",
+        "--rel\r\n",
+        "Content-Type: image/jpeg\r\n",
+        "\r\n",
+        "jpeg-data-placeholder\r\n",
+        "--rel\r\n",
+        "Content-Type: image/png\r\n",
+        "\r\n",
+        "png-data-placeholder\r\n",
+        "--rel--\r\n",
+    );
+    let msg = parse(raw.as_bytes()).expect("parse must succeed");
+
+    // First child (image/jpeg at i==0) is inline → both text_body and html_body.
+    assert!(
+        msg.text_body.contains(&"1".to_owned()),
+        "image/jpeg at i=0 must be in text_body; got: {:?}",
+        msg.text_body
+    );
+    assert!(
+        msg.html_body.contains(&"1".to_owned()),
+        "image/jpeg at i=0 must be in html_body; got: {:?}",
+        msg.html_body
+    );
+
+    // Second child (image/png at i=1) in multipart/related with i>0 is NOT inline
+    // (the third isInline clause: i==0 OR multipartType != "related" — fails for i=1).
+    assert!(
+        msg.attachments.contains(&"2".to_owned()),
+        "image/png at i=1 in related must be in attachments; got: {:?}",
+        msg.attachments
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 27 — preview for text/plain message
+// ---------------------------------------------------------------------------
+
+/// Oracle: preview is the first 256 chars of the first text_body part's
+/// decoded content.
+#[test]
+fn test_preview_text_plain() {
+    let raw = b"From: a@b.c\r\n\
+                Content-Type: text/plain\r\n\
+                \r\n\
+                Hello, World!\r\n";
+    let msg = parse(raw).expect("parse must succeed");
+    let preview = msg.preview.expect("text message must have a preview");
+    assert!(
+        preview.starts_with("Hello, World!"),
+        "preview must start with the decoded text body; got: {:?}",
+        preview
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 28 — preview for binary-only message
+// ---------------------------------------------------------------------------
+
+/// Oracle: a message with only a binary part (application/octet-stream)
+/// has no text_body parts, so preview is None.
+#[test]
+fn test_preview_binary_only_is_none() {
+    let raw = b"From: a@b.c\r\n\
+                Content-Type: application/octet-stream\r\n\
+                Content-Transfer-Encoding: base64\r\n\
+                \r\n\
+                AAAA\r\n";
+    let msg = parse(raw).expect("parse must succeed");
+    assert!(
+        msg.preview.is_none(),
+        "binary-only message must have no preview; got: {:?}",
+        msg.preview
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 29 — preview truncates to 256 characters
+// ---------------------------------------------------------------------------
+
+/// Oracle: preview is at most 256 characters. A body longer than 256 chars
+/// must be truncated.
+#[test]
+fn test_preview_truncates_to_256_chars() {
+    // Build a text/plain message with 500 'A' characters.
+    let body = "A".repeat(500);
+    let raw = format!(
+        "From: a@b.c\r\nContent-Type: text/plain\r\n\r\n{}\r\n",
+        body
+    );
+    let msg = parse(raw.as_bytes()).expect("parse must succeed");
+    let preview = msg.preview.expect("text message must have a preview");
+    assert_eq!(
+        preview.chars().count(),
+        256,
+        "preview must be exactly 256 chars; got {}",
+        preview.chars().count()
+    );
+    assert!(
+        preview.chars().all(|c| c == 'A'),
+        "preview must contain only 'A' characters"
+    );
+}
