@@ -37,7 +37,7 @@ zeroize = { version = "1", features = ["zeroize_derive"] }
 # pkix-chain uses x509-cert 0.2 (the stable stack), while the rest of
 # smime-tree uses x509-cert 0.3.0-rc (required by the `cms` crate).
 # Certificates are bridged via DER round-trip in cert.rs.
-pkix-chain = { version = "0.4" }
+pkix-chain = { version = "0.4", features = ["rustcrypto"] }
 x509-cert-stable = { package = "x509-cert", version = "0.2" }
 der-stable = { package = "der", version = "0.7" }
 
