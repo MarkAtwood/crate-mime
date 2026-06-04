@@ -111,8 +111,9 @@ pub struct YencMetadata {
     /// Encoded line length from the `line=` field. Informational only; the
     /// decoder does not require lines to be exactly this length.
     ///
-    /// Stored as `u8`. Declared values larger than 255 (produced by some
-    /// non-standard encoders) are clamped to 255.
+    /// Defaults to 128 when the `line=` field is absent (common on older
+    /// encoders). Stored as `u8`; declared values larger than 255 (produced
+    /// by some non-standard encoders) are clamped to 255.
     pub line_length: u8,
 
     /// Total number of parts in a multi-part series (`total=` on `=ybegin`).

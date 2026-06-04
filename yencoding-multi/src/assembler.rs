@@ -233,7 +233,7 @@ impl Assembler {
         }
 
         // Write the decoded bytes into the buffer.
-        // Safety: data.len() == range_len is guaranteed by the check above.
+        // Invariant: data.len() == range_len is guaranteed by the check above.
         let start = begin_0 as usize;
         self.buffer[start..start + range_len].copy_from_slice(&part.data);
 

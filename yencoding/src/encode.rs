@@ -130,13 +130,17 @@ fn encode_body(data: &[u8], line_length: usize, out: &mut Vec<u8>) -> u32 {
 
         // Determine whether this byte must be escaped.
         // NUL, LF, CR, and '=' are always escaped.
-        // '.' and TAB (0x09) at position 0 of a line are also escaped.
+        // '.' and TAB (0x09) at position 0 of a line are also escaped, to
+        // prevent NNTP dot-stuffing issues and whitespace-sensitive transports.
         let must_escape = matches!(encoded, 0x00 | 0x0A | 0x0D | 0x3D)
             || (col == 0 && matches!(encoded, 0x2E | 0x09));
 
         if must_escape {
             // A 2-byte escape pair must fit on one line.  If there is only one
             // column left, flush the current line before emitting the pair.
+            // The flush resets col to 0, but this is safe: the escape pair's
+            // first byte is always '=' (0x3D), not '.' or TAB, so the col==0
+            // check above cannot re-trigger on the escape output itself.
             if col + 2 > line_length {
                 out.extend_from_slice(b"\r\n");
                 col = 0;
