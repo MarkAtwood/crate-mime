@@ -2,6 +2,29 @@
 
 All notable changes to `smime-tree` will be documented here.
 
+## [0.3.2] - 2026-06-04
+
+### Added
+
+- P-384 certificate chain validation now works. `pkix-chain`'s `rustcrypto` feature
+  (via `pkix-path` 0.3.1) activates `EcdsaP384Verifier`, so chains with P-384/SHA-384
+  CA signatures are accepted. Integration test with OpenSSL-generated P-384 chain added.
+
+### Fixed
+
+- `verify()`: pre-UNIX-epoch `SystemTime` passed as `now` now returns
+  `SmimeError::CertChain` immediately instead of silently using epoch-zero.
+- `verify()`: `content-type` signed attribute value is now decoded and validated
+  per RFC 5652 §11.1. Wrong values are rejected with `SmimeError::MalformedInput`.
+- `mime-tree` moved from `[dependencies]` to `[dev-dependencies]` — removes a
+  transitive dependency for consumers.
+
+### Changed
+
+- RSA-PSS CA signatures documented as unsupported in `lib.rs` Known Limitations.
+  Stale P-384 chain validation caveat removed.
+- README: corrected RSA key transport description from RSA-OAEP to RSA PKCS#1 v1.5.
+
 ## [0.3.1] - 2026-05-11
 
 ### Fixed
