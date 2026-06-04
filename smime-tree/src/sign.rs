@@ -103,6 +103,11 @@ pub fn sign(
             .unwrap_or_else(|| select_digest_for_cert(cert));
 
         // Step 2: hash content_mime with this key's digest algorithm.
+        // IMPORTANT: the hash covers exactly `content_mime` — the raw MIME bytes
+        // the caller provides. The CRLF emitted on line 230 is boundary transport
+        // padding (RFC 2046 §5.1.1 requires CRLF before each boundary delimiter)
+        // and is NOT part of the hashed content. Callers of verify() must supply
+        // exactly the same `content_mime` bytes that were hashed here.
         let msg_digest = hash_content(content_mime, &digest_alg);
 
         // Step 3: build signed attributes for this signer.
@@ -140,6 +145,9 @@ pub fn sign(
 
         // Step 6: build SignerInfo for this key.
         let sid = SignerIdentifier::from(cert);
+        // RFC 4055 §2.1: for SHA-256/384/512, the parameters field SHOULD be
+        // absent. Implementations MUST accept both absent and NULL. We use
+        // absent (None) as the SHOULD form. This matches OpenSSL's output.
         let digest_algorithm = AlgorithmIdentifierOwned {
             oid: digest_alg_oid(&digest_alg),
             parameters: None,
@@ -222,7 +230,10 @@ pub fn sign(
     out.extend_from_slice(boundary.as_bytes());
     out.extend_from_slice(b"\"\r\n");
     out.extend_from_slice(b"\r\n");
-    // First part: the signed MIME content verbatim
+    // First part: the signed MIME content verbatim.
+    // The CRLF after content_mime is boundary transport padding required by
+    // RFC 2046 §5.1.1 (CRLF before each boundary delimiter). It is NOT part
+    // of the signed content — the hash in Step 2 covers only content_mime.
     out.extend_from_slice(b"--");
     out.extend_from_slice(boundary.as_bytes());
     out.extend_from_slice(b"\r\n");
