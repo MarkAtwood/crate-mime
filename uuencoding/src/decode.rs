@@ -856,7 +856,7 @@ mod tests {
     #[test]
     fn decode_limited_boundary_multiple_of_45() {
         let data: Vec<u8> = (0u8..135).collect(); // 3 lines of 45
-        // limit=45 (exact line boundary)
+                                                  // limit=45 (exact line boundary)
         roundtrip_limited_check(&data, 45);
         // limit=90 (two lines)
         roundtrip_limited_check(&data, 90);
