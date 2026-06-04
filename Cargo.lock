@@ -766,6 +766,18 @@ dependencies = [
 
 [[package]]
 name = "p384"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe42f1670a52a47d448f14b6a5c61dd78fce51856e68edaa38f7ae3a46b8d6b6"
+dependencies = [
+ "ecdsa 0.16.9",
+ "elliptic-curve 0.13.8",
+ "primeorder 0.13.6",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "p384"
 version = "0.14.0-rc.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "437f30ebcb1e16ff48acead5f08bd69fbcdbc82421687bb48af5c315a0bfab03"
@@ -850,12 +862,13 @@ dependencies = [
 
 [[package]]
 name = "pkix-path"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4da921c67d82e6d1be503fed1e2ac6594717a47317eabd3574aaae64c27635bf"
+checksum = "922d358c937d435f194241b7f87a4565aa68d1e11f9a8edc5f2255743861d2d8"
 dependencies = [
  "der 0.7.10",
  "p256 0.13.2",
+ "p384 0.13.1",
  "rsa 0.9.10",
  "sha2 0.10.9",
  "signature 2.2.0",
@@ -1264,7 +1277,7 @@ dependencies = [
  "getrandom 0.4.2",
  "mime-tree",
  "p256 0.14.0-rc.9",
- "p384",
+ "p384 0.14.0-rc.9",
  "pkix-chain",
  "rsa 0.10.0-rc.18",
  "serde",
