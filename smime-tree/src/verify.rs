@@ -301,11 +301,30 @@ fn check_message_digest(
     signed_attrs: &x509_cert::attr::Attributes,
     content_hash: &[u8],
 ) -> Result<(), SmimeError> {
-    // RFC 5652 §11.1: content-type MUST be present whenever signedAttrs are present.
-    if !signed_attrs.iter().any(|a| a.oid == ID_CONTENT_TYPE) {
-        return Err(SmimeError::MalformedInput(
-            "content-type signed attribute not found".into(),
-        ));
+    // RFC 5652 §11.1: content-type MUST be present whenever signedAttrs are
+    // present, and its value MUST equal the eContentType of the
+    // EncapsulatedContentInfo (id-data for S/MIME).
+    let ct_attr = signed_attrs
+        .iter()
+        .find(|a| a.oid == ID_CONTENT_TYPE)
+        .ok_or_else(|| {
+            SmimeError::MalformedInput("content-type signed attribute not found".into())
+        })?;
+    let ct_value = ct_attr
+        .values
+        .iter()
+        .next()
+        .ok_or_else(|| SmimeError::MalformedInput("content-type attribute has no value".into()))?
+        .decode_as::<der::asn1::ObjectIdentifier>()
+        .map_err(|_| {
+            SmimeError::MalformedInput(
+                "cannot decode content-type attribute value as ObjectIdentifier".into(),
+            )
+        })?;
+    if ct_value != ID_DATA {
+        return Err(SmimeError::MalformedInput(format!(
+            "content-type attribute value is {ct_value}, expected id-data ({ID_DATA})"
+        )));
     }
 
     let md_attr = signed_attrs
