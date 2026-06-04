@@ -85,6 +85,14 @@ pub(crate) fn parse_ypart(payload: &str) -> Result<YpartFields, YencError> {
             _ => {} // unknown fields silently skipped
         }
     }
+    // Validate begin <= end when both are present.
+    if let (Some(b), Some(e)) = (f.begin, f.end) {
+        if b > e {
+            return Err(YencError::InvalidHeader {
+                field: "end".into(),
+            });
+        }
+    }
     Ok(f)
 }
 
@@ -267,6 +275,15 @@ mod tests {
         let f = parse_ypart("begin=1 end=64").unwrap();
         assert_eq!(f.begin, Some(1));
         assert_eq!(f.end, Some(64));
+    }
+
+    #[test]
+    fn ypart_begin_greater_than_end_is_error() {
+        let err = parse_ypart("begin=100 end=1").unwrap_err();
+        assert!(
+            matches!(err, YencError::InvalidHeader { .. }),
+            "begin > end must be rejected"
+        );
     }
 
     #[test]
