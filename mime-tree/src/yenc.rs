@@ -120,7 +120,11 @@ pub struct InlineYEncBlock {
     /// invalid header field, missing `=yend`, CRC mismatch, or any other
     /// error returned by [`yencoding::decode`]).
     ///
-    /// When this is `true`, `data` may be empty or partial.
+    /// When this is `true`, `data` may be empty or partial.  The specific
+    /// yEnc error variant is not exposed — callers only see this boolean
+    /// flag.  The underlying [`yencoding::YencError`] is consumed internally
+    /// to populate the sentinel fields; inspect `data.is_empty()`,
+    /// `crc32_verified`, and `begin_length` to distinguish failure modes.
     pub is_encoding_problem: bool,
 }
 
@@ -205,6 +209,9 @@ pub fn scan_inline_yencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineYEncBlock
 
         // Advance past the consumed block. If we couldn't find =yend, advance
         // past the =ybegin line only so we don't re-process it.
+        // .max(1) guarantees forward progress even when yend_rel_in_slice is 0
+        // (e.g. a zero-length =ybegin line at end of body), preventing an
+        // infinite loop.
         pos = ybegin_rel + yend_rel_in_slice.max(1);
     }
 

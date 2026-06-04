@@ -12,6 +12,13 @@ pub enum ParseError {
     /// The input contains no recognizable RFC 5322 headers.
     NoHeaders,
     /// The byte range specified in a `ParsedPart` extends beyond the raw message bytes.
+    ///
+    /// `offset` and `length` are `u32` to match `ParsedPart::body_range`.
+    /// `available` is `u64` because it comes from `raw.len() as u64` —
+    /// using `u64` avoids a lossy truncation on platforms where `usize > u32`
+    /// and makes the error message unambiguous even if the slice length
+    /// exceeds 4 GiB (which `ParsedPart` cannot address, but the caller's
+    /// buffer might be that large).
     InvalidRange {
         offset: u32,
         length: u32,

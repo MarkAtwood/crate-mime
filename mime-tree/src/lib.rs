@@ -14,6 +14,7 @@
 //!
 //! // text_body / html_body / attachments follow RFC 8621 §4.1.4.
 //! assert_eq!(msg.text_body, vec!["1"]);
+//! assert_eq!(msg.html_body, vec!["1"]); // mirrors text_body for non-multipart
 //!
 //! // Decode a body part on demand (transfer-decode + charset-convert).
 //! let part = msg.part_index.find_by_id("1").unwrap();
