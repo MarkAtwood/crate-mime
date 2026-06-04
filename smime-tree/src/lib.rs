@@ -45,6 +45,9 @@
 //!
 //! # Known Limitations
 //!
+//! * **RSA-PSS signatures are not supported** for certificate chain validation.
+//!   Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
+//!   signatures are rare in practice. File an issue if you need it.
 //! * **RSA key transport uses PKCS#1 v1.5** (`ktri`), not RSAES-OAEP. PKCS#1 v1.5 is
 //!   deprecated by RFC 8017 in favour of OAEP and is susceptible to Bleichenbacher
 //!   padding oracle attacks in interactive decryption scenarios.
