@@ -555,4 +555,70 @@ mod tests {
         );
         assert!(msg.attachments.is_empty());
     }
+
+    /// Test 10 — multipart/mixed(text/plain, text/html) inside multipart/alternative.
+    ///
+    /// Structure:
+    ///   multipart/alternative (root, id=""):
+    ///     - multipart/mixed (id="1"):
+    ///         - text/plain (id="1.1")
+    ///         - text/html  (id="1.2")
+    ///
+    /// Walk trace (in_alternative=true inside the mixed container):
+    ///   text/plain (i=0): nullifies local html_body → pushes "1.1" to text_body
+    ///   text/html  (i=1): nullifies local text_body → both local Options are
+    ///     now None, so text/html is not pushed anywhere
+    ///
+    /// The nullification is local to the recursive call (lines 110-111 create
+    /// fresh Option locals via as_deref_mut).  Pushes propagate to the caller's
+    /// underlying Vec, but setting the local Option to None does not affect the
+    /// caller.  So text/plain ("1.1") remains in text_body after the recursive
+    /// call returns.
+    ///
+    /// End-of-alternative cross-population: text_body grew (["1.1"]) but
+    /// html_body did not → html_body gets a copy of ["1.1"].
+    ///
+    /// Result: text_body = ["1.1"], html_body = ["1.1"]
+    ///
+    /// The text/html part ("1.2") is silently dropped — an unusual MIME
+    /// structure.  A multipart/mixed containing both text alternatives is more
+    /// correctly expressed as a direct multipart/alternative.  Documented as
+    /// accepted edge-case behavior.
+    #[test]
+    fn alternative_mixed_both_text_types_dual_nullification() {
+        let raw = concat!(
+            "From: a@b.com\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"outer\"\r\n",
+            "\r\n",
+            "--outer\r\n",
+            "Content-Type: multipart/mixed; boundary=\"inner\"\r\n",
+            "\r\n",
+            "--inner\r\n",
+            "Content-Type: text/plain\r\n",
+            "\r\n",
+            "Plain text\r\n",
+            "--inner\r\n",
+            "Content-Type: text/html\r\n",
+            "\r\n",
+            "<p>HTML text</p>\r\n",
+            "--inner--\r\n",
+            "--outer--\r\n"
+        )
+        .as_bytes();
+
+        let msg = parse(raw).expect("parse failed");
+        // text/plain survives; text/html is dropped (see doc comment).
+        assert_eq!(
+            msg.text_body,
+            vec!["1.1".to_owned()],
+            "text/plain survives local nullification"
+        );
+        // Cross-population mirrors text_body into html_body.
+        assert_eq!(
+            msg.html_body,
+            vec!["1.1".to_owned()],
+            "cross-population mirrors text/plain into html_body"
+        );
+    }
 }
