@@ -78,7 +78,7 @@ MIME structure. It:
 
 `encrypt()` builds a CMS `EnvelopedData` with one `RecipientInfo` per certificate:
 
-- RSA certificates → `KeyTransRecipientInfo` (RSA-OAEP key transport).
+- RSA certificates → `KeyTransRecipientInfo` (RSA PKCS#1 v1.5 key transport).
 - EC P-256/P-384 certificates → `KeyAgreeRecipientInfo` (ECDH-ES + AES key wrap).
 
 A random CEK is generated for each message. Content is encrypted with AES-256-CBC.
