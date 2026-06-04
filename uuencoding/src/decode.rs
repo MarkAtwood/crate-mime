@@ -200,8 +200,17 @@ pub(crate) fn decode_line(line: &[u8], out: &mut Vec<u8>) -> Result<usize, crate
         return Ok(0);
     }
 
-    // Step 3: read length byte
-    let n = (first.wrapping_sub(32)) & 0x3F;
+    // Step 3: read length byte.
+    // Valid non-terminator length characters are 0x21 ('!', 1 byte) through
+    // 0x5F ('_', 45 bytes).  Bytes outside 0x20..=0x60 are not valid UU
+    // length bytes — reject them here rather than silently masking to 6 bits.
+    if !(0x21..=0x5F).contains(&first) {
+        return Err(crate::error::UuError::InvalidChar {
+            col: 0,
+            byte: first,
+        });
+    }
+    let n = (first - 0x20) & 0x3F;
 
     // Step 4: zero-length
     if n == 0 {
@@ -382,6 +391,23 @@ mod tests {
         let line = b"!a   ";
         let err = decode(line).unwrap_err();
         assert!(matches!(err, UuError::InvalidChar { byte: 0x61, .. }));
+    }
+
+    #[test]
+    fn invalid_length_byte_high() {
+        // 0x80 is outside the valid UU length range (0x21..=0x5F).
+        // Must be rejected as InvalidChar at col 0, not silently masked.
+        let line = b"\x80AAAA";
+        let err = decode(line).unwrap_err();
+        assert!(matches!(err, UuError::InvalidChar { col: 0, byte: 0x80 }));
+    }
+
+    #[test]
+    fn invalid_length_byte_low() {
+        // 0x01 (ctrl-A) is outside the valid UU range.
+        let line = b"\x01AAAA";
+        let err = decode(line).unwrap_err();
+        assert!(matches!(err, UuError::InvalidChar { col: 0, byte: 0x01 }));
     }
 
     // Line shorter than length implies → pad with spaces (treat as 0x20 = 0)
