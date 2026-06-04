@@ -68,7 +68,14 @@ pub(crate) fn validate_chain(
     // NoRevocation: revocation is applied in step 4 on the signature-verified chain.
     // max_path_len is set explicitly to match build_chain::MAX_DEPTH so both limits
     // stay in sync if either changes.
-    let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let now_unix = now
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| {
+            SmimeError::CertChain(CertChainError::Other(
+                "system clock is before the UNIX epoch".into(),
+            ))
+        })?
+        .as_secs();
     let mut policy = pkix_chain::ValidationPolicy::new(now_unix);
     policy.max_path_len = MAX_DEPTH as u8;
     pkix_chain::verify_chain_default(
