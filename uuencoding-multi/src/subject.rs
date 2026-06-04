@@ -196,18 +196,19 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
         return None;
     }
 
-    // yEnc posts are out of scope.
-    if yenc_re().is_match(subject) {
-        return None;
-    }
-
     let stripped = strip_prefixes(subject).trim();
 
     if stripped.is_empty() {
         return None;
     }
 
-    for pat in patterns() {
+    // yEnc posts are out of scope. Check after prefix stripping for
+    // consistency — patterns are also matched against `stripped`.
+    if yenc_re().is_match(stripped) {
+        return None;
+    }
+
+    for (pat_idx, pat) in patterns().iter().enumerate() {
         if let Some(caps) = pat.re.captures(stripped) {
             // Capture group 1 is always the part index.
             // Use `continue` (not `?`) so that a failed parse on one pattern
@@ -238,11 +239,18 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
                 format!("{} {}", before, after)
             };
 
-            // Strip trailing " -" artifact (e.g. "filename.tar.gz -").
-            let base_subject = raw
-                .trim_end_matches(|c: char| c == '-' || c.is_whitespace())
-                .trim()
-                .to_string();
+            // Strip trailing " -" artifact only when pattern 5 (dash-separated
+            // fraction) matched. Pattern 5 matches " - 03/17"; removing it can
+            // leave a trailing " -" or bare "-" artifact. Other patterns do not
+            // produce this artifact, and unconditional stripping would corrupt
+            // filenames that legitimately end in a dash.
+            let base_subject = if pat_idx == 4 {
+                raw.trim_end_matches(|c: char| c == '-' || c.is_whitespace())
+                    .trim()
+                    .to_string()
+            } else {
+                raw
+            };
 
             // Invariant: base_subject must not be empty. A subject that
             // consists solely of a part marker (e.g. "(1/3)") has no
@@ -406,6 +414,13 @@ mod tests {
         assert!(parse_subject("\"file.nfo\" YENC (1/3)").is_none());
     }
 
+    #[test]
+    fn yenc_after_re_prefix_returns_none() {
+        // yEnc check must apply after prefix stripping so Re:-prefixed yEnc
+        // subjects are still filtered.
+        assert!(parse_subject("Re: \"file.nfo\" yEnc (1/3)").is_none());
+    }
+
     // ------------------------------------------------------------------
     // No marker
     // ------------------------------------------------------------------
@@ -502,11 +517,20 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn base_subject_trailing_dash_stripped() {
-        // Pattern 5 leaves no artifact here; verify general trimming.
-        let p = parts("myfile.bin (2/5)");
+    fn base_subject_trailing_dash_stripped_for_pattern5() {
+        // Pattern 5 (dash-separated fraction) can leave a trailing " -"
+        // artifact after the marker is removed. Only pattern 5 trims this.
+        let p = parts("filename.tar.gz - 03/17");
         assert!(!p.base_subject.ends_with('-'));
-        assert!(!p.base_subject.ends_with(' '));
+    }
+
+    #[test]
+    fn base_subject_trailing_dash_preserved_for_other_patterns() {
+        // A filename ending in a dash must NOT have it stripped when matched
+        // by patterns other than pattern 5.
+        let p = parts("my-file- (1/3)");
+        assert_eq!(p.base_subject, "my-file-");
+        assert_eq!(p.part_index, Some(1));
     }
 
     // ------------------------------------------------------------------
