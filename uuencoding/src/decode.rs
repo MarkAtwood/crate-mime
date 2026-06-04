@@ -705,13 +705,17 @@ mod tests {
         assert!(block.is_truncated);
     }
 
-    /// Zero limit: no bytes decoded, is_truncated=true.
+    /// Zero limit: no bytes decoded, is_truncated=true, was_limit_hit=true.
     #[test]
     fn decode_limited_zero_limit() {
         let input = b"begin 644 f\n#0V%T\n \nend\n";
         let block = decode_limited(input, Some(0)).unwrap();
         assert!(block.data.is_empty());
         assert!(block.is_truncated);
+        assert!(
+            block.was_limit_hit,
+            "zero limit on non-empty block must set was_limit_hit"
+        );
     }
 
     /// Zero limit on an empty (zero-byte) block: no data to truncate → is_truncated=false.
@@ -792,6 +796,91 @@ mod tests {
             !block.was_limit_hit,
             "exact-limit complete block must not set was_limit_hit"
         );
+    }
+
+    // ---- decode_limited() boundary roundtrip tests ----
+    //
+    // Oracle: uuencoding::encode() produces a valid UU block, which is then
+    // decoded with decode_limited at various limits. The decoded prefix must
+    // match the original input prefix, and was_limit_hit must be true when
+    // the limit is less than the total decoded size.
+    //
+    // UU encodes 3 bytes per group, 45 bytes per line. Test boundaries:
+    //   - exact multiple of 3 (group boundary)
+    //   - exact multiple of 45 (line boundary)
+    //   - limit=1, limit=44, limit=45, limit=46, limit=total-1
+
+    fn roundtrip_limited_check(data: &[u8], limit: usize) {
+        let encoded = crate::encode(data, "test.bin", 0o644);
+        let block = decode_limited(&encoded, Some(limit)).unwrap();
+        let expected_len = limit.min(data.len());
+        assert_eq!(
+            block.data.len(),
+            expected_len,
+            "limit={limit}: decoded length must be min(limit, total)"
+        );
+        assert_eq!(
+            &block.data[..],
+            &data[..expected_len],
+            "limit={limit}: decoded prefix must match input"
+        );
+        if limit < data.len() {
+            assert!(
+                block.is_truncated,
+                "limit={limit} < total={}: must be truncated",
+                data.len()
+            );
+            assert!(
+                block.was_limit_hit,
+                "limit={limit} < total={}: was_limit_hit must be true",
+                data.len()
+            );
+        }
+    }
+
+    #[test]
+    fn decode_limited_boundary_multiple_of_3() {
+        // 90 bytes: exact multiple of both 3 and 45
+        let data: Vec<u8> = (0u8..90).collect();
+        // limit=6 (multiple of 3, mid-line)
+        roundtrip_limited_check(&data, 6);
+        // limit=9 (multiple of 3)
+        roundtrip_limited_check(&data, 9);
+    }
+
+    #[test]
+    fn decode_limited_boundary_multiple_of_45() {
+        let data: Vec<u8> = (0u8..135).collect(); // 3 lines of 45
+        // limit=45 (exact line boundary)
+        roundtrip_limited_check(&data, 45);
+        // limit=90 (two lines)
+        roundtrip_limited_check(&data, 90);
+    }
+
+    #[test]
+    fn decode_limited_boundary_limit_1() {
+        let data: Vec<u8> = (0u8..90).collect();
+        roundtrip_limited_check(&data, 1);
+    }
+
+    #[test]
+    fn decode_limited_boundary_limit_44() {
+        // One byte before a line boundary
+        let data: Vec<u8> = (0u8..90).collect();
+        roundtrip_limited_check(&data, 44);
+    }
+
+    #[test]
+    fn decode_limited_boundary_limit_46() {
+        // One byte after a line boundary
+        let data: Vec<u8> = (0u8..90).collect();
+        roundtrip_limited_check(&data, 46);
+    }
+
+    #[test]
+    fn decode_limited_boundary_limit_total_minus_1() {
+        let data: Vec<u8> = (0u8..90).collect();
+        roundtrip_limited_check(&data, data.len() - 1);
     }
 
     /// "beginners" starts with "begin" but has no whitespace or '-' at position 5.
