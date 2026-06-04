@@ -1,5 +1,16 @@
-use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
-use base64::Engine as _;
+use base64::{
+    alphabet,
+    engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
+    Engine as _,
+};
+
+/// Forgiving base64 engine for real-world email: standard alphabet, padding
+/// accepted but not required.  Many MUAs emit base64 with missing or extra
+/// padding; `DecodePaddingMode::Indifferent` tolerates both.
+const BASE64_EMAIL: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::STANDARD,
+    GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
 
 use crate::{
     error::ParseError,
@@ -74,7 +85,7 @@ pub fn decode_body_value(
                 }
                 stripped.push(b);
             }
-            match BASE64_STANDARD.decode(&stripped) {
+            match BASE64_EMAIL.decode(&stripped) {
                 Ok(v) => v,
                 Err(_) => {
                     is_encoding_problem = true;
@@ -104,7 +115,7 @@ pub fn decode_body_value(
                     Ok(v) => v,
                     Err(_) => {
                         is_encoding_problem = true;
-                        qp_input.to_vec()
+                        Vec::new()
                     }
                 };
             // If the pre-truncated slice decoded to at most max_bytes bytes but
@@ -125,7 +136,7 @@ pub fn decode_body_value(
                             Ok(v) => v,
                             Err(_) => {
                                 is_encoding_problem = true;
-                                body_bytes.to_vec()
+                                Vec::new()
                             }
                         }
                     } else {
@@ -275,6 +286,32 @@ mod tests {
         assert_eq!(result.value, "Hello, World!");
         assert!(!result.is_truncated);
         assert!(!result.is_encoding_problem);
+    }
+
+    #[test]
+    fn test_base64_missing_padding_tolerant() {
+        // Oracle: base64("Hello, World!") == "SGVsbG8sIFdvcmxkIQ=="
+        // Many MUAs strip trailing '=' padding.  The forgiving engine must
+        // decode this without setting is_encoding_problem.
+        let b64_no_pad = b"SGVsbG8sIFdvcmxkIQ";
+        let (raw, part) = make_part(b64_no_pad, TransferEncoding::Base64, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello, World!");
+        assert!(
+            !result.is_encoding_problem,
+            "missing padding must not be an error"
+        );
+    }
+
+    #[test]
+    fn test_base64_invalid_chars_sets_encoding_problem() {
+        // Truly invalid base64 (characters outside the alphabet) must set
+        // is_encoding_problem and return an empty value.
+        let b64_bad = b"!!!not-base64!!!";
+        let (raw, part) = make_part(b64_bad, TransferEncoding::Base64, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert!(result.is_encoding_problem);
+        assert!(result.value.is_empty());
     }
 
     #[test]
