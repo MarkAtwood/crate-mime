@@ -478,7 +478,7 @@ impl fmt::Display for HeaderForm {
 ///
 /// The wrapped string is the input as given (case-sensitive); JMAP
 /// form-tokens are case-sensitive per RFC 8621 §4.1.2.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct UnknownHeaderForm(pub String);
 
 impl fmt::Display for UnknownHeaderForm {
