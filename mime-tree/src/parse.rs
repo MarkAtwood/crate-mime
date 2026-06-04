@@ -41,6 +41,8 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     let body = walk::compute_body_structure(&part_index);
 
     // Compute preview: first 256 decoded characters from the first text_body part.
+    // We decode up to 1024 bytes (not 256) because worst-case UTF-8 uses 4 bytes
+    // per character, so 1024 bytes guarantees at least 256 characters.
     let preview = body.text_body.first().and_then(|id| {
         let part = part_index.find_by_id(id)?;
         let decoded = crate::decode::decode_body_value(raw, part, Some(1024)).ok()?;

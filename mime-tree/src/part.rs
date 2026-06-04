@@ -32,6 +32,17 @@ impl fmt::Display for TransferEncoding {
 }
 
 /// A decoded RFC 5322 / MIME header field.
+///
+/// For headers whose value mail-parser parses as plain text (`Subject`,
+/// `Comments`, `Content-Description`, and any unstructured header), `value`
+/// contains the fully decoded Unicode string (RFC 2047 encoded-words are
+/// already resolved).
+///
+/// For all other header types (`Address`, `DateTime`, `ContentType`,
+/// `Received`), `value` is the raw bytes sliced from the original message
+/// and converted with `String::from_utf8_lossy`.  These structured values
+/// require their own dedicated parsers — see
+/// [`parse_header_typed`][crate::parse_header_typed].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParsedHeader {
     pub name: String,
@@ -55,6 +66,11 @@ pub struct ParsedPart {
     /// Content-Type media type/subtype (e.g. `"text/plain"`).
     pub content_type: String,
     /// Charset parameter from Content-Type, if present.
+    ///
+    /// `None` means no explicit `charset=` parameter was present on the
+    /// Content-Type header. Per RFC 2045 §5.2 the default is US-ASCII, but
+    /// `decode_body_value()` defaults to UTF-8 instead (a strict superset)
+    /// for better handling of the modern email corpus.
     pub charset: Option<String>,
     /// Content-Transfer-Encoding.
     pub transfer_encoding: TransferEncoding,
@@ -65,6 +81,10 @@ pub struct ParsedPart {
     /// Content-ID header value, if present.
     pub cid: Option<String>,
     /// `(offset, length)` of this part's headers in the original bytes.
+    ///
+    /// To access individual typed headers for a part, slice
+    /// `raw[offset..offset+length]` and pass the result to
+    /// [`parse_header_typed`][crate::parse_header_typed].
     pub header_range: (u32, u32),
     /// `(offset, length)` of this part's body (pre-decode) in the original bytes.
     pub body_range: (u32, u32),
@@ -85,8 +105,16 @@ impl ParsedPart {
     /// Searches this part and all descendants depth-first.  Returns `None` if
     /// no part with the given ID exists in the tree.
     ///
+    /// # Part ID conventions
+    ///
+    /// - **Non-multipart root**: the root part has `part_id = "1"`.
+    /// - **Multipart root**: the root part has `part_id = ""` (empty string);
+    ///   its children are `"1"`, `"2"`, etc.
+    /// - **Nested multipart**: children use dotted paths like `"1.1"`, `"1.2"`.
+    ///
     /// ```
     /// # use mime_tree::parse;
+    /// // Non-multipart: root is "1"
     /// let raw = b"Content-Type: text/plain\r\n\r\nHello\r\n";
     /// let msg = parse(raw).unwrap();
     /// let part = msg.part_index.find_by_id("1").unwrap();
