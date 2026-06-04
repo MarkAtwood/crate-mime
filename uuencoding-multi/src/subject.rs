@@ -11,7 +11,7 @@ use regex::Regex;
 ///
 /// - `part_total` is always `Some` when `part_index` is `Some`, because every
 ///   supported marker format includes the total count.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubjectParts {
     /// The subject with all `Re:`/`Fwd:` prefixes and the part-number marker stripped.
     /// Never empty; [`parse_subject`] returns `None` rather than returning an empty

@@ -239,8 +239,13 @@ fn parse_line(line: &str) -> Option<TocEntry> {
 /// is rejected. This is intentional: pure-numeric extensions are rare in
 /// real-world UU archive filenames and are more likely to be numeric tokens.
 fn looks_like_filename(s: &str) -> bool {
+    // A path separator is strong evidence of a filename, but a bare separator
+    // alone (e.g. "/" or "\") is not valid. Require at least one non-separator,
+    // non-whitespace character alongside the separator.
     if s.contains('/') || s.contains('\\') {
-        return true;
+        return s
+            .chars()
+            .any(|c| c != '/' && c != '\\' && !c.is_whitespace());
     }
     if let Some(dot_pos) = s.rfind('.') {
         let ext = &s[dot_pos + 1..];
@@ -542,6 +547,23 @@ mod tests {
         assert!(looks_like_filename("/absolute/path"));
         // Backslash path (Windows-style) is also accepted.
         assert!(looks_like_filename("some\\path\\file.rar"));
+    }
+
+    #[test]
+    fn looks_like_filename_bare_separator_rejected() {
+        // Bare separators without any content are not valid filenames.
+        assert!(
+            !looks_like_filename("/"),
+            "bare '/' must not be accepted as a filename"
+        );
+        assert!(
+            !looks_like_filename("\\"),
+            "bare '\\' must not be accepted as a filename"
+        );
+        assert!(
+            !looks_like_filename("/ "),
+            "separator with only whitespace must not be accepted"
+        );
     }
 
     // ------------------------------------------------------------------
