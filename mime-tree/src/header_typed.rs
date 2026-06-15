@@ -23,25 +23,25 @@
 //! for an unparseable date) — it never panics and never returns an error.
 //!
 //! These types are independent of the [`crate::ParsedHeader`] surface,
-//! which continues to expose only the decoded raw string. To layer a
-//! typed view on top of an existing `ParsedHeader`, feed its `value`
-//! bytes to [`parse_header_typed`]:
+//! which exposes both a decoded `value` string and the original wire
+//! bytes in `raw_value`. To layer a typed view on top of an existing
+//! `ParsedHeader`, use [`parse_header_typed_from`] or feed its
+//! `raw_value` bytes to [`parse_header_typed`]:
 //!
 //! ```ignore
 //! let msg = mime_tree::parse(raw)?;
 //! if let Some(h) = msg.headers.iter().find(|h| h.name.eq_ignore_ascii_case("From")) {
-//!     let addrs = mime_tree::parse_addresses(h.value.as_bytes());
+//!     // Option A: convenience wrapper
+//!     let typed = mime_tree::parse_header_typed_from(h, mime_tree::HeaderForm::Addresses);
+//!     // Option B: direct call with raw bytes (equivalent)
+//!     let addrs = mime_tree::parse_addresses(&h.raw_value);
 //! }
 //! ```
 //!
-//! For convenience, [`parse_header_typed_from`] is a thin wrapper that
-//! takes the `ParsedHeader` directly:
-//!
-//! ```ignore
-//! let typed = mime_tree::parse_header_typed_from(h, mime_tree::HeaderForm::Addresses);
-//! ```
-//!
-//! Either path yields the same result.
+//! Always use `raw_value` — not `value.as_bytes()` — when calling
+//! [`parse_header_typed`], because `value` undergoes lossy UTF-8
+//! conversion for structured headers and non-UTF-8 bytes would be
+//! silently corrupted.
 
 use std::borrow::Cow;
 use std::fmt;
@@ -901,14 +901,14 @@ pub fn parse_urls(raw_value: &[u8]) -> Vec<String> {
 /// Parse an existing [`ParsedHeader`]'s value into the requested
 /// RFC 8621 parsed form.
 ///
-/// Composition helper: feeds `header.value.as_bytes()` to
-/// [`parse_header_typed`]. Equivalent to writing that call by hand —
-/// provided so callers do not have to remember to convert through
-/// `as_bytes()` and so the typed-header API composes cleanly with the
-/// `ParsedHeader` surface produced by [`crate::parse`].
+/// Uses `header.raw_value` (the original wire bytes) rather than
+/// `header.value.as_bytes()`, so non-UTF-8 bytes in structured headers
+/// (From, To, Date, etc.) are preserved faithfully. This matters for
+/// display names containing ISO-8859-1 or other non-UTF-8 encodings,
+/// which would be silently corrupted by lossy UTF-8 round-tripping.
 #[must_use]
 pub fn parse_header_typed_from(header: &ParsedHeader, form: HeaderForm) -> HeaderValueTyped {
-    parse_header_typed(form, header.value.as_bytes())
+    parse_header_typed(form, &header.raw_value)
 }
 
 // ---------------------------------------------------------------------------

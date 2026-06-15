@@ -804,3 +804,103 @@ fn parse_header_typed_from_parsed_header() {
         )]),
     );
 }
+
+/// Oracle: a From: header containing an ISO-8859-1 display name that is
+/// NOT valid UTF-8. The byte 0xE9 is "é" in ISO-8859-1 but is invalid as
+/// standalone UTF-8.
+///
+/// Before the fix for MIME-8zt.45, `parse_header_typed_from` fed
+/// `header.value.as_bytes()` to the parser, but `value` was built via
+/// `String::from_utf8_lossy`, replacing 0xE9 with U+FFFD (3 bytes each).
+/// The address parser then saw different bytes (expanded by the 3-byte
+/// replacements) which could shift parse boundaries and cause divergence
+/// from the direct `parse_header_typed` path. After the fix, `raw_value`
+/// is used instead, so both paths feed identical bytes to the parser.
+///
+/// Note: mail-parser itself returns `Cow<str>` for display names, so
+/// non-UTF-8 bytes still become U+FFFD in the final output. The fix
+/// ensures the conversion happens once (in mail-parser) not twice
+/// (first in extract_headers, then mail-parser sees the 3-byte
+/// replacements).
+#[test]
+fn parse_header_typed_from_non_utf8_display_name_paths_agree() {
+    // "Frédéric" in ISO-8859-1: Fr + 0xE9 + d + 0xE9 + ric
+    let raw: &[u8] = b"From: Fr\xe9d\xe9ric <fred@example.com>\r\n\r\nBody\r\n";
+    let msg = mime_tree::parse(raw).expect("parse");
+
+    let from = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("From"))
+        .expect("From header");
+
+    // The `value` field has lossy UTF-8 — the 0xE9 bytes are U+FFFD.
+    assert!(
+        from.value.contains('\u{FFFD}'),
+        "value should contain replacement chars for non-UTF-8 bytes"
+    );
+
+    // The `raw_value` field preserves the original bytes faithfully.
+    assert!(
+        from.raw_value.contains(&0xE9),
+        "raw_value should preserve the original 0xE9 bytes"
+    );
+
+    // Direct path: parse the raw header bytes.
+    let direct = parse_header_typed(HeaderForm::Addresses, &from.raw_value);
+
+    // Convenience path: parse via ParsedHeader (now uses raw_value).
+    let via_from = parse_header_typed_from(from, HeaderForm::Addresses);
+
+    // Both paths must produce identical results — this was the bug.
+    assert_eq!(
+        direct, via_from,
+        "direct and parse_header_typed_from must agree"
+    );
+
+    // The addr-spec (pure ASCII) must be recovered regardless.
+    let addrs = match &via_from {
+        HeaderValueTyped::Addresses(v) => v,
+        other => panic!("expected Addresses, got {other:?}"),
+    };
+    assert_eq!(addrs.len(), 1);
+    assert_eq!(addrs[0].address.as_deref(), Some("fred@example.com"));
+    // Display name is present (may contain U+FFFD from mail-parser's
+    // own lossy conversion of the non-UTF-8 bytes).
+    assert!(addrs[0].name.is_some(), "display name should be present");
+}
+
+/// Regression: non-UTF-8 byte immediately before an angle bracket.
+///
+/// With the old double-lossy path, 0xE9 (1 byte) was replaced by
+/// U+FFFD (3 UTF-8 bytes: EF BF BD) before being fed to the address
+/// parser. The 2 extra bytes shifted the `<` position, which could
+/// cause mail-parser to misparse on boundary-sensitive inputs.
+/// With the fix, the original 1-byte sequence is fed directly.
+#[test]
+fn parse_header_typed_from_non_utf8_near_angle_bracket() {
+    // 0xE9 byte right before the angle bracket
+    let raw: &[u8] = b"From: caf\xe9<fred@example.com>\r\n\r\nBody\r\n";
+    let msg = mime_tree::parse(raw).expect("parse");
+
+    let from = msg
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("From"))
+        .expect("From header");
+
+    let direct = parse_header_typed(HeaderForm::Addresses, &from.raw_value);
+    let via_from = parse_header_typed_from(from, HeaderForm::Addresses);
+
+    assert_eq!(
+        direct, via_from,
+        "paths must agree even with non-UTF-8 byte adjacent to angle bracket"
+    );
+
+    let addrs = match &via_from {
+        HeaderValueTyped::Addresses(v) => v,
+        other => panic!("expected Addresses, got {other:?}"),
+    };
+    assert_eq!(addrs.len(), 1);
+    assert_eq!(addrs[0].address.as_deref(), Some("fred@example.com"));
+}
