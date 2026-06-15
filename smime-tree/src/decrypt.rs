@@ -37,6 +37,29 @@ use crate::key::{
 /// - **KARI** (`KeyAgreeRecipientInfo`): ECDH P-256 and P-384 via [`DecryptionKey::agree_ecdh`].
 ///
 /// KEKRI, PWRI, and ORI recipient types are not supported.
+///
+/// # Security — unauthenticated CBC decryption
+///
+/// This function decrypts content encrypted with AES-CBC, which is **not** an
+/// authenticated encryption mode.  There is no MAC or integrity tag over the
+/// ciphertext.  Two risks follow:
+///
+/// 1. **Padding oracle**: if `SmimeError::DecryptionFailed` is surfaced to any
+///    interactive channel (HTTP status, SMTP bounce, UI error), an attacker
+///    can mount an adaptive chosen-ciphertext attack to recover the plaintext.
+///    This function returns a deliberately generic error message to mitigate
+///    the risk, but callers MUST NOT add distinguishing detail when reporting
+///    decryption failures to untrusted parties.
+///
+/// 2. **EFAIL (CVE-2017-17688 class)**: an attacker who obtains the ciphertext
+///    can modify CBC blocks to redirect decrypted content to an
+///    attacker-controlled exfiltration channel (e.g. `<img src=...>` in HTML
+///    MIME content) without knowing the CEK.  Callers that render decrypted
+///    HTML SHOULD strip or sandbox external resource references.
+///
+/// For new deployments, prefer AES-GCM via `AuthEnvelopedData` (RFC 5083).
+/// AES-CBC decryption is retained for interoperability with existing S/MIME
+/// deployments.
 pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>, SmimeError> {
     // Step 1: Parse the outer ContentInfo.
     let ci = ContentInfo::from_der(enveloped_der)?;
@@ -166,6 +189,11 @@ fn extract_cbc_iv(env_data: &EnvelopedData) -> Result<Vec<u8>, SmimeError> {
 }
 
 /// Decrypt ciphertext with AES-128-CBC + PKCS#7 padding.
+///
+/// The error message is deliberately generic ("content decryption failed")
+/// to prevent padding oracle attacks.  Do not include the underlying
+/// `UnpadError` detail — it reveals whether padding was valid, which is
+/// sufficient for a Bleichenbacher-style adaptive-chosen-ciphertext attack.
 fn decrypt_aes128_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
     let key: &[u8; 16] = cek
         .try_into()
@@ -175,7 +203,7 @@ fn decrypt_aes128_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, Smime
         .map_err(|_| SmimeError::MalformedInput("AES-128-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes128>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|e| SmimeError::DecryptionFailed(format!("AES-128-CBC: {e}")))
+        .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
 }
 
 /// Convert a CMS `RecipientIdentifier` (from the `cms` crate's ASN.1 types) into the
@@ -302,6 +330,8 @@ fn kari_rid_to_owned(rid: &KeyAgreeRecipientIdentifier) -> Result<RecipientIdent
 }
 
 /// Decrypt ciphertext with AES-256-CBC + PKCS#7 padding.
+///
+/// See [`decrypt_aes128_cbc`] for the rationale behind the generic error message.
 fn decrypt_aes256_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
     let key: &[u8; 32] = cek
         .try_into()
@@ -311,5 +341,5 @@ fn decrypt_aes256_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, Smime
         .map_err(|_| SmimeError::MalformedInput("AES-256-CBC IV must be 16 bytes".into()))?;
     cbc::Decryptor::<Aes256>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|e| SmimeError::DecryptionFailed(format!("AES-256-CBC: {e}")))
+        .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
 }

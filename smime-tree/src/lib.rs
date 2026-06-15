@@ -45,6 +45,12 @@
 //!
 //! # Known Limitations
 //!
+//! * **AES-CBC content encryption is unauthenticated.** `decrypt()` uses AES-CBC
+//!   (not AES-GCM) because `EnvelopedData` (RFC 5652) does not carry an
+//!   authentication tag.  This exposes callers to padding oracle and EFAIL-class
+//!   (CVE-2017-17688) risks. See the [`decrypt`] function-level docs for
+//!   mitigation guidance.  AES-GCM support via `AuthEnvelopedData` (RFC 5083) is
+//!   planned.
 //! * **RSA-PSS signatures are not supported** for certificate chain validation.
 //!   Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
 //!   signatures are rare in practice. File an issue if you need it.
