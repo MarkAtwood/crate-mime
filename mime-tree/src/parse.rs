@@ -101,6 +101,16 @@ fn extract_headers(part: &MessagePart<'_>, raw: &[u8]) -> Vec<ParsedHeader> {
         .iter()
         .map(|h| {
             let name = h.name.as_str().to_owned();
+
+            // Always capture the raw bytes of the header field value from the
+            // original message. These bytes are faithful to the wire format
+            // and preserve non-UTF-8 bytes that `from_utf8_lossy` would
+            // replace with U+FFFD.
+            let raw_value = raw
+                .get(h.offset_start as usize..h.offset_end as usize)
+                .unwrap_or_default()
+                .to_vec();
+
             let value = match &h.value {
                 // mail-parser has already decoded any RFC 2047 encoded-words
                 // into this Cow<str>; use it directly.
@@ -112,13 +122,14 @@ fn extract_headers(part: &MessagePart<'_>, raw: &[u8]) -> Vec<ParsedHeader> {
                     .collect::<Vec<_>>()
                     .join(", "),
                 // All other variants (Address, DateTime, ContentType, Received,
-                // Empty): fall back to the raw bytes slice.
-                _ => raw
-                    .get(h.offset_start as usize..h.offset_end as usize)
-                    .map(|bytes| String::from_utf8_lossy(bytes.trim_ascii()).into_owned())
-                    .unwrap_or_default(),
+                // Empty): fall back to lossy UTF-8 for the `value` string.
+                _ => String::from_utf8_lossy(raw_value.trim_ascii()).into_owned(),
             };
-            ParsedHeader { name, value }
+            ParsedHeader {
+                name,
+                value,
+                raw_value,
+            }
         })
         .collect()
 }

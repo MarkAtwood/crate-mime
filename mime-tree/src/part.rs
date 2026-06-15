@@ -43,10 +43,33 @@ impl fmt::Display for TransferEncoding {
 /// and converted with `String::from_utf8_lossy`.  These structured values
 /// require their own dedicated parsers — see
 /// [`parse_header_typed`][crate::parse_header_typed].
+///
+/// `raw_value` always contains the original bytes of the header field
+/// value from the wire message (the portion after the `:` separator).
+/// Use `raw_value` — not `value.as_bytes()` — when feeding a header
+/// into [`parse_header_typed`][crate::parse_header_typed], because
+/// `value` may have undergone lossy UTF-8 conversion for structured
+/// headers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ParsedHeader {
+    /// Header field name (e.g. `"From"`, `"Subject"`).
     pub name: String,
+    /// Decoded or lossy-converted header field value as a UTF-8 string.
+    ///
+    /// For text headers, this is the fully decoded value (RFC 2047
+    /// encoded-words resolved). For structured headers, this is a
+    /// lossy UTF-8 conversion of the raw bytes — non-UTF-8 bytes are
+    /// replaced with U+FFFD.
     pub value: String,
+    /// Raw bytes of the header field value from the original message.
+    ///
+    /// This is the byte sequence after the `:` separator, preserving the
+    /// original encoding without lossy UTF-8 conversion. For accurate
+    /// typed parsing, always use these bytes with
+    /// [`parse_header_typed`][crate::parse_header_typed] rather than
+    /// `value.as_bytes()`.
+    pub raw_value: Vec<u8>,
 }
 
 /// A single MIME part in the parsed tree.
