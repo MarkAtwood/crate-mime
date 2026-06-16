@@ -54,11 +54,18 @@ pub struct Assembler {
     expected_crc32: Option<u32>,
 }
 
-/// Maximum `total_size` accepted by [`Assembler::new`].
+/// Maximum `total_size` accepted by [`Assembler::new`]: 512 MiB (536,870,912 bytes).
 ///
-/// Requests for a buffer larger than 512 MiB are rejected with
-/// [`AssemblyError::TotalSizeTooLarge`] to prevent a remote sender from
-/// forcing an arbitrarily large allocation via the `=ybegin size=` field.
+/// [`Assembler::new`] pre-allocates a buffer of exactly `total_size` bytes based on
+/// the `size=` field of the `=ybegin` line, which is attacker-controlled in untrusted
+/// Usenet articles. Without a cap, a malicious sender could force a multi-gigabyte
+/// allocation with a single forged header.
+///
+/// Passing a `total_size` greater than `MAX_TOTAL_SIZE` to [`Assembler::new`] returns
+/// [`AssemblyError::TotalSizeTooLarge`] immediately — no allocation is attempted.
+///
+/// Callers that need to enforce a tighter limit should check against this constant
+/// before calling [`Assembler::new`].
 pub const MAX_TOTAL_SIZE: u64 = 512 * 1024 * 1024; // 512 MiB
 
 impl Assembler {
@@ -123,6 +130,16 @@ impl Assembler {
     ///   does not match its declared `begin`/`end` range.
     /// - [`AssemblyError::InconsistentCrc`] — this part's `whole_file_crc32`
     ///   conflicts with the CRC already recorded from a previous part.
+    ///
+    /// # Gap behavior
+    ///
+    /// This assembler does **not** zero-fill gaps. Parts may be added in any order
+    /// and with gaps between them. However, [`finish`][Self::finish] will return
+    /// [`AssemblyError::Incomplete`] listing every uncovered byte range if any gap
+    /// remains when `finish()` is called. The buffer bytes within a gap are
+    /// unspecified (currently zero from initialization, but do not rely on that).
+    /// Use [`missing_ranges`][Self::missing_ranges] at any point to see which
+    /// byte ranges are still outstanding.
     ///
     /// # Per-part CRC and `crc32_verified`
     ///
