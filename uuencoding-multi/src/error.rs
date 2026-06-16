@@ -11,7 +11,7 @@
 /// let err = MultiUuError::EmptyCollection;
 /// assert!(err.to_string().contains("empty"));
 /// ```
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum MultiUuError {
     /// [`reassemble()`][crate::reassemble()] was called on a [`PartCollection`][crate::PartCollection]

@@ -89,7 +89,8 @@ pub use error::UuError;
 ///
 /// Every UU block starts with a line of the form `begin <mode> <filename>`.
 /// This struct holds the two fields parsed from that line.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct BlockMetadata {
     /// The filename recorded on the `begin` line.
     ///
@@ -111,7 +112,8 @@ pub struct BlockMetadata {
 /// is `false` and `data` contains the complete binary payload. When the `end`
 /// line is missing `is_truncated` is `true` and `data` contains whatever bytes
 /// were decoded before input was exhausted or an error was encountered.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DecodedBlock {
     /// The decoded binary payload.
     pub data: Vec<u8>,
@@ -142,7 +144,8 @@ pub struct DecodedBlock {
 /// satisfy `input[begin_offset..end_offset]` == the raw UU block (starting
 /// with `begin` and ending with `end\n`, or ending at `input.len()` when
 /// truncated).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ScannedBlock {
     /// Byte offset of the `b` in the `begin` line within the input.
     pub begin_offset: usize,

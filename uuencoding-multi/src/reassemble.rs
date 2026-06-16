@@ -10,7 +10,7 @@ use crate::{MultiUuError, PartCollection};
 /// `data` may contain a compressed archive. **This crate never decompresses
 /// the output.** Apply independent size and resource limits before
 /// decompressing to protect against decompression-bomb attacks.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReassembledFile {
     /// Filename extracted from the `begin` line of the first UU part.
     ///

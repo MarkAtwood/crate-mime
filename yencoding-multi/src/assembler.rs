@@ -338,42 +338,39 @@ impl Assembler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use yencoding::{DecodedPart, EncodePartOptions, YencMetadata};
+    use yencoding::{DecodedPart, EncodePartOptions};
 
     // Convenience: build a DecodedPart with given data and 1-based byte range.
     fn make_part(data: &[u8], begin_1: u64, end_1: u64) -> DecodedPart {
-        DecodedPart {
-            data: data.to_vec(),
-            metadata: YencMetadata {
-                filename: "test.bin".to_string(),
-                size: 128,
-                line_length: 128,
-                total_parts: Some(2),
-            },
-            part: None,
-            part_begin: Some(begin_1),
-            part_end: Some(end_1),
-            crc32_verified: true,
-            whole_file_crc32: None,
-        }
+        use yencoding::{decode, encode_part, DEFAULT_LINE_LENGTH};
+        let opts = EncodePartOptions {
+            filename: "test.bin",
+            total_size: 128,
+            total_parts: 2,
+            part: 1,
+            begin: 1,
+            end: 1,
+            whole_file_crc32: 0,
+            line_length: DEFAULT_LINE_LENGTH,
+        };
+        let mut part = decode(&encode_part(&[0u8], &opts)).unwrap();
+        part.data = data.to_vec();
+        part.part_begin = Some(begin_1);
+        part.part_end = Some(end_1);
+        part.whole_file_crc32 = None;
+        part.crc32_verified = true;
+        part
     }
 
     // Convenience: build a DecodedPart with no byte-range info (single-part).
     fn make_single_part(data: &[u8]) -> DecodedPart {
-        DecodedPart {
-            data: data.to_vec(),
-            metadata: YencMetadata {
-                filename: "test.bin".to_string(),
-                size: data.len() as u64,
-                line_length: 128,
-                total_parts: None,
-            },
-            part: None,
-            part_begin: None,
-            part_end: None,
-            crc32_verified: true,
-            whole_file_crc32: None,
-        }
+        use yencoding::{decode, encode, DEFAULT_LINE_LENGTH};
+        let mut part = decode(&encode(&[0u8], "test.bin", DEFAULT_LINE_LENGTH)).unwrap();
+        part.data = data.to_vec();
+        part.metadata.size = data.len() as u64;
+        part.whole_file_crc32 = None;
+        part.crc32_verified = true;
+        part
     }
 
     // -----------------------------------------------------------------------
@@ -678,20 +675,24 @@ mod tests {
     // -----------------------------------------------------------------------
 
     fn make_part_with_crc(data: &[u8], begin_1: u64, end_1: u64, crc: Option<u32>) -> DecodedPart {
-        DecodedPart {
-            data: data.to_vec(),
-            metadata: YencMetadata {
-                filename: "test.bin".to_string(),
-                size: 128,
-                line_length: 128,
-                total_parts: Some(2),
-            },
-            part: None,
-            part_begin: Some(begin_1),
-            part_end: Some(end_1),
-            crc32_verified: true,
-            whole_file_crc32: crc,
-        }
+        use yencoding::{decode, encode_part, DEFAULT_LINE_LENGTH};
+        let opts = EncodePartOptions {
+            filename: "test.bin",
+            total_size: 128,
+            total_parts: 2,
+            part: 1,
+            begin: 1,
+            end: 1,
+            whole_file_crc32: crc.unwrap_or(0),
+            line_length: DEFAULT_LINE_LENGTH,
+        };
+        let mut part = decode(&encode_part(&[0u8], &opts)).unwrap();
+        part.data = data.to_vec();
+        part.part_begin = Some(begin_1);
+        part.part_end = Some(end_1);
+        part.whole_file_crc32 = crc;
+        part.crc32_verified = true;
+        part
     }
 
     #[test]
@@ -777,24 +778,16 @@ mod tests {
         // python3 -c "import binascii; print(hex(binascii.crc32(bytes(4)) & 0xffffffff))"
         // → 0x2144df1c
         let data = vec![0u8; 4];
-        let correct_crc: u32 = 0x2144_df1c; // CRC32 of [0u8; 4]: python3 -c "import binascii; print(hex(binascii.crc32(bytes(4)) & 0xffffffff))"
 
         let mut a = Assembler::new(4).unwrap();
         // Use single-part style (None, None) so no =ypart range conversion needed.
-        let p_single = DecodedPart {
-            data: data.clone(),
-            metadata: YencMetadata {
-                filename: "test.bin".to_string(),
-                size: 4,
-                line_length: 128,
-                total_parts: None,
-            },
-            part: None,
-            part_begin: None,
-            part_end: None,
-            crc32_verified: true,
-            whole_file_crc32: Some(correct_crc),
-        };
+        // encode() computes the real CRC; decode() surfaces it as whole_file_crc32.
+        let p_single = yencoding::decode(&yencoding::encode(
+            &data,
+            "test.bin",
+            yencoding::DEFAULT_LINE_LENGTH,
+        ))
+        .unwrap();
         a.add_part(&p_single).unwrap();
         // CRC should have been auto-extracted; finish() must succeed.
         let result = a.finish().unwrap();

@@ -302,6 +302,7 @@ pub trait RevocationChecker {
 /// **This disables all certificate revocation checks.** Use only in environments where
 /// revocation is verified by other means, or in testing. Never use in production without
 /// explicit awareness that revoked certificates will be accepted.
+#[derive(Debug)]
 pub struct NoRevocationCheck;
 
 impl RevocationChecker for NoRevocationCheck {

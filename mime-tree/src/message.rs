@@ -6,6 +6,7 @@ use crate::part::{ParsedHeader, ParsedPart};
 ///
 /// All fields are owned. No lifetime parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ParsedMessage {
     /// The MIME part tree rooted at the message.
     pub part_index: ParsedPart,
@@ -29,6 +30,7 @@ pub struct ParsedMessage {
 
 /// Result of `decode_body_value()`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct DecodedBodyValue {
     /// Decoded, charset-converted text.
     pub value: String,

@@ -245,20 +245,14 @@ fn overlapping_part_rejected() {
 fn crc_mismatch_on_finish() {
     let data = vec![42u8; 20];
     let mut assembler = Assembler::new(20).unwrap();
-    let part = yencoding::DecodedPart {
-        data: data.clone(),
-        metadata: yencoding::YencMetadata {
-            filename: "f.bin".to_string(),
-            size: 20,
-            line_length: 128,
-            total_parts: None,
-        },
-        part: None,
-        part_begin: None,
-        part_end: None,
-        crc32_verified: false,
-        whole_file_crc32: None,
-    };
+    let mut part = yencoding::decode(&yencoding::encode(
+        &data,
+        "f.bin",
+        yencoding::DEFAULT_LINE_LENGTH,
+    ))
+    .unwrap();
+    part.whole_file_crc32 = None;
+    part.crc32_verified = false;
     assembler.add_part(&part).unwrap();
     assembler.set_expected_crc32(0xdeadbeef); // wrong CRC
 
