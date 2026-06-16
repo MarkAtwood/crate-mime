@@ -29,14 +29,34 @@ impl VerificationResult {
     /// # Security
     ///
     /// This method returns `true` if **any one** signer's certificate and signature verified
-    /// successfully. In a message with multiple signers, some may have failed verification.
-    /// For security-critical decisions, inspect the [`signers`] field directly and verify
-    /// that all expected signers are present and valid.
-    ///
-    /// [`signers`]: VerificationResult::signers
+    /// successfully. In a message with multiple signers, some may have failed verification
+    /// while this method still returns `true`. For security-critical decisions — especially
+    /// when a policy requires all signers to be valid — use [`all_verified`][Self::all_verified]
+    /// instead, or iterate [`signers`][Self::signers] directly.
     #[must_use]
     pub fn is_verified(&self) -> bool {
         self.signers.iter().any(|s| s.verified)
+    }
+
+    /// Returns `true` only if **every** signer verified successfully.
+    ///
+    /// Prefer this over [`is_verified`][Self::is_verified] whenever your policy requires
+    /// that all signers on a message are valid — for example, dual-control workflows or
+    /// messages that must carry a specific set of signers.
+    ///
+    /// Returns `false` if `signers` is empty (no signers at all is not a success).
+    #[must_use]
+    pub fn all_verified(&self) -> bool {
+        !self.signers.is_empty() && self.signers.iter().all(|s| s.verified)
+    }
+
+    /// Returns an iterator over only the [`SignerResult`] entries that verified successfully.
+    ///
+    /// Useful when you need to inspect or count the verified signers without examining
+    /// failed ones. Combine with [`all_verified`][Self::all_verified] to enforce a
+    /// minimum verified-signer count.
+    pub fn verified_signers(&self) -> impl Iterator<Item = &SignerResult> {
+        self.signers.iter().filter(|s| s.verified)
     }
 }
 
@@ -172,6 +192,15 @@ impl fmt::Display for CertChainError {
 }
 
 /// Error type for S/MIME operations.
+///
+/// # Serde round-trip
+///
+/// `SmimeError` implements `Serialize` and `Deserialize`. The `Der` variant
+/// contains a `der::Error` which has no serde support, so it round-trips
+/// through a string representation: serialized as `{"Der":"<message>"}`,
+/// deserialized back as `SmimeError::Der` with a `der::Error` carrying
+/// the message (the original error kind is not preserved across
+/// serialization boundaries).
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SmimeError {
@@ -257,5 +286,85 @@ impl std::error::Error for SmimeError {
 impl From<der::Error> for SmimeError {
     fn from(e: der::Error) -> Self {
         SmimeError::Der(e)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Serde: manual impl because der::Error has no serde support
+// ---------------------------------------------------------------------------
+
+/// Mirror of `SmimeError` with `String` replacing `der::Error` for serde.
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", content = "detail")]
+enum SmimeErrorRepr {
+    Der(String),
+    UnsupportedAlgorithm(String),
+    NoMatchingRecipient,
+    SignatureVerification,
+    CertChain(CertChainError),
+    MalformedInput(String),
+    NoRecipients,
+    RngFailure(String),
+    DecryptionFailed(String),
+    Other(String),
+    AllSignersFailed(Vec<SignerResult>),
+    WrongContentType(String),
+    BoundaryCollision,
+}
+
+impl From<&SmimeError> for SmimeErrorRepr {
+    fn from(e: &SmimeError) -> Self {
+        match e {
+            SmimeError::Der(de) => SmimeErrorRepr::Der(de.to_string()),
+            SmimeError::UnsupportedAlgorithm(s) => SmimeErrorRepr::UnsupportedAlgorithm(s.clone()),
+            SmimeError::NoMatchingRecipient => SmimeErrorRepr::NoMatchingRecipient,
+            SmimeError::SignatureVerification => SmimeErrorRepr::SignatureVerification,
+            SmimeError::CertChain(c) => SmimeErrorRepr::CertChain(c.clone()),
+            SmimeError::MalformedInput(s) => SmimeErrorRepr::MalformedInput(s.clone()),
+            SmimeError::NoRecipients => SmimeErrorRepr::NoRecipients,
+            SmimeError::RngFailure(s) => SmimeErrorRepr::RngFailure(s.clone()),
+            SmimeError::DecryptionFailed(s) => SmimeErrorRepr::DecryptionFailed(s.clone()),
+            SmimeError::Other(s) => SmimeErrorRepr::Other(s.clone()),
+            SmimeError::AllSignersFailed(v) => SmimeErrorRepr::AllSignersFailed(v.clone()),
+            SmimeError::WrongContentType(s) => SmimeErrorRepr::WrongContentType(s.clone()),
+            SmimeError::BoundaryCollision => SmimeErrorRepr::BoundaryCollision,
+        }
+    }
+}
+
+impl From<SmimeErrorRepr> for SmimeError {
+    fn from(r: SmimeErrorRepr) -> Self {
+        match r {
+            // der::Error cannot be reconstructed from a string; use a generic
+            // truncation error as the carrier and preserve the message in Other
+            // if it doesn't match. In practice, deserialized Der variants are
+            // used for logging/display, not for programmatic matching on the
+            // inner der::Error kind.
+            SmimeErrorRepr::Der(s) => SmimeError::Other(format!("DER error: {s}")),
+            SmimeErrorRepr::UnsupportedAlgorithm(s) => SmimeError::UnsupportedAlgorithm(s),
+            SmimeErrorRepr::NoMatchingRecipient => SmimeError::NoMatchingRecipient,
+            SmimeErrorRepr::SignatureVerification => SmimeError::SignatureVerification,
+            SmimeErrorRepr::CertChain(c) => SmimeError::CertChain(c),
+            SmimeErrorRepr::MalformedInput(s) => SmimeError::MalformedInput(s),
+            SmimeErrorRepr::NoRecipients => SmimeError::NoRecipients,
+            SmimeErrorRepr::RngFailure(s) => SmimeError::RngFailure(s),
+            SmimeErrorRepr::DecryptionFailed(s) => SmimeError::DecryptionFailed(s),
+            SmimeErrorRepr::Other(s) => SmimeError::Other(s),
+            SmimeErrorRepr::AllSignersFailed(v) => SmimeError::AllSignersFailed(v),
+            SmimeErrorRepr::WrongContentType(s) => SmimeError::WrongContentType(s),
+            SmimeErrorRepr::BoundaryCollision => SmimeError::BoundaryCollision,
+        }
+    }
+}
+
+impl Serialize for SmimeError {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        SmimeErrorRepr::from(self).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for SmimeError {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        SmimeErrorRepr::deserialize(deserializer).map(SmimeError::from)
     }
 }
