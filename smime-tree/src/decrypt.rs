@@ -14,7 +14,7 @@ use const_oid::db::{
         ID_AES_128_CBC, ID_AES_128_GCM, ID_AES_128_WRAP, ID_AES_256_CBC, ID_AES_256_GCM,
         ID_AES_256_WRAP, ID_ENVELOPED_DATA,
     },
-    rfc5912::{ID_RSAES_OAEP, RSA_ENCRYPTION},
+    rfc5912::{ID_EC_PUBLIC_KEY, ID_RSAES_OAEP, RSA_ENCRYPTION, SECP_256_R_1, SECP_384_R_1},
 };
 use der::{asn1::OctetString, Decode, Encode};
 use spki::AlgorithmIdentifierOwned;
@@ -280,7 +280,14 @@ fn try_decrypt_kari(
     // originators (IssuerAndSerialNumber or SubjectKeyIdentifier) require a
     // different key-lookup path not modelled by the current trait.
     let ephemeral_bytes = match &kari.originator {
-        OriginatorIdentifierOrKey::OriginatorKey(orig) => orig.public_key.raw_bytes().to_vec(),
+        OriginatorIdentifierOrKey::OriginatorKey(orig) => {
+            // Validate that the originator key declares id-ecPublicKey with a
+            // curve OID matching the KDF scheme. Without this check, a crafted
+            // KARI could supply a P-384 point in a P-256 context, enabling
+            // invalid-curve or small-subgroup attacks.
+            validate_originator_curve(&orig.algorithm, kari)?;
+            orig.public_key.raw_bytes().to_vec()
+        }
         _ => {
             return Err(SmimeError::UnsupportedAlgorithm(
                 "KARI with static originator is not supported".into(),
@@ -295,6 +302,55 @@ fn try_decrypt_kari(
 
     let cek = key.agree_ecdh(&ephemeral_bytes, ukm, rek.enc_key.as_bytes(), &kari_alg)?;
     Ok(Some(Zeroizing::new(cek)))
+}
+
+/// Validate that the originator public key's curve OID matches the KDF scheme.
+///
+/// The KARI's `keyEncryptionAlgorithm.oid` declares which KDF scheme is in use
+/// (P-256 via SHA-256 KDF or P-384 via SHA-384 KDF). The originator's
+/// `AlgorithmIdentifier` should declare `id-ecPublicKey` with a curve OID
+/// parameter matching the declared scheme. A mismatch means the ephemeral key
+/// is on the wrong curve, which enables invalid-curve attacks.
+fn validate_originator_curve(
+    orig_alg: &AlgorithmIdentifierOwned,
+    kari: &KeyAgreeRecipientInfo,
+) -> Result<(), SmimeError> {
+    // The originator key must use id-ecPublicKey.
+    if orig_alg.oid != ID_EC_PUBLIC_KEY {
+        return Err(SmimeError::MalformedInput(format!(
+            "originator key algorithm is {}, expected id-ecPublicKey",
+            orig_alg.oid
+        )));
+    }
+
+    // Extract the curve OID from the parameters.
+    let curve_oid = orig_alg
+        .parameters
+        .as_ref()
+        .and_then(|p| p.decode_as::<der::asn1::ObjectIdentifier>().ok())
+        .ok_or_else(|| {
+            SmimeError::MalformedInput("originator key missing curve OID parameter".into())
+        })?;
+
+    // Determine the expected curve from the KDF scheme OID.
+    let ecdh_oid = kari.key_enc_alg.oid;
+    let expected_curve = if ecdh_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_256_KDF_SCHEME {
+        SECP_256_R_1
+    } else if ecdh_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_384_KDF_SCHEME {
+        SECP_384_R_1
+    } else {
+        // Unknown KDF scheme — map_kari_alg will reject it later.
+        return Ok(());
+    };
+
+    if curve_oid != expected_curve {
+        return Err(SmimeError::MalformedInput(format!(
+            "originator key curve {} does not match KDF scheme (expected {})",
+            curve_oid, expected_curve
+        )));
+    }
+
+    Ok(())
 }
 
 /// Parse the `keyEncryptionAlgorithm` of a KARI into a [`KariAlgorithm`].
