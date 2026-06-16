@@ -2,6 +2,27 @@
 
 All notable changes to `mime-tree` will be documented here.
 
+## [0.5.0] - 2026-06-16
+
+### Breaking Changes
+
+- **`InlineUUBlock::begin_length` changed from `u32` to `Option<u32>`.**
+  `None` indicates the block had an encoding problem and the length could not
+  be determined. Update reads of `.begin_length` to handle the `Option`.
+
+### Changed
+
+- Extracted `qp_with_limit()` helper in `decode.rs`, encapsulating the
+  three-level QP decode-limited interaction (input pre-truncation,
+  false-truncation check, full-body fallback) into a single function.
+- Replaced `&mut Option<&mut Vec<String>>` with `AppendTarget` newtype in
+  `walk.rs` for clearer RFC 8621 §4.1.4 null-rebind semantics.
+- Added explanatory comment in `header_typed.rs` for the unavoidable
+  bytes → String → bytes round-trip required by mail-parser's typed API.
+- README: added missing `ParsedPart.is_encoding_problem` field, missing
+  `HeaderForm::Text` variant, and fixed self-contradictory `TransferEncoding`
+  table.
+
 ## [0.4.0] - 2026-06-04
 
 ### Breaking Changes

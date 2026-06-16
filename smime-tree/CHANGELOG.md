@@ -2,6 +2,38 @@
 
 All notable changes to `smime-tree` will be documented here.
 
+## [0.3.3] - 2026-06-16
+
+### Added
+
+- AES-GCM `AuthEnvelopedData` encrypt and decrypt (RFC 5083). `encrypt()`
+  now produces `AuthEnvelopedData` with AES-128-GCM (RSA/P-256 recipients) or
+  AES-256-GCM (P-384 recipients). `decrypt()` handles both `EnvelopedData`
+  (AES-CBC) and `AuthEnvelopedData` (AES-GCM).
+- `sign()` now accepts multiple signing keys (`&[&dyn SigningKey]`).
+- `VerificationResult::all_verified()` and `verified_signers()` convenience
+  methods.
+- `Serialize` / `Deserialize` for `SmimeError`.
+
+### Fixed
+
+- `AllSignersFailed` `Display` now shows all per-signer errors instead of
+  only the first.
+- ECDH originator curve is validated against the KDF scheme; mismatched
+  curves are rejected.
+- Oversized ciphertext is rejected before CBC allocation to prevent
+  memory exhaustion.
+- Padding oracle information leak eliminated in CBC decrypt path.
+- Certificate bag and signer count bounded in `verify()` to prevent
+  resource exhaustion from adversarial inputs.
+
+### Changed
+
+- Unified `build_p256_recipient` / `build_p384_recipient` into a single
+  generic `build_ec_recipient<C, D>()`.
+- README corrected: `sign()` signature, AES-GCM algorithm selection,
+  `authEnveloped-data` smime-type, P-521 not supported.
+
 ## [0.3.2] - 2026-06-04
 
 ### Added
