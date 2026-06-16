@@ -27,6 +27,18 @@ use crate::key::{
     RecipientIdentifier,
 };
 
+/// Maximum size of encrypted content accepted by [`decrypt`], in bytes.
+///
+/// Ciphertext exceeding this limit is rejected before allocation to prevent
+/// memory-DoS from crafted `EnvelopedData` blobs.  The 64 MiB default is
+/// generous for email (RFC 5321 recommends a 10 MB message size limit;
+/// encrypted content adds ~33% overhead for base64 but is DER-decoded here,
+/// so the binary content is smaller than the wire form).
+///
+/// This is a compile-time constant.  If a caller needs to decrypt larger
+/// payloads, they should file an issue for a configurable limit.
+const MAX_ENCRYPTED_CONTENT_SIZE: usize = 64 * 1024 * 1024;
+
 /// Decrypt an S/MIME `EnvelopedData` blob.
 ///
 /// `enveloped_der` must be a DER-encoded `ContentInfo` wrapping an
@@ -88,6 +100,17 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
         .as_ref()
         .ok_or_else(|| SmimeError::MalformedInput("EnvelopedData has no encrypted content".into()))?
         .as_bytes();
+
+    // Reject oversized ciphertext before allocating the decryption buffer.
+    // Without this check, a crafted EnvelopedData with a multi-gigabyte
+    // OctetString causes OOM.
+    if ct.len() > MAX_ENCRYPTED_CONTENT_SIZE {
+        return Err(SmimeError::MalformedInput(format!(
+            "encrypted content too large: {} bytes exceeds {} byte limit",
+            ct.len(),
+            MAX_ENCRYPTED_CONTENT_SIZE
+        )));
+    }
 
     if content_enc_oid == ID_AES_128_CBC {
         let iv = extract_cbc_iv(&env_data)?;
