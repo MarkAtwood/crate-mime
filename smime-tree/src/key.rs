@@ -244,10 +244,14 @@ pub trait DecryptionKey {
     ///    using the derived KEK.
     /// 4. Return the raw CEK bytes.
     ///
-    /// # Default
+    /// # Default — IMPORTANT for EC key implementors
     ///
-    /// Returns `Err(SmimeError::UnsupportedAlgorithm("KARI not supported by this key"))`.
-    /// Override to enable ECDH decryption.
+    /// Returns `Err(SmimeError::UnsupportedAlgorithm(...))`.  **EC key
+    /// implementors MUST override this method** or KARI-encrypted messages
+    /// will silently fail to decrypt (the error is caught per-recipient
+    /// and the next `RecipientInfo` is tried; if no other recipient matches,
+    /// `NoMatchingRecipient` is returned with no indication that ECDH was
+    /// attempted).  RSA-only keys can leave the default.
     fn agree_ecdh(
         &self,
         ephemeral_public_key_bytes: &[u8],
