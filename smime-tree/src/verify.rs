@@ -29,6 +29,16 @@ use crate::{
     sig_verify, SmimeError,
 };
 
+/// Maximum number of certificates accepted from the certificate bag in
+/// untrusted `SignedData`.  A typical S/MIME message includes 1–3 certs
+/// (leaf + intermediates).  100 is generous while preventing memory DoS.
+const MAX_BAG_CERTS: usize = 100;
+
+/// Maximum number of `SignerInfo` entries accepted.  RFC 5652 allows
+/// multiple signers but real-world S/MIME rarely exceeds 2–3.  32 is
+/// generous while preventing CPU DoS from signature verification.
+const MAX_SIGNER_INFOS: usize = 32;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -99,7 +109,8 @@ pub fn verify(
         ));
     }
 
-    // Collect the certificate bag.
+    // Collect the certificate bag, bounded to prevent memory DoS from
+    // a crafted SignedData with thousands of embedded certificates.
     let bag_certs: Vec<Certificate> = sd
         .certificates
         .as_ref()
@@ -109,9 +120,20 @@ pub fn verify(
                     CertificateChoices::Certificate(cert) => Some(cert.clone()),
                     _ => None,
                 })
+                .take(MAX_BAG_CERTS)
                 .collect()
         })
         .unwrap_or_default();
+
+    // Bound the number of SignerInfo entries to prevent CPU DoS from
+    // a crafted SignedData forcing thousands of signature verifications.
+    let signer_count = sd.signer_infos.0.len();
+    if signer_count > MAX_SIGNER_INFOS {
+        return Err(SmimeError::MalformedInput(format!(
+            "SignedData contains {} SignerInfo entries, exceeding the {} limit",
+            signer_count, MAX_SIGNER_INFOS
+        )));
+    }
 
     // Process each SignerInfo independently.
     let signers: Vec<SignerResult> = sd
