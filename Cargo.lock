@@ -3,6 +3,16 @@
 version = 4
 
 [[package]]
+name = "aead"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef60ac202874e574ce7a7158cc8bca7313dd344322482e4fadee288bf4a306b8"
+dependencies = [
+ "crypto-common 0.2.1",
+ "inout",
+]
+
+[[package]]
 name = "aes"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11,6 +21,20 @@ dependencies = [
  "cipher",
  "cpubits",
  "cpufeatures 0.3.0",
+]
+
+[[package]]
+name = "aes-gcm"
+version = "0.11.0-rc.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da8c919c118108f144adecad74b425b804ad075580d605d9b33c2d6d1c62a2f8"
+dependencies = [
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
+ "subtle",
 ]
 
 [[package]]
@@ -131,6 +155,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e34d8227fe1ba289043aeb13792056ff80fd6de1a9f49137a5f499de8e8c78ea"
 dependencies = [
+ "block-buffer 0.12.0",
  "crypto-common 0.2.1",
  "inout",
 ]
@@ -242,6 +267,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77727bb15fa921304124b128af125e7e3b968275d1b108b379190264f4423710"
 dependencies = [
+ "getrandom 0.4.2",
  "hybrid-array",
  "rand_core 0.10.1",
 ]
@@ -255,6 +281,15 @@ dependencies = [
  "crypto-bigint 0.7.3",
  "libm",
  "rand_core 0.10.1",
+]
+
+[[package]]
+name = "ctr"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17469f8eb9bdbfad10f71f4cfddfd38b01143520c0e717d8796ccb4d44d44e42"
+dependencies = [
+ "cipher",
 ]
 
 [[package]]
@@ -499,6 +534,15 @@ dependencies = [
  "rand_core 0.10.1",
  "wasip2",
  "wasip3",
+]
+
+[[package]]
+name = "ghash"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eecf2d5dc9b66b732b97707a0210906b1d30523eb773193ab777c0c84b3e8d5"
+dependencies = [
+ "polyval",
 ]
 
 [[package]]
@@ -889,6 +933,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyval"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dfc63250416fea14f5749b90725916a6c903f599d51cb635aa7a52bfd03eede"
+dependencies = [
+ "cpubits",
+ "cpufeatures 0.3.0",
+ "universal-hash",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1264,6 +1319,7 @@ name = "smime-tree"
 version = "0.3.2"
 dependencies = [
  "aes",
+ "aes-gcm",
  "aes-kw",
  "ansi-x963-kdf",
  "base64",
@@ -1409,6 +1465,16 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "universal-hash"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4987bdc12753382e0bec4a65c50738ffaabc998b9cdd1f952fb5f39b0048a96"
+dependencies = [
+ "crypto-common 0.2.1",
+ "ctutils",
+]
 
 [[package]]
 name = "uuencoding"

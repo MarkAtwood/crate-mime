@@ -1,18 +1,20 @@
-//! S/MIME EnvelopedData encryption.
+//! S/MIME AuthEnvelopedData encryption (AES-GCM).
 //!
-//! Implements RFC 5652 (CMS EnvelopedData) and RFC 5753 (ECC in CMS).
-//! All cryptographic primitives are used directly — the cms builder feature
-//! has a transitive dependency conflict with the locked cipher version.
+//! Implements RFC 5083 (AuthEnvelopedData), RFC 5084 (AES-GCM in CMS), and
+//! RFC 5753 (ECC in CMS).  All cryptographic primitives are used directly —
+//! the cms builder feature has a transitive dependency conflict with the
+//! locked cipher version.
 
+use aes_gcm::aead::{Aead, KeyInit as GcmKeyInit};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use cms::{
+    authenveloped_data::AuthEnvelopedData,
     cert::IssuerAndSerialNumber,
     content_info::{CmsVersion, ContentInfo},
     enveloped_data::{
-        EncryptedContentInfo, EncryptedKey, EnvelopedData, KeyAgreeRecipientIdentifier,
-        KeyAgreeRecipientInfo, KeyTransRecipientInfo, OriginatorIdentifierOrKey,
-        OriginatorPublicKey, RecipientEncryptedKey, RecipientIdentifier, RecipientInfo,
-        RecipientInfos,
+        EncryptedContentInfo, EncryptedKey, KeyAgreeRecipientIdentifier, KeyAgreeRecipientInfo,
+        KeyTransRecipientInfo, OriginatorIdentifierOrKey, OriginatorPublicKey,
+        RecipientEncryptedKey, RecipientIdentifier, RecipientInfo, RecipientInfos,
     },
 };
 use const_oid::db::{rfc5753, rfc5911, rfc5912};
@@ -34,9 +36,9 @@ use crate::error::SmimeError;
 
 // OID shorthand constants used in this file.
 const ID_DATA: ObjectIdentifier = rfc5911::ID_DATA;
-const ID_ENVELOPED_DATA: ObjectIdentifier = rfc5911::ID_ENVELOPED_DATA;
-const ID_AES_128_CBC: ObjectIdentifier = rfc5911::ID_AES_128_CBC;
-const ID_AES_256_CBC: ObjectIdentifier = rfc5911::ID_AES_256_CBC;
+const ID_CT_AUTH_ENVELOPED_DATA: ObjectIdentifier = rfc5911::ID_CT_AUTH_ENVELOPED_DATA;
+const ID_AES_128_GCM: ObjectIdentifier = rfc5911::ID_AES_128_GCM;
+const ID_AES_256_GCM: ObjectIdentifier = rfc5911::ID_AES_256_GCM;
 const ID_AES_128_WRAP: ObjectIdentifier = rfc5911::ID_AES_128_WRAP;
 const ID_AES_256_WRAP: ObjectIdentifier = rfc5911::ID_AES_256_WRAP;
 // dhSinglePass-stdDH-sha256kdf-scheme (RFC 5753 §7.1.4)
@@ -68,10 +70,14 @@ struct EccCmsSharedInfo {
 
 /// Encrypt `inner_mime` bytes to all `recipients`.
 ///
-/// Returns a MIME body part (`application/pkcs7-mime; smime-type=enveloped-data`)
+/// Returns a MIME body part (`application/pkcs7-mime; smime-type=authEnveloped-data`)
 /// as UTF-8 bytes: the Content-Type, Content-Transfer-Encoding,
 /// Content-Disposition headers, blank line, and base64-encoded DER of the CMS
-/// `ContentInfo` wrapping an `EnvelopedData`.
+/// `ContentInfo` wrapping an `AuthEnvelopedData` (RFC 5083).
+///
+/// Content is encrypted with AES-GCM, which provides authenticated encryption
+/// (integrity + confidentiality).  This is the preferred mode for new S/MIME
+/// deployments, replacing the legacy AES-CBC `EnvelopedData` path.
 ///
 /// This is the encrypted body part, not a complete RFC 5322 message. The caller
 /// must add message-level headers (`From`, `To`, `Subject`, etc.) when assembling
@@ -88,18 +94,17 @@ struct EccCmsSharedInfo {
 ///
 /// # Content encryption algorithm selection
 ///
-/// - **AES-128-CBC** is used when all recipients are RSA or P-256.
-/// - **AES-256-CBC** is used when any recipient is P-384 (P-384 provides ~192-bit
+/// - **AES-128-GCM** is used when all recipients are RSA or P-256.
+/// - **AES-256-GCM** is used when any recipient is P-384 (P-384 provides ~192-bit
 ///   security; pairing it with AES-128 would be a security-level mismatch).
 ///
-/// When a mixed list of RSA and P-384 recipients is supplied, AES-256-CBC is
+/// When a mixed list of RSA and P-384 recipients is supplied, AES-256-GCM is
 /// used throughout; each RSA recipient receives the 256-bit CEK wrapped with
 /// RSA PKCS#1 v1.5.
 ///
-/// # EnvelopedData version (RFC 5652 §6.1)
+/// # AuthEnvelopedData version (RFC 5083)
 ///
-/// - `V0` when all recipients are KTRI (RSA key transport).
-/// - `V2` when any recipient is KARI (ECDH key agreement).
+/// Always `V0`.
 ///
 /// # Errors
 ///
@@ -107,7 +112,7 @@ struct EccCmsSharedInfo {
 /// Returns `SmimeError::UnsupportedAlgorithm` for any certificate whose
 /// subject public key algorithm is not RSA, P-256, or P-384.
 /// Returns `SmimeError::RngFailure` when the OS RNG fails during:
-/// - CEK/IV generation (via `getrandom` in `encrypt_aes_cbc`), or
+/// - CEK/nonce generation, or
 /// - the 256-byte RNG preflight check that precedes RSA PKCS#1v15 key
 ///   transport (in `build_rsa_recipient`), or
 /// - ephemeral ECDH key generation for P-256 or P-384 recipients.
@@ -122,7 +127,7 @@ struct EccCmsSharedInfo {
 /// window is a narrow TOCTOU gap that would only trigger on catastrophic
 /// OS-level RNG failure after the preflight succeeds.
 ///
-/// All other RNG uses in this function (CEK/IV generation, ECDH ephemeral
+/// All other RNG uses in this function (CEK/nonce generation, ECDH ephemeral
 /// key generation) go through `getrandom` directly and return
 /// `Err(SmimeError::RngFailure)` rather than panicking.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError> {
@@ -131,7 +136,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     }
 
     // Pre-scan recipients: if any uses P-384, upgrade content encryption to
-    // AES-256-CBC so the security level matches the key agreement strength.
+    // AES-256-GCM so the security level matches the key agreement strength.
     let use_aes256 = recipients.iter().any(|cert| {
         let spki = cert.tbs_certificate().subject_public_key_info();
         if spki.algorithm.oid != rfc5912::ID_EC_PUBLIC_KEY {
@@ -145,29 +150,11 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
             .unwrap_or(false)
     });
 
-    use aes::cipher::{block_padding::Pkcs7, BlockModeEncrypt, KeyIvInit};
-
-    // Encrypt the content and derive per-algorithm values; recipient loop runs once below.
-    let (content_enc_alg, encrypted_content, cek_bytes) = if use_aes256 {
-        encrypt_aes_cbc(32, ID_AES_256_CBC, |key, iv| {
-            // NOTE: key is exactly 32 bytes (passed as key_len to encrypt_aes_cbc)
-            // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
-            let k = crypto_common::Key::<cbc::Encryptor<aes::Aes256>>::try_from(key)
-                .unwrap_or_else(|_| unreachable!("AES key is exactly the declared size"));
-            let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes256>>::try_from(iv)
-                .unwrap_or_else(|_| unreachable!("AES IV is exactly the declared size"));
-            cbc::Encryptor::<aes::Aes256>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
-        })?
+    // Encrypt the content with AES-GCM.
+    let (content_enc_alg, encrypted_content, mac, cek_bytes) = if use_aes256 {
+        encrypt_aes_gcm(32, ID_AES_256_GCM, inner_mime)?
     } else {
-        encrypt_aes_cbc(16, ID_AES_128_CBC, |key, iv| {
-            // NOTE: key is exactly 16 bytes (passed as key_len to encrypt_aes_cbc)
-            // and iv is exactly 16 bytes (AES block size); try_from cannot fail.
-            let k = crypto_common::Key::<cbc::Encryptor<aes::Aes128>>::try_from(key)
-                .unwrap_or_else(|_| unreachable!("AES key is exactly the declared size"));
-            let i = crypto_common::Iv::<cbc::Encryptor<aes::Aes128>>::try_from(iv)
-                .unwrap_or_else(|_| unreachable!("AES IV is exactly the declared size"));
-            cbc::Encryptor::<aes::Aes128>::new(&k, &i).encrypt_padded_vec::<Pkcs7>(inner_mime)
-        })?
+        encrypt_aes_gcm(16, ID_AES_128_GCM, inner_mime)?
     };
 
     // Build recipient infos. All recipients use the same CEK regardless of algorithm.
@@ -176,40 +163,31 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
         recipient_infos.push(build_recipient_info(cert, &cek_bytes)?);
     }
 
-    // RFC 5652 §6.1: version is V0 when all recipients are KTRI; V2 when any
-    // recipient is KARI (or KEKRI/PWRI). Determine after building all infos.
-    let version = if recipient_infos
-        .iter()
-        .all(|ri| matches!(ri, RecipientInfo::Ktri(_)))
-    {
-        CmsVersion::V0
-    } else {
-        CmsVersion::V2
-    };
-
     let enc_content = OctetString::new(encrypted_content)?;
 
     // RecipientInfos is a newtype over SetOfVec.
     let set: SetOfVec<RecipientInfo> = SetOfVec::try_from(recipient_infos)?;
     let recip_infos = RecipientInfos::from(set);
 
-    let env_data = EnvelopedData {
-        version,
+    let auth_env_data = AuthEnvelopedData {
+        version: CmsVersion::V0,
         originator_info: None,
         recip_infos,
-        encrypted_content: EncryptedContentInfo {
+        auth_encrypted_content_info: EncryptedContentInfo {
             content_type: ID_DATA,
             content_enc_alg,
             encrypted_content: Some(enc_content),
         },
-        unprotected_attrs: None,
+        auth_attrs: None,
+        mac: OctetString::new(mac)?,
+        unauth_attrs: None,
     };
 
     // Wrap in ContentInfo and DER-encode.
-    let env_der = env_data.to_der()?;
-    let content = AnyRef::try_from(env_der.as_slice())?;
+    let auth_env_der = auth_env_data.to_der()?;
+    let content = AnyRef::try_from(auth_env_der.as_slice())?;
     let ci = ContentInfo {
-        content_type: ID_ENVELOPED_DATA,
+        content_type: ID_CT_AUTH_ENVELOPED_DATA,
         content: Any::from(content),
     };
     let ci_der = ci.to_der()?;
@@ -217,34 +195,94 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
     Ok(build_mime(&ci_der))
 }
 
-/// Generate a random CEK and IV, encrypt content using the provided
-/// type-specific closure, and assemble the `AlgorithmIdentifier`.
+/// GCM algorithm parameters per RFC 5084 section 3.2.
 ///
-/// `key_len` must be 16 (AES-128) or 32 (AES-256).  `do_encrypt` receives the
-/// raw key and IV bytes and returns the padded ciphertext.  The CEK bytes are
-/// returned as `Zeroizing<Vec<u8>>` so they are scrubbed on drop.
+/// ```text
+/// GCMParameters ::= SEQUENCE {
+///     aes-nonce        OCTET STRING, -- recommended size is 12 octets
+///     aes-ICVlen       AES-GCM-ICVlen DEFAULT 12 }
+/// ```
+#[derive(Clone, Debug, Eq, PartialEq, Sequence)]
+struct GcmParameters {
+    aes_nonce: OctetString,
+    #[asn1(default = "default_icv_len")]
+    aes_icv_len: u8,
+}
+
+fn default_icv_len() -> u8 {
+    12
+}
+
+/// Generate a random CEK and nonce, encrypt content with AES-GCM, and
+/// assemble the `AlgorithmIdentifier` + `GCMParameters`.
+///
+/// `key_len` must be 16 (AES-128) or 32 (AES-256).  Returns the algorithm
+/// identifier, ciphertext (without tag), tag (16 bytes), and CEK.
+///
+/// The CEK bytes are returned as `Zeroizing<Vec<u8>>` so they are scrubbed
+/// on drop.
 #[allow(clippy::type_complexity)]
-fn encrypt_aes_cbc<F>(
+fn encrypt_aes_gcm(
     key_len: usize,
     cek_oid: ObjectIdentifier,
-    do_encrypt: F,
-) -> Result<(AlgorithmIdentifierOwned, Vec<u8>, Zeroizing<Vec<u8>>), SmimeError>
-where
-    F: FnOnce(&[u8], &[u8]) -> Vec<u8>,
-{
+    plaintext: &[u8],
+) -> Result<
+    (
+        AlgorithmIdentifierOwned,
+        Vec<u8>,
+        Vec<u8>,
+        Zeroizing<Vec<u8>>,
+    ),
+    SmimeError,
+> {
     let mut cek_buf = vec![0u8; key_len];
-    let mut iv_buf = [0u8; 16];
+    let mut nonce_buf = [0u8; 12];
     getrandom::fill(&mut cek_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
-    getrandom::fill(&mut iv_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
-    let ct = do_encrypt(&cek_buf, &iv_buf);
+    getrandom::fill(&mut nonce_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+
+    // Encrypt with AES-GCM. The crate returns ciphertext || 16-byte tag.
+    let nonce = aes_gcm::Nonce::<aes_gcm::aead::consts::U12>::try_from(nonce_buf.as_slice())
+        .map_err(|_| SmimeError::Other("nonce length mismatch".into()))?;
+    let ct_with_tag = if key_len == 32 {
+        let key_arr: &[u8; 32] = cek_buf
+            .as_slice()
+            .try_into()
+            .map_err(|_| SmimeError::Other("AES-256-GCM key length mismatch".into()))?;
+        let cipher = aes_gcm::Aes256Gcm::new(key_arr.into());
+        cipher
+            .encrypt(&nonce, plaintext)
+            .map_err(|_| SmimeError::Other("AES-256-GCM encrypt failed".into()))?
+    } else {
+        let key_arr: &[u8; 16] = cek_buf
+            .as_slice()
+            .try_into()
+            .map_err(|_| SmimeError::Other("AES-128-GCM key length mismatch".into()))?;
+        let cipher = aes_gcm::Aes128Gcm::new(key_arr.into());
+        cipher
+            .encrypt(&nonce, plaintext)
+            .map_err(|_| SmimeError::Other("AES-128-GCM encrypt failed".into()))?
+    };
+
+    // Split: everything except the last 16 bytes is ciphertext, last 16 is the tag.
+    let tag_start = ct_with_tag.len() - 16;
+    let ct = ct_with_tag[..tag_start].to_vec();
+    let tag = ct_with_tag[tag_start..].to_vec();
+
     let cek_bytes = Zeroizing::new(cek_buf);
-    let iv_oct = OctetString::new(iv_buf.as_slice())?;
-    let iv_any = Any::encode_from(&iv_oct)?;
+
+    // Build GCMParameters per RFC 5084 §3.2.
+    let gcm_params = GcmParameters {
+        aes_nonce: OctetString::new(nonce_buf.as_slice())?,
+        aes_icv_len: 16,
+    };
+    let params_any = Any::encode_from(&gcm_params)?;
+
     let alg = AlgorithmIdentifierOwned {
         oid: cek_oid,
-        parameters: Some(iv_any),
+        parameters: Some(params_any),
     };
-    Ok((alg, ct, cek_bytes))
+
+    Ok((alg, ct, tag, cek_bytes))
 }
 
 /// Inspect a certificate's SPKI and return the appropriate `RecipientInfo`.
@@ -377,7 +415,7 @@ fn build_p256_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo,
 /// Build a KARI (P-384 ECDH + AES-256-KW) RecipientInfo.
 ///
 /// P-384 provides ~192-bit security; AES-256-KW matches that level.
-/// The caller must supply a 32-byte CEK (AES-256-CBC).
+/// The caller must supply a 32-byte CEK (AES-256-GCM).
 fn build_p384_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
     use p384::NistP384;
 
@@ -555,7 +593,7 @@ fn build_mime(der: &[u8]) -> Vec<u8> {
 
     let mime = format!(
         "MIME-Version: 1.0\r\n\
-         Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=smime.p7m\r\n\
+         Content-Type: application/pkcs7-mime; smime-type=authEnveloped-data; name=smime.p7m\r\n\
          Content-Transfer-Encoding: base64\r\n\
          Content-Disposition: attachment; filename=smime.p7m\r\n\
          \r\n\

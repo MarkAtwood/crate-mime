@@ -1,22 +1,24 @@
-//! S/MIME decryption: parse EnvelopedData and recover plaintext.
+//! S/MIME decryption: parse EnvelopedData / AuthEnvelopedData and recover plaintext.
 
 use aes::cipher::{block_padding::Pkcs7, BlockModeDecrypt, KeyIvInit};
 use aes::Aes128;
 use aes::Aes256;
+use aes_gcm::aead::{Aead, KeyInit as GcmKeyInit};
+use cms::authenveloped_data::AuthEnvelopedData;
 use cms::content_info::ContentInfo;
 use cms::enveloped_data::{
     EnvelopedData, KeyAgreeRecipientIdentifier, KeyAgreeRecipientInfo, OriginatorIdentifierOrKey,
-    RecipientInfo,
+    RecipientInfo, RecipientInfos,
 };
 use const_oid::db::{
     rfc5753,
     rfc5911::{
         ID_AES_128_CBC, ID_AES_128_GCM, ID_AES_128_WRAP, ID_AES_256_CBC, ID_AES_256_GCM,
-        ID_AES_256_WRAP, ID_ENVELOPED_DATA,
+        ID_AES_256_WRAP, ID_CT_AUTH_ENVELOPED_DATA, ID_ENVELOPED_DATA,
     },
     rfc5912::{ID_EC_PUBLIC_KEY, ID_RSAES_OAEP, RSA_ENCRYPTION, SECP_256_R_1, SECP_384_R_1},
 };
-use der::{asn1::OctetString, Decode, Encode};
+use der::{asn1::OctetString, Decode, Encode, Sequence};
 use spki::AlgorithmIdentifierOwned;
 
 use zeroize::Zeroizing;
@@ -39,10 +41,34 @@ use crate::key::{
 /// payloads, they should file an issue for a configurable limit.
 const MAX_ENCRYPTED_CONTENT_SIZE: usize = 64 * 1024 * 1024;
 
-/// Decrypt an S/MIME `EnvelopedData` blob.
+/// GCM algorithm parameters per RFC 5084 section 3.2.
 ///
-/// `enveloped_der` must be a DER-encoded `ContentInfo` wrapping an
-/// `EnvelopedData` (RFC 5652 section 6).  Returns the inner plaintext bytes.
+/// ```text
+/// GCMParameters ::= SEQUENCE {
+///     aes-nonce        OCTET STRING, -- recommended size is 12 octets
+///     aes-ICVlen       AES-GCM-ICVlen DEFAULT 12 }
+/// ```
+///
+/// Note: RFC 5084 defaults `aes-ICVlen` to 12, but standard practice and
+/// all interoperable implementations use 16-byte (128-bit) tags.  We accept
+/// any valid tag length during decode but reject non-16-byte tags at decrypt
+/// time.
+#[derive(Clone, Debug, Eq, PartialEq, Sequence)]
+struct GcmParameters {
+    aes_nonce: OctetString,
+    #[asn1(default = "default_icv_len")]
+    aes_icv_len: u8,
+}
+
+fn default_icv_len() -> u8 {
+    12
+}
+
+/// Decrypt an S/MIME `EnvelopedData` or `AuthEnvelopedData` blob.
+///
+/// `enveloped_der` must be a DER-encoded `ContentInfo` wrapping either an
+/// `EnvelopedData` (RFC 5652 section 6, AES-CBC) or an `AuthEnvelopedData`
+/// (RFC 5083, AES-GCM).  Returns the inner plaintext bytes.
 ///
 /// Supported recipient types:
 /// - **KTRI** (`KeyTransRecipientInfo`): RSA PKCS#1 v1.5 and RSA-OAEP.
@@ -50,11 +76,10 @@ const MAX_ENCRYPTED_CONTENT_SIZE: usize = 64 * 1024 * 1024;
 ///
 /// KEKRI, PWRI, and ORI recipient types are not supported.
 ///
-/// # Security — unauthenticated CBC decryption
+/// # Security — unauthenticated CBC decryption (legacy path)
 ///
-/// This function decrypts content encrypted with AES-CBC, which is **not** an
-/// authenticated encryption mode.  There is no MAC or integrity tag over the
-/// ciphertext.  Two risks follow:
+/// The `EnvelopedData` path decrypts content encrypted with AES-CBC, which is
+/// **not** an authenticated encryption mode.  Two risks follow:
 ///
 /// 1. **Padding oracle**: if `SmimeError::DecryptionFailed` is surfaced to any
 ///    interactive channel (HTTP status, SMTP bounce, UI error), an attacker
@@ -69,17 +94,23 @@ const MAX_ENCRYPTED_CONTENT_SIZE: usize = 64 * 1024 * 1024;
 ///    MIME content) without knowing the CEK.  Callers that render decrypted
 ///    HTML SHOULD strip or sandbox external resource references.
 ///
-/// For new deployments, prefer AES-GCM via `AuthEnvelopedData` (RFC 5083).
+/// The `AuthEnvelopedData` path uses AES-GCM, which provides authenticated
+/// encryption and is not susceptible to these attacks.
+///
 /// AES-CBC decryption is retained for interoperability with existing S/MIME
 /// deployments.
 pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>, SmimeError> {
     // Step 1: Parse the outer ContentInfo.
     let ci = ContentInfo::from_der(enveloped_der)?;
 
+    if ci.content_type == ID_CT_AUTH_ENVELOPED_DATA {
+        return decrypt_auth_enveloped(&ci, key);
+    }
+
     // Step 2: Verify this is an EnvelopedData.
     if ci.content_type != ID_ENVELOPED_DATA {
         return Err(SmimeError::WrongContentType(format!(
-            "expected EnvelopedData, got OID {}",
+            "expected EnvelopedData or AuthEnvelopedData, got OID {}",
             ci.content_type
         )));
     }
@@ -90,7 +121,7 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
     let env_data = EnvelopedData::from_der(content_der.as_slice())?;
 
     // Step 4: Find a matching recipient and decrypt the CEK.
-    let cek = find_and_decrypt_cek(&env_data, key)?;
+    let cek = find_and_decrypt_cek(&env_data.recip_infos, key)?;
 
     // Step 5: Decrypt the content using the recovered CEK.
     let content_enc_oid = env_data.encrypted_content.content_enc_alg.oid;
@@ -133,12 +164,116 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
     }
 }
 
+/// Decrypt an `AuthEnvelopedData` (RFC 5083) blob with AES-GCM.
+///
+/// The auth tag is in the `mac` field, the ciphertext (without tag) in
+/// `auth_encrypted_content_info.encrypted_content`, and the nonce in
+/// the `GCMParameters` from the algorithm parameters.
+fn decrypt_auth_enveloped(
+    ci: &ContentInfo,
+    key: &dyn DecryptionKey,
+) -> Result<Vec<u8>, SmimeError> {
+    let content_der = ci.content.to_der()?;
+    let auth_data = AuthEnvelopedData::from_der(content_der.as_slice())?;
+
+    // Find a matching recipient and decrypt the CEK.
+    let cek = find_and_decrypt_cek(&auth_data.recip_infos, key)?;
+
+    // Extract GCM parameters (nonce + tag length).
+    let content_enc_oid = auth_data.auth_encrypted_content_info.content_enc_alg.oid;
+    let params = auth_data
+        .auth_encrypted_content_info
+        .content_enc_alg
+        .parameters
+        .as_ref()
+        .ok_or_else(|| SmimeError::MalformedInput("GCM algorithm parameters missing".into()))?;
+    let gcm_params = params.decode_as::<GcmParameters>()?;
+
+    let nonce = gcm_params.aes_nonce.as_bytes();
+    if nonce.len() != 12 {
+        return Err(SmimeError::MalformedInput(format!(
+            "GCM nonce must be 12 bytes, got {}",
+            nonce.len()
+        )));
+    }
+
+    let icv_len = gcm_params.aes_icv_len;
+    if icv_len != 16 {
+        return Err(SmimeError::UnsupportedAlgorithm(format!(
+            "GCM tag length must be 16 bytes, got {icv_len}"
+        )));
+    }
+
+    // Extract ciphertext (without tag).
+    let ct = auth_data
+        .auth_encrypted_content_info
+        .encrypted_content
+        .as_ref()
+        .ok_or_else(|| {
+            SmimeError::MalformedInput("AuthEnvelopedData has no encrypted content".into())
+        })?
+        .as_bytes();
+
+    if ct.len() > MAX_ENCRYPTED_CONTENT_SIZE {
+        return Err(SmimeError::MalformedInput(format!(
+            "encrypted content too large: {} bytes exceeds {} byte limit",
+            ct.len(),
+            MAX_ENCRYPTED_CONTENT_SIZE
+        )));
+    }
+
+    // Extract the authentication tag from the `mac` field.
+    let tag = auth_data.mac.as_bytes();
+    if tag.len() != 16 {
+        return Err(SmimeError::MalformedInput(format!(
+            "GCM auth tag must be 16 bytes, got {}",
+            tag.len()
+        )));
+    }
+
+    // Reconstruct the AES-GCM input: ciphertext || tag (AEAD convention).
+    let mut ct_with_tag = Vec::with_capacity(ct.len() + 16);
+    ct_with_tag.extend_from_slice(ct);
+    ct_with_tag.extend_from_slice(tag);
+
+    let nonce_arr = aes_gcm::Nonce::<aes_gcm::aead::consts::U12>::try_from(nonce)
+        .map_err(|_| SmimeError::MalformedInput("GCM nonce length mismatch".into()))?;
+
+    if content_enc_oid == ID_AES_128_GCM {
+        let key_arr: &[u8; 16] = cek
+            .as_slice()
+            .try_into()
+            .map_err(|_| SmimeError::MalformedInput("AES-128-GCM CEK must be 16 bytes".into()))?;
+        let cipher = aes_gcm::Aes128Gcm::new(key_arr.into());
+        cipher
+            .decrypt(&nonce_arr, ct_with_tag.as_ref())
+            .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+    } else if content_enc_oid == ID_AES_256_GCM {
+        let key_arr: &[u8; 32] = cek
+            .as_slice()
+            .try_into()
+            .map_err(|_| SmimeError::MalformedInput("AES-256-GCM CEK must be 32 bytes".into()))?;
+        let cipher = aes_gcm::Aes256Gcm::new(key_arr.into());
+        cipher
+            .decrypt(&nonce_arr, ct_with_tag.as_ref())
+            .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+    } else {
+        Err(SmimeError::UnsupportedAlgorithm(format!(
+            "AuthEnvelopedData content encryption OID {}",
+            content_enc_oid
+        )))
+    }
+}
+
 /// Iterate all `RecipientInfo` entries, call the key to decrypt the CEK for
 /// the first matching recipient, and return it.
 ///
 /// The CEK is wrapped in `Zeroizing` so it is scrubbed from memory on drop.
+///
+/// This function accepts `&RecipientInfos` so it can be shared between the
+/// `EnvelopedData` (CBC) and `AuthEnvelopedData` (GCM) code paths.
 fn find_and_decrypt_cek(
-    env_data: &EnvelopedData,
+    recip_infos: &RecipientInfos,
     key: &dyn DecryptionKey,
 ) -> Result<Zeroizing<Vec<u8>>, SmimeError> {
     // Preserve the last UnsupportedAlgorithm error from a KARI with a matching
@@ -148,7 +283,7 @@ fn find_and_decrypt_cek(
     // UnsupportedAlgorithm is more helpful than NoMatchingRecipient.
     let mut unsupported: Option<SmimeError> = None;
 
-    for ri in env_data.recip_infos.0.iter() {
+    for ri in recip_infos.0.iter() {
         match ri {
             RecipientInfo::Ktri(ktri) => {
                 let rid = cms_rid_to_owned(&ktri.rid)?;

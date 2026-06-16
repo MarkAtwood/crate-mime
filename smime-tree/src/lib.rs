@@ -39,18 +39,19 @@
 //! - **No async**: all operations are synchronous.
 //! - **Supported algorithms**:
 //!   - Sign/verify: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA P-256 (SHA-256 only), P-384 (SHA-384 only). P-521 is not supported.
-//!   - Encrypt/decrypt: AES-128-CBC (RSA/P-256 recipients), AES-256-CBC (P-384 recipients).
+//!   - Encrypt: AES-128-GCM (RSA/P-256 recipients), AES-256-GCM (P-384 recipients) via `AuthEnvelopedData` (RFC 5083).
+//!   - Decrypt: AES-128/256-GCM (`AuthEnvelopedData`) and AES-128/256-CBC (`EnvelopedData`, legacy).
 //!   - Key transport: RSA PKCS#1 v1.5 (`KeyTransRecipientInfo`).
 //!   - Key agreement: ECDH P-256 + AES-128-KW, ECDH P-384 + AES-256-KW (`KeyAgreeRecipientInfo`).
 //!
 //! # Known Limitations
 //!
-//! * **AES-CBC content encryption is unauthenticated.** `decrypt()` uses AES-CBC
-//!   (not AES-GCM) because `EnvelopedData` (RFC 5652) does not carry an
-//!   authentication tag.  This exposes callers to padding oracle and EFAIL-class
-//!   (CVE-2017-17688) risks. See the [`decrypt`] function-level docs for
-//!   mitigation guidance.  AES-GCM support via `AuthEnvelopedData` (RFC 5083) is
-//!   planned.
+//! * **AES-CBC decryption (legacy) is unauthenticated.** `decrypt()` accepts
+//!   both `AuthEnvelopedData` (AES-GCM, authenticated) and `EnvelopedData`
+//!   (AES-CBC, unauthenticated).  The CBC path is retained for interoperability
+//!   with existing S/MIME deployments but exposes callers to padding oracle and
+//!   EFAIL-class (CVE-2017-17688) risks. See the [`decrypt`] function-level docs
+//!   for mitigation guidance.
 //! * **RSA-PSS signatures are not supported** for certificate chain validation.
 //!   Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
 //!   signatures are rare in practice. File an issue if you need it.
