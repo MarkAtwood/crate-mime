@@ -434,11 +434,12 @@ fn test_encrypt_output_decrypted_by_openssl() {
 
     let encrypted_bytes = encrypt(inner_mime, &[cert]).expect("encrypt() must succeed");
 
-    // Write the encrypted MIME message to a temp file.
+    // Extract DER from the MIME wrapper (strip headers + base64-decode).
+    let der_bytes = mime_body_to_der(&encrypted_bytes);
+
+    // Write the encrypted DER to a temp file.
     let mut enc_file = tempfile::NamedTempFile::new().expect("create temp file");
-    enc_file
-        .write_all(&encrypted_bytes)
-        .expect("write encrypted bytes");
+    enc_file.write_all(&der_bytes).expect("write encrypted DER");
     let enc_path = enc_file.path().to_path_buf();
 
     // Write RSA private key to temp PEM for openssl.
@@ -462,10 +463,15 @@ fn test_encrypt_output_decrypted_by_openssl() {
         .expect("write cert");
     let cert_path = cert_file.path().to_path_buf();
 
+    // Use `openssl cms -decrypt` (not `smime -decrypt`) because we now emit
+    // AuthEnvelopedData (AES-GCM), which the PKCS#7-based `smime` subcommand
+    // does not support.
     let output = Command::new("openssl")
         .args([
-            "smime",
+            "cms",
             "-decrypt",
+            "-inform",
+            "DER",
             "-in",
             enc_path.to_str().unwrap(),
             "-recip",
@@ -479,7 +485,7 @@ fn test_encrypt_output_decrypted_by_openssl() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         output.status.success(),
-        "openssl smime -decrypt must exit 0; stderr: {stderr}"
+        "openssl cms -decrypt must exit 0; stderr: {stderr}"
     );
 
     // Oracle: OpenSSL decrypts to the exact bytes we encrypted.
@@ -1718,4 +1724,73 @@ fn test_sign_empty_keys_returns_error() {
             panic!("expected Err(SmimeError::MalformedInput(_)) for empty keys, got: {other:?}")
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Test U: AES-GCM encrypt → decrypt roundtrip (RSA recipient)
+//
+// encrypt() now produces AuthEnvelopedData (AES-GCM).  This test encrypts
+// to the RSA cert and then decrypts with the matching RSA private key.
+// No OpenSSL dependency — pure in-process roundtrip.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_encrypt_decrypt_gcm_roundtrip_rsa() {
+    let rsa_cert_der = from_hex(RSA_CERT_HEX);
+    let cert = Certificate::from_der(&rsa_cert_der).expect("parse RSA cert");
+
+    let inner_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nGCM roundtrip test\r\n";
+
+    let encrypted_bytes = encrypt(inner_mime, &[cert.clone()]).expect("encrypt() must succeed");
+
+    // Verify the MIME Content-Type uses authEnveloped-data.
+    let mime_str = std::str::from_utf8(&encrypted_bytes).expect("MIME output must be UTF-8");
+    assert!(
+        mime_str.contains("smime-type=authEnveloped-data"),
+        "encrypt() output must use smime-type=authEnveloped-data; got: {}",
+        mime_str.lines().take(4).collect::<Vec<_>>().join("\n")
+    );
+
+    // Extract DER from the MIME wrapper.
+    let der_bytes = mime_body_to_der(&encrypted_bytes);
+
+    // Decrypt using the RSA private key.
+    let rsa_key_der = from_hex(RSA_KEY_PKCS8_HEX);
+    let private_key = RsaPrivateKey::from_pkcs8_der(&rsa_key_der).expect("parse RSA private key");
+    let key = TestRsaDecryptionKey { private_key, cert };
+
+    let plaintext = decrypt(&der_bytes, &key).expect("decrypt() must succeed for GCM roundtrip");
+    assert_eq!(
+        plaintext, inner_mime,
+        "GCM roundtrip: decrypted plaintext must match original"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test V: AES-GCM encrypt → decrypt roundtrip (P-256 KARI recipient)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_encrypt_decrypt_gcm_roundtrip_p256() {
+    let ec256_cert_der = from_hex(EC256_CERT_HEX);
+    let cert = Certificate::from_der(&ec256_cert_der).expect("parse P-256 cert");
+
+    let inner_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nGCM P-256 roundtrip\r\n";
+
+    let encrypted_bytes = encrypt(inner_mime, &[cert.clone()]).expect("encrypt() must succeed");
+
+    let der_bytes = mime_body_to_der(&encrypted_bytes);
+
+    // Decrypt using the P-256 private key.
+    let ec256_key_der = from_hex(EC256_KEY_PKCS8_HEX);
+    let secret_key =
+        p256::SecretKey::from_pkcs8_der(&ec256_key_der).expect("parse P-256 private key");
+    let key = TestEcP256DecryptionKey { secret_key, cert };
+
+    let plaintext =
+        decrypt(&der_bytes, &key).expect("decrypt() must succeed for GCM P-256 roundtrip");
+    assert_eq!(
+        plaintext, inner_mime,
+        "GCM P-256 roundtrip: decrypted plaintext must match original"
+    );
 }
