@@ -312,6 +312,10 @@ impl<'a> LineIter<'a> {
     fn new(data: &'a [u8]) -> Self {
         Self { data, pos: 0 }
     }
+}
+
+impl<'a> Iterator for LineIter<'a> {
+    type Item = &'a [u8];
 
     fn next(&mut self) -> Option<&'a [u8]> {
         if self.pos >= self.data.len() {
