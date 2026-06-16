@@ -24,7 +24,16 @@ pub struct ParsedMessage {
     /// empty, or when decoding the first text part fails (e.g. unsupported
     /// charset or transfer-encoding error).
     pub preview: Option<String>,
-    /// Non-fatal parse warnings.
+    /// Non-fatal parse warnings (e.g. unknown CTE, out-of-range part
+    /// indices, encoding problems).
+    ///
+    /// # Stability
+    ///
+    /// Warning strings are human-readable diagnostic messages.  Their
+    /// exact wording, count, and order are **not** stable across minor
+    /// versions — do not match on them programmatically.  Use
+    /// `warnings.is_empty()` to check for a clean parse; log the
+    /// contents for debugging.
     pub warnings: Vec<String>,
 }
 
