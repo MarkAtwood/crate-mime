@@ -53,9 +53,9 @@ for result in scan(text) {
 ```rust
 pub enum UuError {
     /// No `begin` line was found, or the begin line was malformed.
-    InvalidBeginLine { line: String },
+    InvalidBeginLine { line: String, begin_offset: usize },
     /// A `begin-base64` header was found — this is Base64, not UUencoding.
-    BeginBase64,
+    BeginBase64 { begin_offset: usize },
     /// An out-of-range byte was found in a data line.
     /// `col` is the 0-based offset within the encoded payload; `byte` is the bad value.
     InvalidChar { col: usize, byte: u8 },

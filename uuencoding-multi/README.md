@@ -93,7 +93,7 @@ if file.is_truncated {
 
 ```rust
 pub enum MultiUuError {
-    /// reassemble() called with no parts (part_number >= 1).
+    /// reassemble() called on a collection with no parts where part_number >= 1.
     EmptyCollection,
     /// uuencoding::decode failed on one of the part bodies.
     DecodeError(uuencoding::UuError),
