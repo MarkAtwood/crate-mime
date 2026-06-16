@@ -162,6 +162,20 @@ pub struct KariAlgorithm {
     pub key_wrap: KeyWrapAlgorithm,
 }
 
+impl KariAlgorithm {
+    /// Construct a `KariAlgorithm` with the given key agreement and wrap schemes.
+    ///
+    /// `KariAlgorithm` is `#[non_exhaustive]` so external callers cannot use
+    /// struct expression syntax. Use this constructor instead.
+    #[must_use]
+    pub fn new(key_agreement: KariKeyAgreement, key_wrap: KeyWrapAlgorithm) -> Self {
+        Self {
+            key_agreement,
+            key_wrap,
+        }
+    }
+}
+
 /// Digest algorithm used when creating or verifying a signature.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
