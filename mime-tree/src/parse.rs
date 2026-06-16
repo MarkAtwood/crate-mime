@@ -67,7 +67,23 @@ pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
 
 /// Decode the body of a parsed part.
 ///
-/// Transfer-encoding decode and charset conversion are performed on demand.
+/// Slices `raw[part.body_range]`, applies transfer-encoding decode
+/// (Base64, QP, UUencode, or identity), then charset-converts the
+/// result to UTF-8.
+///
+/// # `max_bytes`
+///
+/// * `None` — decode the full body.  There is no implicit size limit.
+/// * `Some(n)` — decode at most `n` bytes of the **transfer-decoded**
+///   output.  [`DecodedBodyValue::is_truncated`] is set to `true` when
+///   the full body exceeds this limit.  The truncation point may fall
+///   mid-codepoint after charset conversion, in which case
+///   [`DecodedBodyValue::is_encoding_problem`] is also set.
+///
+/// # Errors
+///
+/// Returns [`ParseError::InvalidRange`] when `part.body_range` is out
+/// of bounds for `raw`.
 #[must_use = "the decoded body value must be used"]
 pub fn decode_body_value(
     raw: &[u8],
