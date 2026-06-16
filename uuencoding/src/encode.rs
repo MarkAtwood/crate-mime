@@ -34,12 +34,11 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
         // length character
         out.push((chunk.len() as u8) + 32);
 
-        // encode groups of 3 bytes → 4 chars, padding last group if needed
-        let mut i = 0;
-        while i < chunk.len() {
-            let b0 = chunk[i];
-            let b1 = if i + 1 < chunk.len() { chunk[i + 1] } else { 0 };
-            let b2 = if i + 2 < chunk.len() { chunk[i + 2] } else { 0 };
+        // encode groups of 3 bytes → 4 chars, padding last group with zeros
+        for triple in chunk.chunks(3) {
+            let b0 = triple[0];
+            let b1 = triple.get(1).copied().unwrap_or(0);
+            let b2 = triple.get(2).copied().unwrap_or(0);
 
             let a = b0 >> 2;
             let b = ((b0 & 0x03) << 4) | (b1 >> 4);
@@ -52,8 +51,6 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
             out.push(encode_char(b));
             out.push(encode_char(c));
             out.push(encode_char(d));
-
-            i += 3;
         }
 
         out.push(b'\n');
