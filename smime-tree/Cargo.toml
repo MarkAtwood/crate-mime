@@ -10,6 +10,7 @@ repository = "https://github.com/MarkAtwood/crate-mime"
 readme = "README.md"
 keywords = ["smime", "cms", "pkcs7", "email", "cryptography"]
 categories = ["cryptography", "email", "encoding"]
+exclude = ["CLAUDE.md", "AGENTS.md"]
 
 [dependencies]
 base64 = { version = "0.22" }
