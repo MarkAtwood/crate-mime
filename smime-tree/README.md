@@ -24,9 +24,9 @@ original message buffer, which is required for correct digest computation.
 
 | Function | Input | Output |
 |---|---|---|
-| `sign(content_mime, key, now)` | Raw MIME bytes + `SigningKey` + current time | `multipart/signed` MIME bytes |
+| `sign(content_mime, keys, now)` | Raw MIME bytes + `&[&dyn SigningKey]` + current time | `multipart/signed` MIME bytes |
 | `verify(signed_content, signature_der, trust_anchors, now, revocation)` | Signed content + DER signature | `VerificationResult` |
-| `encrypt(inner_mime, recipients)` | MIME bytes + recipient certificates | `application/pkcs7-mime` bytes |
+| `encrypt(inner_mime, recipients)` | MIME bytes + recipient certificates | `application/pkcs7-mime; smime-type=authEnveloped-data` bytes |
 | `decrypt(enveloped_der, key)` | DER blob + `DecryptionKey` | Inner MIME bytes |
 
 `decrypt` returns raw bytes. Feed them to `mime_tree::parse()` to get the part
@@ -53,14 +53,16 @@ the wrong byte slice (e.g. re-encoded content) will cause digest mismatch.
 
 ### Decrypt
 
-`decrypt()` takes a DER-encoded `ContentInfo` wrapping `EnvelopedData`. It:
+`decrypt()` takes a DER-encoded `ContentInfo` wrapping `EnvelopedData` or
+`AuthEnvelopedData`. It:
 
 1. Iterates the `RecipientInfo` list; for each entry calls
    `DecryptionKey::matches_recipient()` to find the right one.
 2. For KTRI (RSA): calls `DecryptionKey::decrypt_cek()` with the encrypted key bytes.
 3. For KARI (ECDH): calls `DecryptionKey::agree_ecdh()` with the ephemeral public key,
    UKM, and wrapped CEK; the trait implementation performs the ECDH exchange and key unwrap.
-4. Decrypts the content with the recovered CEK (AES-128-CBC or AES-256-CBC).
+4. Decrypts the content with the recovered CEK (AES-128-CBC, AES-256-CBC, AES-128-GCM,
+   or AES-256-GCM — both `EnvelopedData` and `AuthEnvelopedData` are supported).
 5. Returns the plaintext bytes. Feed them to `mime_tree::parse()` to get the part tree.
 
 ### Sign
@@ -81,7 +83,9 @@ MIME structure. It:
 - RSA certificates → `KeyTransRecipientInfo` (RSA PKCS#1 v1.5 key transport).
 - EC P-256/P-384 certificates → `KeyAgreeRecipientInfo` (ECDH-ES + AES key wrap).
 
-A random CEK is generated for each message. Content is encrypted with AES-256-CBC.
+A random CEK is generated for each message. Content is encrypted with AES-128-GCM
+(when all recipients are RSA or P-256) or AES-256-GCM (when any recipient is P-384).
+The output is an `AuthEnvelopedData` structure (RFC 5083).
 
 ## Implementing the key traits
 
@@ -146,7 +150,7 @@ impl SigningKey for MySigner {
 ```
 
 The digest algorithm is derived from the certificate key type by default
-(P-256 → SHA-256, P-384 → SHA-384, P-521 → SHA-512, RSA → SHA-256).
+(P-256 → SHA-256, P-384 → SHA-384, RSA → SHA-256). P-521 is not supported.
 Override `preferred_digest_algorithm()` to force a specific algorithm.
 
 ## Verification

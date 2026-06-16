@@ -73,6 +73,7 @@ A single node in the MIME tree.
 | `header_range` | `(u32, u32)` | `(offset, length)` of part headers in original bytes |
 | `body_range` | `(u32, u32)` | `(offset, length)` of part body (pre-decode) in original bytes |
 | `children` | `Vec<ParsedPart>` | Child parts — non-empty for `multipart/*` only |
+| `is_encoding_problem` | `bool` | True if mail-parser flagged a structural encoding problem at parse time |
 
 Byte ranges use `u32` so the serialized representation is stable across 32-bit and
 64-bit hosts. MIME messages are bounded well within 4 GiB.
@@ -81,13 +82,13 @@ Byte ranges use `u32` so the serialized representation is stable across 32-bit a
 
 | Variant | CTE header value(s) |
 |---|---|
-| `Identity` | none / `7bit` / `8bit` / `binary` (also the fallback for unknown values) |
 | `QuotedPrintable` | `quoted-printable` |
 | `Base64` | `base64` |
-| `UUEncode` | `x-uuencode`, `x-uue`, `uuencode` |
 | `SevenBit` | `7bit` |
 | `EightBit` | `8bit` |
 | `Binary` | `binary` |
+| `Identity` | Fallback for missing or unknown CTE values |
+| `UUEncode` | `x-uuencode`, `x-uue`, `uuencode` |
 
 Unknown CTE values fall back to `Identity` and add a warning to `ParsedMessage::warnings`.
 
@@ -223,6 +224,7 @@ match parse_header_typed(HeaderForm::Addresses, raw_value) {
 | `HeaderForm` | RFC 8621 § | Output variant |
 |---|---|---|
 | `Raw` | 4.1.2.1 | `Raw(String)` — trimmed UTF-8 only, no other decoding |
+| `Text` | 4.1.2.2 | `Text(String)` — unfolded, RFC 2047 decoded, NFC-normalised |
 | `Addresses` | 4.1.2.3 | `Addresses(Vec<EmailAddress>)` — flat list, group structure discarded |
 | `GroupedAddresses` | 4.1.2.4 | `GroupedAddresses(Vec<AddressGroup>)` — groups preserved |
 | `MessageIds` | 4.1.2.5 | `MessageIds(Vec<String>)` — bare ids, no `<>` or CFWS |
