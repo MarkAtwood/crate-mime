@@ -51,25 +51,23 @@ use crate::part::ParsedPart;
 pub struct InlineUUBlock {
     /// Byte offset of the `begin NNN filename` line within `raw`.
     ///
-    /// Slicing `raw[begin_offset .. begin_offset + begin_length]` yields the
-    /// complete UU block from the `begin` line through the `end` line
-    /// (inclusive).
+    /// Slicing `raw[begin_offset .. begin_offset + begin_length]` (when
+    /// `begin_length` is `Some`) yields the complete UU block from the
+    /// `begin` line through the `end` line (inclusive).
     ///
-    /// **Note:** When [`is_encoding_problem`] is `true`, the slicing invariant
-    /// (`begin_offset + begin_length` spans the full block) does not hold
-    /// because `begin_length` is `0` for error items.  `begin_offset` does
-    /// reflect the actual position of the offending `begin` or `begin-base64`
-    /// line within `raw`, so it can be used for diagnostic purposes.
+    /// When [`is_encoding_problem`] is `true`, `begin_length` is `None`.
+    /// `begin_offset` still reflects the actual position of the offending
+    /// `begin` or `begin-base64` line within `raw`, so it can be used for
+    /// diagnostic purposes.
     pub begin_offset: u32,
 
     /// Byte length of the entire UU block: from the start of the `begin` line
     /// through the end of the `end` line (inclusive of its newline).
     ///
-    /// **Note:** When [`is_encoding_problem`] is `true`, this field is `0`
-    /// because the block end boundary is not determined for error items
-    /// (`begin-base64` and malformed `begin` lines).  Always check
-    /// `is_encoding_problem` before relying on this field.
-    pub begin_length: u32,
+    /// `None` when [`is_encoding_problem`] is `true`, because the block end
+    /// boundary is not determined for error items (`begin-base64` and
+    /// malformed `begin` lines).
+    pub begin_length: Option<u32>,
 
     /// File permission mode parsed from the `begin` line, e.g. `0o644`.
     pub mode: u32,
@@ -125,8 +123,7 @@ pub struct InlineUUBlock {
 ///   `part.body_range`.
 /// * For error items where [`InlineUUBlock::is_encoding_problem`] is `true`,
 ///   `begin_offset` is the position of the offending `begin` or `begin-base64`
-///   line within `raw` and `begin_length` is `0`.  The slicing invariant
-///   (`raw[begin_offset..begin_offset + begin_length]` == block) does not hold.
+///   line within `raw` and `begin_length` is `None`.
 /// * No panic occurs on any input (malformed, truncated, or adversarial).
 ///
 /// # Example
@@ -172,7 +169,7 @@ pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock>
                     .unwrap_or(u32::MAX);
                 InlineUUBlock {
                     begin_offset: abs_begin,
-                    begin_length: block_len,
+                    begin_length: Some(block_len),
                     mode: block.metadata.mode,
                     filename: block.metadata.filename,
                     data: block.data,
@@ -195,7 +192,7 @@ pub fn scan_inline_uuencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineUUBlock>
                     offset_u32.saturating_add(u32::try_from(rel_begin).unwrap_or(u32::MAX));
                 InlineUUBlock {
                     begin_offset: abs_begin,
-                    begin_length: 0,
+                    begin_length: None,
                     mode: 0,
                     filename: String::new(),
                     data: Vec::new(),
@@ -256,11 +253,12 @@ mod tests {
         // expected decoded: 48656c6c6f = "Hello"
         assert_eq!(b.data, hex_bytes("48656c6c6f"));
         assert!(!b.is_encoding_problem);
-        // begin_offset = 0 (no prefix), begin_length = body.len() = 36
+        // begin_offset = 0 (no prefix), begin_length = Some(body.len()) = Some(36)
         assert_eq!(b.begin_offset, 0);
-        assert_eq!(b.begin_length, body.len() as u32);
+        assert_eq!(b.begin_length, Some(body.len() as u32));
         // Verify by slicing raw
-        let sliced = &raw[b.begin_offset as usize..(b.begin_offset + b.begin_length) as usize];
+        let len = b.begin_length.unwrap();
+        let sliced = &raw[b.begin_offset as usize..(b.begin_offset + len) as usize];
         assert_eq!(sliced, body.as_slice());
     }
 
@@ -294,7 +292,7 @@ mod tests {
         assert_eq!(b0.data, hex_bytes("48656c6c6f")); // "Hello"
         assert!(!b0.is_encoding_problem);
         assert_eq!(b0.begin_offset, 0);
-        assert_eq!(b0.begin_length, 36); // 36-byte block with terminator
+        assert_eq!(b0.begin_length, Some(36)); // 36-byte block with terminator
 
         let b1 = &blocks[1];
         assert_eq!(b1.mode, 0o600);
@@ -306,11 +304,13 @@ mod tests {
         assert!(!b1.is_encoding_problem);
         // block2 starts at offset 57 (36 + len("Some text in between\n") = 36+21=57)
         assert_eq!(b1.begin_offset, 57);
-        assert_eq!(b1.begin_length, 54); // 54-byte fox block with terminator
+        assert_eq!(b1.begin_length, Some(54)); // 54-byte fox block with terminator
 
         // Verify slices
-        let s0 = &raw[b0.begin_offset as usize..(b0.begin_offset + b0.begin_length) as usize];
-        let s1 = &raw[b1.begin_offset as usize..(b1.begin_offset + b1.begin_length) as usize];
+        let len0 = b0.begin_length.unwrap();
+        let len1 = b1.begin_length.unwrap();
+        let s0 = &raw[b0.begin_offset as usize..(b0.begin_offset + len0) as usize];
+        let s1 = &raw[b1.begin_offset as usize..(b1.begin_offset + len1) as usize];
         // s0 should start with "begin 644 hello.txt\n"
         assert!(s0.starts_with(b"begin 644 hello.txt\n"));
         assert!(s0.ends_with(b"end\n"));
@@ -342,7 +342,8 @@ mod tests {
 
         // Verify by slicing raw with absolute offsets
         for b in &blocks {
-            let sliced = &raw[b.begin_offset as usize..(b.begin_offset + b.begin_length) as usize];
+            let len = b.begin_length.unwrap();
+            let sliced = &raw[b.begin_offset as usize..(b.begin_offset + len) as usize];
             assert!(sliced.starts_with(b"begin "));
             assert!(sliced.ends_with(b"end\n"));
         }

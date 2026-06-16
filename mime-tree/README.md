@@ -148,7 +148,7 @@ for id in &msg.text_body {
 | Field | Type | Description |
 |---|---|---|
 | `begin_offset` | `u32` | Absolute byte offset of the `begin` line in `raw` |
-| `begin_length` | `u32` | Byte length of the entire block (through `end\n`) |
+| `begin_length` | `Option<u32>` | Byte length of the entire block (through `end\n`); `None` for error items |
 | `mode` | `u32` | Unix permission mode from the `begin` line |
 | `filename` | `String` | Filename from the `begin` line |
 | `data` | `Vec<u8>` | Decoded binary payload |

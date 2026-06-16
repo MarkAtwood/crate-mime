@@ -508,4 +508,27 @@ mod tests {
         assert!(c.is_empty());
         assert_eq!(c.total(), None);
     }
+
+    /// Documented footgun: adding a single part to a no-total collection
+    /// infers total as the highest part number seen (1), so `is_complete()`
+    /// returns `true` immediately. This is intentional behavior — the
+    /// collection has no way to know that more parts exist. Callers should
+    /// use `with_total()` when the total is known.
+    ///
+    /// See doc warnings on `PartCollection::new()` and `is_complete()`.
+    #[test]
+    fn single_part_no_total_infers_complete() {
+        let mut c = PartCollection::new();
+        assert_eq!(c.total(), None, "no total before any parts added");
+        assert!(!c.is_complete(), "cannot be complete without a total");
+
+        c.add(part(1)).unwrap();
+
+        assert_eq!(c.total(), Some(1), "total inferred from highest part seen");
+        assert!(c.missing_parts().is_empty(), "no gaps in 1..=1");
+        assert!(
+            c.is_complete(),
+            "single part in a no-total collection is considered complete"
+        );
+    }
 }

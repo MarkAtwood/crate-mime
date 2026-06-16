@@ -24,7 +24,8 @@ use der::{
     Any, AnyRef, Encode, Sequence,
 };
 use elliptic_curve::ecdh::EphemeralSecret;
-use elliptic_curve::sec1::ToSec1Point;
+use elliptic_curve::sec1::{FromSec1Point, ModulusSize, ToSec1Point};
+use elliptic_curve::{AffinePoint, CurveArithmetic, FieldBytesSize};
 use getrandom::{rand_core::UnwrapErr, SysRng};
 use rsa::{pkcs8::DecodePublicKey, RsaPublicKey};
 use spki::AlgorithmIdentifierOwned;
@@ -314,9 +315,25 @@ fn build_recipient_info(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo,
             })?;
 
         if curve_oid == rfc5912::SECP_256_R_1 {
-            build_p256_recipient(cert, cek)
+            build_ec_recipient::<p256::NistP256, sha2::Sha256>(
+                cert,
+                cek,
+                "P-256",
+                rfc5912::SECP_256_R_1,
+                DH_SHA256_KDF,
+                ID_AES_128_WRAP,
+                128,
+            )
         } else if curve_oid == rfc5912::SECP_384_R_1 {
-            build_p384_recipient(cert, cek)
+            build_ec_recipient::<p384::NistP384, sha2::Sha384>(
+                cert,
+                cek,
+                "P-384",
+                rfc5912::SECP_384_R_1,
+                DH_SHA384_KDF,
+                ID_AES_256_WRAP,
+                256,
+            )
         } else {
             Err(SmimeError::UnsupportedAlgorithm(format!(
                 "EC curve {} not supported",
@@ -376,85 +393,65 @@ fn build_rsa_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, 
     }))
 }
 
-/// Build a KARI (P-256 ECDH + AES-128-KW) RecipientInfo.
-fn build_p256_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
-    use p256::NistP256;
-
-    let raw_bits = cert
-        .tbs_certificate()
-        .subject_public_key_info()
-        .subject_public_key
-        .raw_bytes();
-    let recipient_pub = p256::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| {
-        SmimeError::MalformedInput(format!("P-256 public key in recipient cert: {e}"))
-    })?;
-
-    let ephemeral: EphemeralSecret<NistP256> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
-        .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
-    let ephemeral_pub = ephemeral.public_key();
-    let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
-
-    // AES-128-KW: KEK size = 16 bytes = 128 bits.
-    let wrapped_cek = ecdh_wrap_cek::<sha2::Sha256>(
-        shared_secret.raw_secret_bytes().as_ref(),
-        ID_AES_128_WRAP,
-        128u32,
-        cek,
-    )?;
-
-    build_kari_recipient(
-        cert,
-        ephemeral_pub.to_sec1_point(false).as_bytes(),
-        rfc5912::SECP_256_R_1,
-        DH_SHA256_KDF,
-        ID_AES_128_WRAP,
-        wrapped_cek,
-    )
-}
-
-/// Build a KARI (P-384 ECDH + AES-256-KW) RecipientInfo.
+/// Build a KARI (ECDH + AES-KW) RecipientInfo, generic over curve and KDF hash.
 ///
-/// P-384 provides ~192-bit security; AES-256-KW matches that level.
-/// The caller must supply a 32-byte CEK (AES-256-GCM).
-fn build_p384_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, SmimeError> {
-    use p384::NistP384;
-
+/// `C`              — elliptic curve (e.g. `p256::NistP256`, `p384::NistP384`).
+/// `D`              — hash digest for ANSI X9.63 KDF (e.g. `sha2::Sha256`, `sha2::Sha384`).
+/// `curve_name`     — human-readable name for error messages (e.g. "P-256").
+/// `curve_oid`      — named curve OID (e.g. `SECP_256_R_1`).
+/// `kdf_oid`        — ECDH+KDF scheme OID (e.g. `DH_SHA256_KDF`).
+/// `wrap_oid`       — AES key-wrap algorithm OID (e.g. `ID_AES_128_WRAP`).
+/// `wrap_key_bits`  — KEK size in bits (128 or 256).
+fn build_ec_recipient<C, D>(
+    cert: &Certificate,
+    cek: &[u8],
+    curve_name: &str,
+    curve_oid: ObjectIdentifier,
+    kdf_oid: ObjectIdentifier,
+    wrap_oid: ObjectIdentifier,
+    wrap_key_bits: u32,
+) -> Result<RecipientInfo, SmimeError>
+where
+    C: CurveArithmetic,
+    AffinePoint<C>: FromSec1Point<C> + ToSec1Point<C>,
+    FieldBytesSize<C>: ModulusSize,
+    D: sha2::digest::Digest + sha2::digest::FixedOutputReset,
+{
     let raw_bits = cert
         .tbs_certificate()
         .subject_public_key_info()
         .subject_public_key
         .raw_bytes();
-    let recipient_pub = p384::PublicKey::from_sec1_bytes(raw_bits).map_err(|e| {
-        SmimeError::MalformedInput(format!("P-384 public key in recipient cert: {e}"))
+    let recipient_pub = elliptic_curve::PublicKey::<C>::from_sec1_bytes(raw_bits).map_err(|e| {
+        SmimeError::MalformedInput(format!("{curve_name} public key in recipient cert: {e}"))
     })?;
 
-    let ephemeral: EphemeralSecret<NistP384> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
+    let ephemeral: EphemeralSecret<C> = EphemeralSecret::try_generate_from_rng(&mut SysRng)
         .map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
     let ephemeral_pub = ephemeral.public_key();
     let shared_secret = ephemeral.diffie_hellman(&recipient_pub);
 
-    // AES-256-KW: KEK size = 32 bytes = 256 bits, matching P-384 security level.
-    let wrapped_cek = ecdh_wrap_cek::<sha2::Sha384>(
+    let wrapped_cek = ecdh_wrap_cek::<D>(
         shared_secret.raw_secret_bytes().as_ref(),
-        ID_AES_256_WRAP,
-        256u32,
+        wrap_oid,
+        wrap_key_bits,
         cek,
     )?;
 
     build_kari_recipient(
         cert,
         ephemeral_pub.to_sec1_point(false).as_bytes(),
-        rfc5912::SECP_384_R_1,
-        DH_SHA384_KDF,
-        ID_AES_256_WRAP,
+        curve_oid,
+        kdf_oid,
+        wrap_oid,
         wrapped_cek,
     )
 }
 
 /// Assemble a KARI `RecipientInfo` from pre-computed ECDH outputs.
 ///
-/// Both `build_p256_recipient` and `build_p384_recipient` call this after
-/// performing their curve-specific key generation and CEK wrapping.
+/// Called by `build_ec_recipient` after performing curve-specific key
+/// generation and CEK wrapping.
 ///
 /// `ephemeral_pub_bytes` — uncompressed SEC1 point bytes of the ephemeral public key.
 /// `curve_oid`           — OID of the named curve (goes into OriginatorPublicKey).
