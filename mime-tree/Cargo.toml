@@ -10,6 +10,7 @@ repository = "https://github.com/MarkAtwood/crate-mime"
 readme = "README.md"
 keywords = ["mime", "email", "rfc5322", "parser", "s-mime"]
 categories = ["email", "encoding", "parser-implementations"]
+exclude = ["CLAUDE.md", "AGENTS.md"]
 
 [dependencies]
 mail-parser = { version = "0.11", default-features = false, features = ["serde", "full_encoding"] }
@@ -19,4 +20,4 @@ quoted_printable = "0.5"
 serde = { version = "1", features = ["derive"] }
 unicode-normalization = "0.1"
 uuencoding = { version = "0.3.0", path = "../uuencoding" }
-yencoding = { version = "0.2.0", path = "../yencoding" }
+yencoding = { version = "0.3.0", path = "../yencoding" }

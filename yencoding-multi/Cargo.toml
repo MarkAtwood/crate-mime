@@ -12,7 +12,7 @@ keywords = ["yenc", "usenet", "nntp", "multipart", "encoding"]
 categories = ["email", "encoding"]
 
 [dependencies]
-yencoding = { version = "0.2.0", path = "../yencoding" }
+yencoding = { version = "0.3.0", path = "../yencoding" }
 crc32fast = "1"
 
 [dev-dependencies]

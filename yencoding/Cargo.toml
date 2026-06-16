@@ -1,6 +1,6 @@
 [package]
 name = "yencoding"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"
@@ -10,6 +10,7 @@ repository = "https://github.com/MarkAtwood/crate-mime"
 readme = "README.md"
 keywords = ["yenc", "usenet", "encoding", "nntp", "binary"]
 categories = ["email", "encoding"]
+exclude = ["check_unused"]
 
 [dependencies]
 crc32fast = "1"
