@@ -3,7 +3,7 @@
 /// All variants implement [`std::error::Error`] and [`std::fmt::Display`].
 /// The enum is `#[non_exhaustive]` — new variants may be added in future
 /// releases without a breaking change.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum YencError {
     /// No `=ybegin` line was found in the input.

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 /// Errors produced by [`crate::Assembler`] operations.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AssemblyError {
     /// A part's byte range overlaps with an already-accepted part.

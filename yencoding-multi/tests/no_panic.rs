@@ -3,24 +3,28 @@
 //! These tests verify that extreme, malformed, and boundary-case inputs
 //! produce errors (not panics). None of them should ever panic.
 
-use yencoding::{DecodedPart, YencMetadata};
+use yencoding::DecodedPart;
 use yencoding_multi::{Assembler, AssemblyError, MAX_TOTAL_SIZE};
 
 fn make_part(data: &[u8], begin: Option<u64>, end: Option<u64>) -> DecodedPart {
-    DecodedPart {
-        data: data.to_vec(),
-        metadata: YencMetadata {
-            filename: "test.bin".to_string(),
-            size: 512,
-            line_length: 128,
-            total_parts: Some(2),
-        },
-        part: Some(1),
-        part_begin: begin,
-        part_end: end,
-        crc32_verified: false,
-        whole_file_crc32: None,
-    }
+    use yencoding::{decode, encode_part, EncodePartOptions, DEFAULT_LINE_LENGTH};
+    let opts = EncodePartOptions {
+        filename: "test.bin",
+        total_size: 512,
+        total_parts: 2,
+        part: 1,
+        begin: 1,
+        end: 1,
+        whole_file_crc32: 0,
+        line_length: DEFAULT_LINE_LENGTH,
+    };
+    let mut part = decode(&encode_part(&[0u8], &opts)).unwrap();
+    part.data = data.to_vec();
+    part.part_begin = begin;
+    part.part_end = end;
+    part.whole_file_crc32 = None;
+    part.crc32_verified = false;
+    part
 }
 
 #[test]

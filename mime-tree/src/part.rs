@@ -83,6 +83,7 @@ pub struct ParsedHeader {
 /// For `multipart/*` parts, `children` is non-empty and `body_range` covers
 /// the entire multipart body including boundaries.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ParsedPart {
     /// IMAP dotted-path part ID: `"1"`, `"1.1"`, `"1.2"`, etc.
     pub part_id: String,

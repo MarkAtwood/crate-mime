@@ -92,7 +92,8 @@ pub use error::YencError;
 /// Metadata extracted from a yEnc `=ybegin` header line.
 ///
 /// Common to both single-part and multi-part articles.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct YencMetadata {
     /// Filename from the `name=` field of `=ybegin`.
@@ -124,6 +125,22 @@ pub struct YencMetadata {
     pub total_parts: Option<u32>,
 }
 
+impl YencMetadata {
+    /// Construct a `YencMetadata` with the given fields.
+    ///
+    /// `YencMetadata` is `#[non_exhaustive]` so external callers cannot use
+    /// struct expression syntax. Use this constructor instead.
+    #[must_use]
+    pub fn new(filename: String, size: u64, line_length: u8, total_parts: Option<u32>) -> Self {
+        Self {
+            filename,
+            size,
+            line_length,
+            total_parts,
+        }
+    }
+}
+
 /// A successfully decoded yEnc part.
 ///
 /// Returned by [`decode`]. Contains the decoded binary payload, metadata from
@@ -132,7 +149,8 @@ pub struct YencMetadata {
 /// For single-part articles, `part`, `part_begin`, and `part_end` are all
 /// `None`. For multi-part articles they carry the values from `=ybegin part=`
 /// and `=ypart begin=/end=`.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DecodedPart {
     /// Decoded binary payload.
@@ -175,6 +193,33 @@ pub struct DecodedPart {
     /// `None` if the encoder omitted the `crc32=` field (older encoders and
     /// some multi-part encoders that only include `pcrc32=` do this).
     pub whole_file_crc32: Option<u32>,
+}
+
+impl DecodedPart {
+    /// Construct a `DecodedPart` with the given fields.
+    ///
+    /// `DecodedPart` is `#[non_exhaustive]` so external callers cannot use
+    /// struct expression syntax. Use this constructor instead.
+    #[must_use]
+    pub fn new(
+        data: Vec<u8>,
+        metadata: YencMetadata,
+        part: Option<u32>,
+        part_begin: Option<u64>,
+        part_end: Option<u64>,
+        crc32_verified: bool,
+        whole_file_crc32: Option<u32>,
+    ) -> Self {
+        Self {
+            data,
+            metadata,
+            part,
+            part_begin,
+            part_end,
+            crc32_verified,
+            whole_file_crc32,
+        }
+    }
 }
 
 /// Decode a yEnc article from raw bytes.

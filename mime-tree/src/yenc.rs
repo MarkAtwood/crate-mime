@@ -57,7 +57,8 @@ use crate::part::ParsedPart;
 /// All byte offsets are **absolute** — they are in the same coordinate space
 /// as `ParsedPart::body_range` and the `raw` buffer passed to
 /// [`scan_inline_yencode()`].
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub struct InlineYEncBlock {
     /// Byte offset of the `=ybegin` line within `raw`.
     ///
@@ -350,21 +351,15 @@ fn find_line_end(slice: &[u8], pos: usize) -> usize {
 
 /// Build a zero-data `DecodedPart` to use when decode returns an error.
 fn make_error_sentinel(_err: yencoding::YencError) -> yencoding::DecodedPart {
-    let filename = String::new();
-    yencoding::DecodedPart {
-        data: Vec::new(),
-        metadata: yencoding::YencMetadata {
-            filename,
-            size: 0,
-            line_length: 128,
-            total_parts: None,
-        },
-        part: None,
-        part_begin: None,
-        part_end: None,
-        crc32_verified: false,
-        whole_file_crc32: None,
-    }
+    yencoding::DecodedPart::new(
+        Vec::new(),
+        yencoding::YencMetadata::new(String::new(), 0, 128, None),
+        None,
+        None,
+        None,
+        false,
+        None,
+    )
 }
 
 // ---------------------------------------------------------------------------

@@ -32,7 +32,7 @@ use regex::Regex;
 /// assert_eq!(entry.size_bytes, Some(1_234_567));
 /// assert_eq!(entry.parts, Some(1..=8));
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TocEntry {
     /// Filename as it appears in the TOC line.
     pub filename: String,
@@ -62,7 +62,7 @@ pub struct TocEntry {
 /// assert_eq!(toc.entries.len(), 1);
 /// assert!(toc.raw_text.contains("# TOC"));
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedToc {
     /// Successfully parsed entries; may be a strict subset of all lines.
     pub entries: Vec<TocEntry>,
