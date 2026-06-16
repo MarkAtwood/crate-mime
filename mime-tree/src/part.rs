@@ -78,7 +78,12 @@ pub struct ParsedHeader {
 /// into the caller's original `&[u8]`. The crate never stores raw bytes.
 ///
 /// Both fields use `u32` to guarantee identical serialized representation on
-/// 32-bit and 64-bit hosts (MIME messages are bounded well within 4 GiB).
+/// 32-bit and 64-bit hosts.  RFC 5321 recommends a 10 MB message size limit;
+/// the 4 GiB `u32` range covers all realistic messages.  Callers processing
+/// raw input exceeding 4 GiB MUST reject it before calling [`parse`][crate::parse]
+/// — `mail-parser` uses `usize` offsets internally and `parse` truncates them
+/// to `u32` via `saturating_sub`, which would produce incorrect byte ranges
+/// without error on oversized input.
 ///
 /// For `multipart/*` parts, `children` is non-empty and `body_range` covers
 /// the entire multipart body including boundaries.
