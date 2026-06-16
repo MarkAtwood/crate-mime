@@ -29,18 +29,9 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 /// `is_truncated` is set to `true` and `data` contains at most `max_bytes`
 /// bytes.
 ///
-/// **Complexity note:** the input is split into lines up-front (O(input) time
-/// and O(line-count) space) before any limit check takes effect. Only the
-/// *decoding* of data lines is bounded by `max_bytes`. For large inputs with a
-/// small limit, callers that need true O(max_bytes) behaviour should pre-slice
-/// the input to a safe upper bound before calling this function:
-///
-/// ```text
-/// upper_bound = (max_bytes / 45) * 61 + 100
-/// ```
-///
-/// where 61 = 1 length byte + 60 encoded chars per 45-byte line, and 100
-/// covers the `begin`/`end` framing plus a partial final line.
+/// Input is scanned lazily: lines are consumed on demand, so decoding stops
+/// scanning as soon as `max_bytes` decoded bytes are produced (or the block
+/// ends). Both time and memory are O(bytes consumed), not O(total input).
 ///
 /// Passing `None` for `max_bytes` is equivalent to calling [`decode`].
 ///
@@ -51,43 +42,35 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedBlock, UuError> {
     let max = max_bytes.unwrap_or(usize::MAX);
 
-    // Split on LF, strip trailing CR from each line.
-    let lines: Vec<&[u8]> = input
-        .split(|&b| b == b'\n')
-        .map(|l| l.strip_suffix(b"\r").unwrap_or(l))
-        .collect();
+    // Lazy line iterator: yields lines on demand, stripping trailing CR.
+    // This is O(bytes consumed) not O(total input) — when max_bytes is small,
+    // we stop scanning early instead of splitting the entire input upfront.
+    let mut lines = LazyLines::new(input);
 
     // --- Find the begin line ---
     // Require whitespace or '-' at position 5 (or end-of-line at exactly 5),
     // matching scan.rs's is_begin_line() so that prose words like "beginners"
     // or "beginning" are not mistaken for UU begin lines.
-    let mut begin_idx = None;
-    for (i, line) in lines.iter().enumerate() {
-        if line.len() >= 5
-            && line[..5].eq_ignore_ascii_case(b"begin")
-            && (line.len() == 5 || line[5].is_ascii_whitespace() || line[5] == b'-')
-        {
-            begin_idx = Some(i);
-            break;
-        }
-    }
-    let begin_idx = match begin_idx {
-        Some(i) => i,
-        None => {
-            return Err(UuError::InvalidBeginLine {
-                line: String::new(),
-                begin_offset: 0,
-            })
+    let begin_line = loop {
+        match lines.next() {
+            None => {
+                return Err(UuError::InvalidBeginLine {
+                    line: String::new(),
+                    begin_offset: 0,
+                })
+            }
+            Some(line) => {
+                if line.len() >= 5
+                    && line[..5].eq_ignore_ascii_case(b"begin")
+                    && (line.len() == 5 || line[5].is_ascii_whitespace() || line[5] == b'-')
+                {
+                    break line;
+                }
+            }
         }
     };
 
-    let begin_line = lines[begin_idx];
-
     // Detect begin-base64 before further parsing.
-    // Require that "begin-base64" is followed by whitespace or is the entire
-    // line (no trailing character at position 12), so that a hypothetical
-    // "begin-base64X …" is not silently misclassified.  Real encoders always
-    // emit "begin-base64 <mode> <filename>".
     let is_begin_base64 = begin_line.len() >= 12
         && begin_line[..12].eq_ignore_ascii_case(b"begin-base64")
         && (begin_line.len() == 12 || begin_line[12].is_ascii_whitespace());
@@ -123,9 +106,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         }
         let rest = skip_token(begin_line);
         let rest = skip_token(rest);
-        // Trim trailing whitespace to match scan.rs behaviour: a begin line
-        // like "begin 644 foo.txt   " (trailing spaces from mailer wrapping)
-        // should produce filename "foo.txt", not "foo.txt   ".
+        // Trim trailing whitespace to match scan.rs behaviour.
         let rest = rest
             .iter()
             .rposition(|b| !b.is_ascii_whitespace())
@@ -138,15 +119,9 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     let mut data: Vec<u8> = Vec::new();
     let mut is_truncated = true;
     let mut was_limit_hit = false;
-    let data_lines = &lines[begin_idx + 1..];
 
-    'outer: for (rel_idx, &line) in data_lines.iter().enumerate() {
+    'outer: while let Some(line) = lines.next() {
         // Stop early only when we have strictly more bytes than the limit.
-        // At exactly max bytes we must still process the current line: if it is
-        // the terminator (decode_line returns Ok(0)) the look-ahead below will
-        // find "end" and correctly set is_truncated=false.  If it is a data
-        // line, decode_line will push more bytes and the post-loop truncation
-        // below will clamp data to max and set is_truncated=true.
         if data.len() > max {
             is_truncated = true;
             was_limit_hit = true;
@@ -155,12 +130,12 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         match decode_line(line, &mut data) {
             Ok(0) => {
                 // Terminator line found. Look ahead for "end".
-                for &subsequent in &data_lines[rel_idx + 1..] {
-                    if subsequent.eq_ignore_ascii_case(b"end") {
+                for line in lines.by_ref() {
+                    if line.eq_ignore_ascii_case(b"end") {
                         is_truncated = false;
                         break 'outer;
                     }
-                    if !subsequent.is_empty() {
+                    if !line.is_empty() {
                         break;
                     }
                 }
@@ -187,6 +162,40 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
         is_truncated,
         was_limit_hit,
     })
+}
+
+/// Lazy line iterator over a byte slice: yields `&[u8]` lines split on `\n`,
+/// with trailing `\r` stripped. Does not allocate a `Vec` of all line slices
+/// upfront — only scans as far as the caller consumes.
+struct LazyLines<'a> {
+    data: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> LazyLines<'a> {
+    fn new(data: &'a [u8]) -> Self {
+        Self { data, pos: 0 }
+    }
+}
+
+impl<'a> Iterator for LazyLines<'a> {
+    type Item = &'a [u8];
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        if self.pos >= self.data.len() {
+            return None;
+        }
+        let start = self.pos;
+        let end = self.data[start..]
+            .iter()
+            .position(|&b| b == b'\n')
+            .map(|rel| start + rel)
+            .unwrap_or(self.data.len());
+        // Advance past the \n (or to EOF).
+        self.pos = if end < self.data.len() { end + 1 } else { end };
+        let line = &self.data[start..end];
+        Some(line.strip_suffix(b"\r").unwrap_or(line))
+    }
 }
 
 /// Decodes one UU data line into `out`.
