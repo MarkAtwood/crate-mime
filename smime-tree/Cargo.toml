@@ -1,6 +1,6 @@
 [package]
 name = "smime-tree"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -44,5 +44,5 @@ x509-cert-stable = { package = "x509-cert", version = "0.2" }
 der-stable = { package = "der", version = "0.7" }
 
 [dev-dependencies]
-mime-tree = { version = "0.4.0", path = "../mime-tree" }
+mime-tree = { version = "0.5.0", path = "../mime-tree" }
 tempfile = "3"
