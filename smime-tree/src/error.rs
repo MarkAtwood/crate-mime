@@ -259,16 +259,15 @@ impl fmt::Display for SmimeError {
                 "could not generate a unique MIME boundary after 8 retries"
             ),
             SmimeError::AllSignersFailed(signers) => {
-                let first_error = signers
-                    .first()
-                    .and_then(|s| s.error.as_deref())
-                    .unwrap_or("unknown");
-                write!(
-                    f,
-                    "signature verification failed: {} signer(s) all failed — first error: {}",
-                    signers.len(),
-                    first_error
-                )
+                write!(f, "{} signer(s) failed: ", signers.len())?;
+                for (i, signer) in signers.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, "; ")?;
+                    }
+                    let reason = signer.error.as_deref().unwrap_or("unknown");
+                    write!(f, "{reason}")?;
+                }
+                Ok(())
             }
         }
     }

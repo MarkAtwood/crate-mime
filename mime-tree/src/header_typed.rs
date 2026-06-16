@@ -700,6 +700,11 @@ pub enum HeaderValueTyped {
 /// ```
 #[must_use]
 pub fn parse_header_typed(form: HeaderForm, raw_value: &[u8]) -> HeaderValueTyped {
+    // Why the crlf_terminated() round-trip below: mail-parser's typed
+    // parsing APIs (parse_address, parse_date, etc.) only accept raw
+    // bytes via MessageStream — there is no "parse from &str" path.
+    // The CRLF re-termination is also required because MessageStream
+    // expects RFC 5322 wire-format input. Do not remove either step.
     match form {
         HeaderForm::Raw => {
             // RFC 8621 §4.1.2.1: the value is the header field value

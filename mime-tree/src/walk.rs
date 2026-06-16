@@ -5,6 +5,77 @@
 
 use crate::part::ParsedPart;
 
+/// Nullable append target — models JavaScript's null-rebind semantics from
+/// RFC 8621 §4.1.4.
+///
+/// In the RFC's JavaScript pseudocode, `htmlBody = null` inside a recursive
+/// `parseStructure` call is a local variable rebind: it stops further pushes
+/// to that list within the callee, but does NOT propagate back to the caller.
+/// Meanwhile, `htmlBody.push(part)` writes through to the shared underlying
+/// array.
+///
+/// This wrapper encapsulates `Option<&mut Vec<String>>`:
+/// - **Active** (`Some`): `.push()` appends to the underlying `Vec`.
+/// - **Disabled** (`None`): `.push()` is a no-op; `.is_active()` returns false.
+/// - **`.as_child()`** reborrows the inner `Vec` into a fresh `AppendTarget`,
+///   so the child can `.disable()` without affecting the parent's state.
+struct AppendTarget<'a>(Option<&'a mut Vec<String>>);
+
+impl<'a> AppendTarget<'a> {
+    /// Create an active target backed by `vec`.
+    fn new(vec: &'a mut Vec<String>) -> Self {
+        Self(Some(vec))
+    }
+
+    /// Append `id` if active; no-op if disabled.
+    fn push(&mut self, id: String) {
+        if let Some(ref mut v) = self.0 {
+            v.push(id);
+        }
+    }
+
+    /// Disable this target — further `.push()` calls become no-ops.
+    fn disable(&mut self) {
+        self.0 = None;
+    }
+
+    /// Whether this target is still active (non-null).
+    fn is_active(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// Current length of the underlying `Vec`, or 0 if disabled.
+    fn len(&self) -> usize {
+        self.0.as_ref().map_or(0, |v| v.len())
+    }
+
+    /// Clone items from `start..` out of the underlying `Vec`.
+    /// Returns an empty `Vec` if disabled.
+    fn slice_from(&self, start: usize) -> Vec<String> {
+        self.0
+            .as_ref()
+            .map(|v| v[start..].to_vec())
+            .unwrap_or_default()
+    }
+
+    /// Extend the underlying `Vec` with `ids` if active.
+    fn extend(&mut self, ids: Vec<String>) {
+        if let Some(ref mut v) = self.0 {
+            v.extend(ids);
+        }
+    }
+
+    /// Create a child target for recursive calls.
+    ///
+    /// The child reborrows the same underlying `Vec`, so `.push()` calls
+    /// propagate. But the child's `Option` is independent: `.disable()` on
+    /// the child does not affect this parent — exactly matching JavaScript's
+    /// local variable rebind semantics.
+    fn as_child(&mut self) -> AppendTarget<'_> {
+        AppendTarget(self.0.as_deref_mut())
+    }
+}
+
 /// Result of the RFC 8621 §4.1.4 walk algorithm.
 pub(crate) struct BodyStructure {
     pub(crate) text_body: Vec<String>,
@@ -26,8 +97,8 @@ pub fn compute_body_structure(root: &ParsedPart) -> BodyStructure {
         std::slice::from_ref(root),
         "mixed",
         false,
-        &mut Some(&mut text_body),
-        &mut Some(&mut html_body),
+        &mut AppendTarget::new(&mut text_body),
+        &mut AppendTarget::new(&mut html_body),
         &mut attachments,
     );
 
@@ -47,17 +118,9 @@ fn is_inline_media_type(media_type: &str) -> bool {
 
 /// Recursive implementation of the RFC 8621 §4.1.4 `parseStructure` function.
 ///
-/// `text_body` and `html_body` are `Option<&mut Vec<String>>` to model the
-/// JavaScript algorithm's nullable array references: when set to `None`,
-/// further pushes to that list are suppressed and inline media goes to
-/// attachments instead.
-///
-/// JavaScript `null` assignment (`htmlBody = null`) is a local variable rebind
-/// that does not propagate to the caller's scope.  We model this by wrapping
-/// `&mut Vec` references in fresh `Option` locals when recursing into multipart
-/// children: pushes to the underlying `Vec` still propagate (same allocation),
-/// but setting the `Option` to `None` inside the callee does not affect the
-/// caller's `Option`.
+/// `text_body` and `html_body` use `AppendTarget` to model the JavaScript
+/// algorithm's nullable array references: when disabled, further pushes are
+/// suppressed and inline media goes to attachments instead.
 ///
 /// The loop variable `i` (index into `parts`) is the 0-based position of
 /// each part within its sibling list, used for the `multipart/related` rule.
@@ -65,16 +128,16 @@ fn parse_structure(
     parts: &[ParsedPart],
     multipart_type: &str,
     in_alternative: bool,
-    text_body: &mut Option<&mut Vec<String>>,
-    html_body: &mut Option<&mut Vec<String>>,
+    text_body: &mut AppendTarget<'_>,
+    html_body: &mut AppendTarget<'_>,
     attachments: &mut Vec<String>,
 ) {
     // Snapshot lengths at entry — used at the end of multipart/alternative
     // to cross-populate: if only html was found, mirror it into textBody,
     // and vice versa.  These are only consulted inside `if tb_active &&
-    // hb_active`, so they are always Some(len) at the point of comparison.
-    let text_length_at_entry: usize = text_body.as_ref().map_or(0, |v| v.len());
-    let html_length_at_entry: usize = html_body.as_ref().map_or(0, |v| v.len());
+    // hb_active`, so they are always valid at the point of comparison.
+    let text_length_at_entry = text_body.len();
+    let html_length_at_entry = html_body.len();
 
     for (i, part) in parts.iter().enumerate() {
         let is_multipart = part.content_type.starts_with("multipart/");
@@ -103,12 +166,11 @@ fn parse_structure(
             let new_in_alternative = in_alternative || sub_multipart_type == "alternative";
             // Per RFC 8621 §4.1.4 JavaScript semantics: `htmlBody = null` inside
             // a recursive call is a local variable rebind and does NOT propagate
-            // back to the caller.  We model this by reborrowing the inner Vec
-            // references into fresh Option locals: pushes to the underlying Vec
-            // propagate (same allocation), but setting the Option to None in the
-            // callee leaves the caller's Option unchanged.
-            let mut sub_text = text_body.as_deref_mut();
-            let mut sub_html = html_body.as_deref_mut();
+            // back to the caller.  `.as_child()` reborrows the underlying Vec
+            // into a fresh AppendTarget: pushes propagate (same allocation), but
+            // `.disable()` in the callee leaves the caller's target unchanged.
+            let mut sub_text = text_body.as_child();
+            let mut sub_html = html_body.as_child();
             parse_structure(
                 &part.children,
                 sub_multipart_type,
@@ -123,14 +185,10 @@ fn parse_structure(
                 // (do not fall through to the textBody/htmlBody push below).
                 match part.content_type.as_str() {
                     "text/plain" => {
-                        if let Some(ref mut tb) = text_body {
-                            tb.push(part.part_id.clone());
-                        }
+                        text_body.push(part.part_id.clone());
                     }
                     "text/html" => {
-                        if let Some(ref mut hb) = html_body {
-                            hb.push(part.part_id.clone());
-                        }
+                        html_body.push(part.part_id.clone());
                     }
                     _ => {
                         attachments.push(part.part_id.clone());
@@ -142,23 +200,19 @@ fn parse_structure(
                 // nullify the opposite list so later inline media go to attachments.
                 // RFC 8621 §4.1.4: "if (textBody) { htmlBody = null; }" / "if (htmlBody) { textBody = null; }"
                 if part.content_type == "text/plain" {
-                    *html_body = None; // RFC 8621 §4.1.4: plain text found — nullify htmlBody
+                    html_body.disable(); // RFC 8621 §4.1.4: plain text found — nullify htmlBody
                 }
                 if part.content_type == "text/html" {
-                    *text_body = None; // RFC 8621 §4.1.4: html found — nullify textBody
+                    text_body.disable(); // RFC 8621 §4.1.4: html found — nullify textBody
                 }
             }
 
             // Push to whichever lists are still active.
-            if let Some(ref mut tb) = text_body {
-                tb.push(part.part_id.clone());
-            }
-            if let Some(ref mut hb) = html_body {
-                hb.push(part.part_id.clone());
-            }
+            text_body.push(part.part_id.clone());
+            html_body.push(part.part_id.clone());
             // If one list was nullified and this is inline media, it goes to
             // attachments so it isn't silently dropped.
-            if (text_body.is_none() || html_body.is_none())
+            if (!text_body.is_active() || !html_body.is_active())
                 && is_inline_media_type(&part.content_type)
             {
                 attachments.push(part.part_id.clone());
@@ -172,33 +226,23 @@ fn parse_structure(
     // If we are at the top of a multipart/alternative and both lists are still
     // active, mirror any newly added parts across.
     if multipart_type == "alternative" {
-        let tb_active = text_body.is_some();
-        let hb_active = html_body.is_some();
+        let tb_active = text_body.is_active();
+        let hb_active = html_body.is_active();
 
         if tb_active && hb_active {
-            let text_now = text_body.as_ref().map_or(0, |v| v.len());
-            let html_now = html_body.as_ref().map_or(0, |v| v.len());
+            let text_now = text_body.len();
+            let html_now = html_body.len();
 
             // Only html parts were added — copy them into textBody too.
             if text_length_at_entry == text_now && html_length_at_entry != html_now {
-                let new_ids: Vec<String> = html_body
-                    .as_ref()
-                    .map(|v| v[html_length_at_entry..].to_vec())
-                    .unwrap_or_default();
-                if let Some(ref mut tb) = text_body {
-                    tb.extend(new_ids);
-                }
+                let new_ids = html_body.slice_from(html_length_at_entry);
+                text_body.extend(new_ids);
             }
 
             // Only text parts were added — copy them into htmlBody too.
             if html_length_at_entry == html_now && text_length_at_entry != text_now {
-                let new_ids: Vec<String> = text_body
-                    .as_ref()
-                    .map(|v| v[text_length_at_entry..].to_vec())
-                    .unwrap_or_default();
-                if let Some(ref mut hb) = html_body {
-                    hb.extend(new_ids);
-                }
+                let new_ids = text_body.slice_from(text_length_at_entry);
+                html_body.extend(new_ids);
             }
         }
     }

@@ -1,7 +1,10 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "embedded",
+  "dolt_mode": "server",
   "dolt_database": "MIME",
+  "dolt_host": "127.0.0.1",
+  "dolt_port": 3308,
+  "dolt_user": "root",
   "project_id": "f07ff2de-010d-4bc4-888e-6f7218ea2c39"
 }

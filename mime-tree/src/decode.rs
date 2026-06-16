@@ -94,60 +94,10 @@ pub fn decode_body_value(
             }
         }
         TransferEncoding::QuotedPrintable => {
-            // Pre-truncate the QP input when only a preview is needed.
-            // Decoded bytes ≤ encoded bytes always (=XX is 3 encoded → 1 decoded;
-            // soft-line-break =\r\n is 3 encoded → 0 decoded).  A 4× multiplier
-            // comfortably bounds the worst case of all-=XX content.  Truncation
-            // mid-escape is handled gracefully by Robust mode.
-            //
-            // False-truncation guard: a body that consists mostly of soft
-            // line-breaks (=\r\n, 3 bytes → 0 decoded) can cause the 4×
-            // pre-truncation to cut the input short while the decoded result
-            // is still under max_bytes.  If that happens we fall back to
-            // decoding the full body and let Step 2 decide is_truncated.
-            let qp_input = max_bytes.map_or(body_bytes, |n| {
-                let limit = n.saturating_mul(4).min(body_bytes.len());
-                input_was_limited = limit < body_bytes.len();
-                &body_bytes[..limit]
-            });
-            let decoded_preview =
-                match quoted_printable::decode(qp_input, quoted_printable::ParseMode::Robust) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        is_encoding_problem = true;
-                        Vec::new()
-                    }
-                };
-            // If the pre-truncated slice decoded to at most max_bytes bytes but
-            // the input was cut short, the truncation may be a false positive
-            // (soft line-breaks beyond the limit decode to nothing).  The
-            // equality case (decoded == n) must also re-decode: without a
-            // full-body pass we cannot tell whether the true output is exactly
-            // n bytes (is_truncated=false) or more (is_truncated=true).
-            // Decode the full body and let Step 2 measure the real length.
-            if input_was_limited {
-                if let Some(n) = max_bytes {
-                    if decoded_preview.len() <= n {
-                        input_was_limited = false;
-                        match quoted_printable::decode(
-                            body_bytes,
-                            quoted_printable::ParseMode::Robust,
-                        ) {
-                            Ok(v) => v,
-                            Err(_) => {
-                                is_encoding_problem = true;
-                                Vec::new()
-                            }
-                        }
-                    } else {
-                        decoded_preview
-                    }
-                } else {
-                    decoded_preview
-                }
-            } else {
-                decoded_preview
-            }
+            let (decoded, limited, enc_err) = qp_with_limit(body_bytes, max_bytes);
+            input_was_limited = limited;
+            is_encoding_problem = enc_err;
+            decoded
         }
         TransferEncoding::UUEncode => decode_uuencode(
             body_bytes,
@@ -199,6 +149,63 @@ pub fn decode_body_value(
         is_truncated,
         is_encoding_problem,
     })
+}
+
+/// Decode a Quoted-Printable body with optional byte-limit pre-truncation.
+///
+/// Returns `(decoded_bytes, input_was_limited, is_encoding_problem)`.
+///
+/// Three levels of logic interact here:
+///
+/// 1. **Input pre-truncation.**  When `max_bytes` is `Some(n)`, the raw QP input
+///    is sliced to `n × 4` bytes (decoded bytes ≤ encoded bytes, and the worst
+///    case `=XX` encoding is 3:1, so 4× is a comfortable upper bound).  If this
+///    slice is shorter than the full body, `input_was_limited` is set.
+///
+/// 2. **False-truncation check.**  QP soft line-breaks (`=\r\n`) decode to zero
+///    bytes, so the 4× pre-truncation can cut the input short while the decoded
+///    result is still at or under `max_bytes`.  If the preview decoded to ≤ n
+///    bytes we cannot tell from the truncated input alone whether the true output
+///    exceeds n — so we must fall back to a full-body decode.
+///
+/// 3. **Full-body fallback.**  When the false-truncation check fires, the entire
+///    body is decoded and `input_was_limited` is cleared.  Step 2 of the caller
+///    (`decode_body_value`) then measures the real decoded length against
+///    `max_bytes` to set `is_truncated` correctly.
+fn qp_with_limit(body: &[u8], max_bytes: Option<usize>) -> (Vec<u8>, bool, bool) {
+    let mut input_was_limited = false;
+
+    // Level 1: pre-truncate QP input to avoid decoding the entire body when
+    // only a preview is needed.
+    let qp_input = max_bytes.map_or(body, |n| {
+        let limit = n.saturating_mul(4).min(body.len());
+        input_was_limited = limit < body.len();
+        &body[..limit]
+    });
+
+    let decoded_preview =
+        match quoted_printable::decode(qp_input, quoted_printable::ParseMode::Robust) {
+            Ok(v) => v,
+            Err(_) => return (Vec::new(), false, true),
+        };
+
+    // Level 2 + 3: if pre-truncation fired but the decoded preview fits within
+    // max_bytes, the truncation may be a false positive.  The equality case
+    // (decoded == n) must also re-decode: without a full-body pass we cannot
+    // tell whether the true output is exactly n bytes or more.
+    if input_was_limited {
+        if let Some(n) = max_bytes {
+            if decoded_preview.len() <= n {
+                // Level 3: fall back to full-body decode.
+                match quoted_printable::decode(body, quoted_printable::ParseMode::Robust) {
+                    Ok(v) => return (v, false, false),
+                    Err(_) => return (Vec::new(), false, true),
+                }
+            }
+        }
+    }
+
+    (decoded_preview, input_was_limited, false)
 }
 
 /// Decode a UUencoded body using the `uuencoding` crate.

@@ -49,7 +49,7 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
 
     // --- Find the begin line ---
     // Require whitespace or '-' at position 5 (or end-of-line at exactly 5),
-    // matching scan.rs's is_begin_line() so that prose words like "beginners"
+    // matching scan.rs's try_parse_begin_line() so that prose words like "beginners"
     // or "beginning" are not mistaken for UU begin lines.
     let begin_line = loop {
         match lines.next() {

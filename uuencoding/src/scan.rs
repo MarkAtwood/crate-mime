@@ -24,10 +24,24 @@ pub(crate) fn scan_impl(input: &[u8]) -> Vec<Result<ScannedBlock, UuError>> {
         // Only match begin at a true line boundary: pos == 0 or preceded by '\n'.
         // (Since we always advance line-by-line starting at 0, every line_start
         // is already at a line boundary.)
-        if is_begin_line(line_trimmed) {
-            handle_block(input, line_start, line_trimmed, &mut results, &mut pos);
-        } else {
-            pos = line_end;
+        match try_parse_begin_line(line_trimmed) {
+            BeginLineResult::Parsed(metadata) => {
+                handle_standard_block(input, line_start, metadata, &mut results, &mut pos);
+            }
+            BeginLineResult::Base64 => {
+                handle_base64_block(input, line_start, &mut results, &mut pos);
+            }
+            BeginLineResult::Malformed => {
+                // Begin line with non-UTF-8 mode bytes: emit error, skip line.
+                results.push(Err(UuError::InvalidBeginLine {
+                    line: String::from_utf8_lossy(line_trimmed).into_owned(),
+                    begin_offset: line_start,
+                }));
+                pos = line_end;
+            }
+            BeginLineResult::NotBegin => {
+                pos = line_end;
+            }
         }
     }
 
@@ -39,49 +53,41 @@ fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
     haystack.iter().position(|&b| b == needle)
 }
 
-/// Returns true if `line` (already stripped of \r\n) starts with `begin`
-/// (case-insensitive ASCII) followed by whitespace, `-`, or end-of-line.
+/// Result of attempting to parse a `begin` line.
+enum BeginLineResult {
+    /// Line does not start with `begin` followed by the right delimiter --
+    /// not a begin line at all (includes prose like "beginners guide").
+    NotBegin,
+    /// Line has the `begin-base64` prefix -- not a standard UU begin line
+    /// but needs special handling by the caller.
+    Base64,
+    /// Line has the right `begin` prefix but the mode token is malformed
+    /// (e.g. non-UTF-8 bytes).
+    Malformed,
+    /// Successfully parsed standard UU `begin <mode> <filename>` line.
+    Parsed(BlockMetadata),
+}
+
+/// Try to parse `begin <mode> <filename>` from a stripped line.
 ///
+/// Returns [`BeginLineResult::NotBegin`] when the line does not start with
+/// `begin` (case-insensitive) followed by whitespace, `-`, or end-of-line.
 /// Requiring a delimiter after the 5-byte keyword prevents prose lines such as
-/// "beginners guide…" or "beginning of part 2" from triggering block handling
-/// and emitting spurious `InvalidBeginLine` errors.
-fn is_begin_line(line: &[u8]) -> bool {
-    if line.len() < 5 {
-        return false;
-    }
-    if !line[..5].eq_ignore_ascii_case(b"begin") {
-        return false;
-    }
-    // Bare "begin" with nothing following is a valid (if unusual) begin line.
-    if line.len() == 5 {
-        return true;
-    }
-    let next = line[5];
-    next.is_ascii_whitespace() || next == b'-'
-}
-
-/// Returns true if the line (stripped) looks like `begin-base64 ...`
+/// "beginners guide" or "beginning of part 2" from being misclassified.
 ///
-/// Requires that `"begin-base64"` (12 bytes) is either the entire line or
-/// followed by ASCII whitespace, so that a `"begin-base64X"` variant is not
-/// misclassified.  Matches `decode.rs` behaviour, which accepts any whitespace
-/// character (space, tab, …) as the delimiter.
-fn is_begin_base64(line: &[u8]) -> bool {
-    line.len() >= 12
-        && line[..12].eq_ignore_ascii_case(b"begin-base64")
-        && (line.len() == 12 || line[12].is_ascii_whitespace())
-}
-
-/// Parse `begin <mode> <filename>` from a stripped line. Returns None on failure.
+/// Returns [`BeginLineResult::Base64`] for `begin-base64` lines, which need
+/// separate handling by the caller.
 ///
-/// Accepts case-insensitive `begin` keyword. A bare `begin` line with no mode
-/// or filename tokens produces `mode=0` and `filename=""`, matching the
-/// behavior of `uuencoding::decode`. An empty filename is accepted (returns
-/// `BlockMetadata { filename: "", mode }`) to align with `decode()`.
-fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
+/// Returns [`BeginLineResult::Malformed`] when the line has the right shape
+/// but the mode token cannot be parsed (e.g. non-UTF-8 bytes).
+///
+/// Returns [`BeginLineResult::Parsed`] on success. A bare `begin` line with
+/// no mode or filename tokens produces `mode=0` and `filename=""`, matching
+/// the behavior of `uuencoding::decode`.
+fn try_parse_begin_line(line: &[u8]) -> BeginLineResult {
     // Must start with "begin" (case-insensitive).
     if line.len() < 5 || !line[..5].eq_ignore_ascii_case(b"begin") {
-        return None;
+        return BeginLineResult::NotBegin;
     }
 
     // Everything after "begin"
@@ -89,16 +95,28 @@ fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
 
     // If nothing follows (bare "begin"), return mode=0, filename="".
     if after_begin.is_empty() || after_begin == b"\r" {
-        return Some(BlockMetadata {
+        return BeginLineResult::Parsed(BlockMetadata {
             filename: String::new(),
             mode: 0,
         });
     }
 
-    // Must have a space/tab after "begin".
-    if !after_begin[0].is_ascii_whitespace() {
-        // e.g. "begin-base64" — not a standard UU begin line
-        return None;
+    // The character after "begin" must be whitespace or '-'. This prevents
+    // prose words like "beginners" from matching.
+    let next = after_begin[0];
+    if !next.is_ascii_whitespace() && next != b'-' {
+        return BeginLineResult::NotBegin;
+    }
+
+    // "begin-..." is not a standard UU begin line. Check for begin-base64.
+    if next == b'-' {
+        if line.len() >= 12
+            && line[..12].eq_ignore_ascii_case(b"begin-base64")
+            && (line.len() == 12 || line[12].is_ascii_whitespace())
+        {
+            return BeginLineResult::Base64;
+        }
+        return BeginLineResult::NotBegin;
     }
 
     // Skip whitespace after "begin"
@@ -112,7 +130,7 @@ fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
 
     // If no more tokens (just "begin   "), mode=0, filename="".
     if rest.is_empty() {
-        return Some(BlockMetadata {
+        return BeginLineResult::Parsed(BlockMetadata {
             filename: String::new(),
             mode: 0,
         });
@@ -124,7 +142,10 @@ fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
         .position(|b| b.is_ascii_whitespace())
         .unwrap_or(rest.len());
     let mode_bytes = &rest[..mode_end];
-    let mode_str = std::str::from_utf8(mode_bytes).ok()?;
+    let mode_str = match std::str::from_utf8(mode_bytes) {
+        Ok(s) => s,
+        Err(_) => return BeginLineResult::Malformed,
+    };
     let mode = u32::from_str_radix(mode_str.trim(), 8).unwrap_or(0);
 
     // Filename: everything after the mode token and its trailing whitespace.
@@ -138,7 +159,7 @@ fn parse_begin_line(line: &[u8]) -> Option<BlockMetadata> {
         .trim_end()
         .to_string();
 
-    Some(BlockMetadata { filename, mode })
+    BeginLineResult::Parsed(BlockMetadata { filename, mode })
 }
 
 /// Returns true if a stripped line is `====` (base64 terminator).
@@ -151,68 +172,51 @@ fn is_end_line(line: &[u8]) -> bool {
     line.eq_ignore_ascii_case(b"end")
 }
 
-/// Handle one block starting at `line_start`. Appends to `results` and
-/// updates `pos` to the byte after the block (or input.len() on EOF).
-fn handle_block(
+/// Handle a `begin-base64` block: emit an error and skip past the `====`
+/// terminator (or EOF).
+fn handle_base64_block(
     input: &[u8],
     line_start: usize,
-    begin_line_trimmed: &[u8],
     results: &mut Vec<Result<ScannedBlock, UuError>>,
     pos: &mut usize,
 ) {
-    if is_begin_base64(begin_line_trimmed) {
-        // Emit the error, then skip past the ==== terminator.
-        results.push(Err(UuError::BeginBase64 {
-            begin_offset: line_start,
-        }));
+    results.push(Err(UuError::BeginBase64 {
+        begin_offset: line_start,
+    }));
 
-        // Advance past the begin-base64 line
-        let begin_line_end = memchr(b'\n', &input[line_start..])
-            .map(|r| line_start + r + 1)
+    // Advance past the begin-base64 line
+    let begin_line_end = memchr(b'\n', &input[line_start..])
+        .map(|r| line_start + r + 1)
+        .unwrap_or(input.len());
+    let mut scan_pos = begin_line_end;
+
+    // Skip lines until we hit ==== or EOF
+    while scan_pos < input.len() {
+        let ls = scan_pos;
+        let le = memchr(b'\n', &input[ls..])
+            .map(|r| ls + r + 1)
             .unwrap_or(input.len());
-        let mut scan_pos = begin_line_end;
-
-        // Skip lines until we hit ==== or EOF
-        while scan_pos < input.len() {
-            let ls = scan_pos;
-            let le = memchr(b'\n', &input[ls..])
-                .map(|r| ls + r + 1)
-                .unwrap_or(input.len());
-            let lraw = &input[ls..le];
-            let lt = lraw.strip_suffix(b"\n").unwrap_or(lraw);
-            let lt = lt.strip_suffix(b"\r").unwrap_or(lt);
-            scan_pos = le;
-            if is_base64_terminator(lt) {
-                break;
-            }
+        let lraw = &input[ls..le];
+        let lt = lraw.strip_suffix(b"\n").unwrap_or(lraw);
+        let lt = lt.strip_suffix(b"\r").unwrap_or(lt);
+        scan_pos = le;
+        if is_base64_terminator(lt) {
+            break;
         }
-        *pos = scan_pos;
-        return;
     }
+    *pos = scan_pos;
+}
 
-    // Standard UU block.
-    //
-    // parse_begin_line returns None only when the mode token is not valid
-    // UTF-8 (the `from_utf8().ok()?` on line 127). is_begin_line already
-    // guarantees the line starts with "begin" followed by whitespace, and
-    // is_begin_base64 has already handled the "begin-" prefix. This branch
-    // is a defensive fallback for non-UTF-8 mode bytes, not dead code.
-    let metadata = match parse_begin_line(begin_line_trimmed) {
-        Some(m) => m,
-        None => {
-            // Malformed begin line: emit error, advance past this line and continue.
-            let line_end = memchr(b'\n', &input[line_start..])
-                .map(|r| line_start + r + 1)
-                .unwrap_or(input.len());
-            results.push(Err(UuError::InvalidBeginLine {
-                line: String::from_utf8_lossy(begin_line_trimmed).into_owned(),
-                begin_offset: line_start,
-            }));
-            *pos = line_end;
-            return;
-        }
-    };
-
+/// Handle a standard UU block starting at `line_start` with already-parsed
+/// `metadata`. Appends to `results` and updates `pos` to the byte after the
+/// block (or input.len() on EOF).
+fn handle_standard_block(
+    input: &[u8],
+    line_start: usize,
+    metadata: BlockMetadata,
+    results: &mut Vec<Result<ScannedBlock, UuError>>,
+    pos: &mut usize,
+) {
     let begin_offset = line_start;
 
     // Advance past the begin line
