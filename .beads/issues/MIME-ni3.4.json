@@ -1,0 +1,24 @@
+{
+  "id": "MIME-ni3.4",
+  "title": "yencoding: encode_all_bytes_round_trip uses own code as oracle for dot/TAB line-start escapes",
+  "description": "encode_all_bytes_round_trip calls encode() then decode() — both from the same crate — for the dot-at-line-start and TAB-at-line-start cases. This round-trip test proves self-consistency but not correctness. A systematic error in both halves would pass. There is no independent oracle (e.g. Python gen_fixtures.py output) for a payload containing a leading-dot or leading-TAB byte. Add a fixture from an external oracle (Python yenc library or manual computation per spec).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:17Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:28Z",
+  "closed_at": "2026-05-05T02:58:28Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.4",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.66",
+  "title": "uuencoding-multi PartCollection: is_complete() false-positive documented but not tested for single-element no-total case",
+  "description": "uuencoding-multi/src/collection.rs: the is_complete() and new() docs warn that adding a single part to a no-total PartCollection immediately makes is_complete() return true (total is inferred as 1). This is a known footgun documented in two places. However there is no test exercising this false-positive case — only a test for is_complete_false_when_total_unknown (empty collection, no total). Adding a test that adds exactly part 1 to a no-total collection and asserts is_complete() == true would pin the behavior as intentional and prevent someone from 'fixing' it in a way that breaks the documented invariant.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:47Z",
+  "closed_at": "2026-06-16T00:52:47Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.66",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

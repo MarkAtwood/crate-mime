@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.59",
+  "title": "verify handles rsaEncryption OID in signatureAlgorithm by falling back to digestAlgorithm field",
+  "description": "verify.rs verify_sig() has a branch for *sig_alg_oid == RSA_ENCRYPTION (1.2.840.113549.1.1.1) that falls back to reading the digest algorithm from the SignerInfo.digestAlgorithm field. A future contributor might remove this branch as 'unnecessary' since the primary branches already cover sha256WithRSAEncryption etc. That would be wrong: RFC 5652 §5.4 and RFC 5751 §2.1 explicitly permit implementations to use the generic rsaEncryption OID in signatureAlgorithm rather than the hash-specific combined OID. Older implementations (pre-2000 S/MIME v2 and some OpenSSL configurations) produce this form. Removing the fallback would cause silent verification failures on real-world messages without any clear error.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:42Z",
+  "closed_at": "2026-05-02T06:24:42Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.59",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:27:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

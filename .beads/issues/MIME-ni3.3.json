@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.3",
+  "title": "uuencoding-multi: PartEntry and PartCollection missing Debug derive",
+  "description": "Both PartEntry and PartCollection are public types lacking #[derive(Debug)]. Every other public struct in both crates derives Debug. Without it these types cannot be printed with {:?}, used in assert_eq!, or embedded in structs that derive Debug. Non-breaking addition.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:23Z",
+  "closed_at": "2026-05-05T02:58:23Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.3",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

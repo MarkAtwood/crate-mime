@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.12",
+  "title": "verify: DER-only name matching rejects conformant-but-non-identical chains — not documented in public API",
+  "description": "cert.rs names_equal() uses byte-exact DER comparison with a comment noting it rejects non-conformant CAs that encode the same DN differently. This design choice is not mentioned in the public API docs for verify() or in smime-tree/src/lib.rs. A user who experiences a chain validation failure because their CA has inconsistent DN encoding will have no explanation. Fix: add a note to the verify() doc comment saying 'DN matching is byte-exact DER comparison; chains from CAs that encode DNs inconsistently between issuer and subject fields will be rejected.'",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:05:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:49Z",
+  "closed_at": "2026-05-02T07:17:49Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "opinion",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.12",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:05:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

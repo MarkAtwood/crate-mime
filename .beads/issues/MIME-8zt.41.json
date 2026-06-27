@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.41",
+  "title": "SmimeError does not implement Serialize+Deserialize unlike other public result types",
+  "description": "smime-tree/src/error.rs: CertChainError, VerificationResult, and SignerResult all implement Serialize+Deserialize (required by the workspace invariant 'Both crates: owned, lifetime-free public types'). SmimeError does not. A caller that stores a VerificationResult or SignerResult will find that SmimeError (which appears in SmimeError::AllSignersFailed and inside SignerResult) cannot be round-tripped through storage. This is an API contract gap: the workspace CLAUDE.md says 'All public structs implement Serialize+Deserialize', and SmimeError is a public type. Adding derives requires that UnsupportedAlgorithm carry a String instead of a \u0026'static str for the inner message, which is the only non-trivially-serializable field.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:14:32Z",
+  "closed_at": "2026-06-16T00:14:32Z",
+  "close_reason": "Duplicate of MIME-8zt.70 — SmimeError now has Serialize/Deserialize.",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.41",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

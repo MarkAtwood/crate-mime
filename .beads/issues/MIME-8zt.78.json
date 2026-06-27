@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.78",
+  "title": "uuencoding-multi/reassemble.rs and toc.rs: public types missing PartialEq, Clone, Eq",
+  "description": "Why this exists: uuencoding_multi/src/reassemble.rs defines ReassembledFile with #[derive(Debug, Clone, PartialEq)] but not Eq. uuencoding_multi/src/toc.rs defines TocEntry with #[derive(Debug, PartialEq)] (missing Clone and Eq) and ParsedToc with #[derive(Debug)] only (missing Clone, PartialEq, Eq).\\n\\nWhat goes wrong: ReassembledFile has all Eq-eligible fields (String, u32, Vec\u003cu8\u003e, bool, Vec\u003cu32\u003e) — deriving PartialEq without Eq is misleading. TocEntry missing Clone means a collection of TocEntry values cannot be cloned. ParsedToc missing PartialEq prevents assert_eq! in tests. The inconsistency forces callers to work around the missing derives.\\n\\nLocation: uuencoding-multi/src/reassemble.rs (ReassembledFile), uuencoding-multi/src/toc.rs (TocEntry, ParsedToc).\\n\\nFix: add Eq to ReassembledFile; add Clone, Eq to TocEntry; add Clone, PartialEq, Eq to ParsedToc.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:42Z",
+  "closed_at": "2026-06-16T00:08:42Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.78",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

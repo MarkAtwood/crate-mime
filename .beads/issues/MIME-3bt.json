@@ -1,0 +1,13 @@
+{
+  "id": "MIME-3bt",
+  "title": "Review pass 1: uue crates dead variants",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:13:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T19:14:22Z",
+  "close_reason": "Both dead variants documented accurately. All tests pass."
+}

@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.7",
+  "title": "Trailing-CRLF precondition: doc and implementation disagree",
+  "description": "header_typed.rs:174-177 — parse_header_typed doc:\n\n    \"raw_value is the bytes of the header field value — the portion to the\n    right of the `:` in the header line, including any folded continuation\n    lines but excluding the header name and the trailing CRLF.\"\n\nImplementation at lines 213-236 handles three cases for the trailing line ending:\n  1. `raw_value` ends with b\"\\r\\n\" — used as-is.\n  2. `raw_value` ends with b\"\\n\" — converted to b\"\\r\\n\".\n  3. `raw_value` has no trailing line ending — b\"\\r\\n\" appended.\n\nThe doc says \"excluding the trailing CRLF\" — telling the caller they MUST NOT include CRLF. The implementation accepts both. The accepted contract is wider than the documented one. A caller who reads the docs and strips CRLF gets the same result as a caller who passes the field body with CRLF. The two agree, but the documented requirement is a precondition the implementation does not enforce or signal.\n\nCaller-facing consequence: which is the canonical input shape? If a future maintainer (correctly, per the docs) starts treating trailing CRLF as a malformed input signal — e.g., as a marker for \"the caller passed the whole header line including the line ending\" — they will silently change behavior for callers who relied on the implementation's lenient acceptance. Right now there is no way to tell which usage is \"correct\".\n\nFix: either (a) tighten the doc to match the implementation (\"trailing CRLF is permitted and stripped\"), or (b) document a hard precondition and reject input with trailing line endings explicitly. Without alignment, the contract is fuzzy.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:06:48Z",
+  "closed_at": "2026-05-14T16:06:48Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.7",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

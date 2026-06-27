@@ -1,0 +1,33 @@
+{
+  "id": "MIME-inm.7",
+  "title": "Fuzz and property tests: no-panic guarantee and round-trip",
+  "description": "No-panic corpus: pass random and malformed inputs to decode() and encode(); neither may panic. Round-trip property test: encode with Python oracle output (committed fixtures), decode with Rust -- never use this crate's own encode() as the oracle for its own decode(). The fixtures in tests/fixtures/ are the oracle.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:28:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:15:14Z",
+  "close_reason": "no_panic.rs integration test: 30+ corpus items, sweep_lengths 0..=255, all_single_bytes, ramp_256, multipart round-trip. Oracle is Python fixture generator, not self.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.7",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:28:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.7",
+      "depends_on_id": "MIME-inm.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:28:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

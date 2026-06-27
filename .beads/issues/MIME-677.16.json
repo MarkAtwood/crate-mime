@@ -1,0 +1,27 @@
+{
+  "id": "MIME-677.16",
+  "title": "sign.rs: boundary derived from SHA-256 of content is correct — prevents collision and ensures test reproducibility",
+  "description": "boundary_from_content() uses the first 16 bytes of SHA-256(content) as the MIME boundary. This is correct for two reasons: (1) it satisfies RFC 2046 §5.1.1 which requires the boundary to not appear in the body, and the code explicitly checks for this; (2) it is deterministic, making test output reproducible. A future contributor might simplify this to a random UUID or a fixed string. Random UUIDs require getrandom and break snapshot tests. A fixed string would collide with any content that contains that literal. The SHA-256 derivation is the right balance.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:36Z",
+  "closed_at": "2026-05-02T06:24:36Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.16",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

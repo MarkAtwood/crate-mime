@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.1",
+  "title": "yencoding: encode_all_bytes_round_trip builds an oracle it never asserts",
+  "description": "encode.rs: the test builds expected_encoded as an independent oracle for all 256 byte values but then only asserts decoded.data == raw (a round-trip). The oracle variable is dead. A symmetric encoding bug that cancels out in encode→decode would pass undetected. Either assert expected_encoded against the encoder output or remove the dead oracle and rename the test 'encode_all_bytes_roundtrip_consistency'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:05Z",
+  "closed_at": "2026-05-05T03:18:05Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.1",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

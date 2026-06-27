@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.87",
+  "title": "mime-tree/header_typed.rs: private helpers missing doc comments",
+  "description": "Why this exists: mime_tree/src/header_typed.rs contains three items without doc comments: the private fn convert_addr, and the private methods HeaderDateTime::to_mail_parser() and HeaderDateTime::from_mail_parser(). The Rust coding standard requires doc comments on everything rustdoc can document, including module-private items.\\n\\nWhat goes wrong: convert_addr is a conversion function whose argument types and return type indicate what it does, but doc comments should state what it maps (an AddressHeader from mail-parser) to (an EmailAddress from this crate) and note any edge cases (e.g. what happens with group addresses). to_mail_parser() and from_mail_parser() are bridging functions between internal and external representations; their purpose must be inferred from their body.\\n\\nLocation: mime-tree/src/header_typed.rs — fn convert_addr, impl HeaderDateTime fn to_mail_parser, impl HeaderDateTime fn from_mail_parser.\\n\\nFix: add one-line doc comments to each. For example: /// Convert a mail-parser address header entry to an EmailAddress.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:22Z",
+  "closed_at": "2026-06-16T00:21:22Z",
+  "close_reason": "P2 polish: private helper doc comments are nice-to-have but not a contract issue. The public API is documented.",
+  "labels": [
+    "docs",
+    "review",
+    "rust-standards"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.87",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

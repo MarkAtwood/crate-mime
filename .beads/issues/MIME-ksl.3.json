@@ -1,0 +1,33 @@
+{
+  "id": "MIME-ksl.3",
+  "title": "Implement encode() — produce well-formed UU output",
+  "description": "Implement pub fn encode(data: \u0026[u8], filename: \u0026str, mode: u32) -\u003e Vec\u003cu8\u003e in src/encode.rs.\n\nOutput format: begin {mode:03o} {filename}\\n \u003cdata lines\u003e backtick\\n end\\n\n\nLine encoding: process input in 45-byte chunks. For each chunk: emit length char (chunk.len() as u8 + 32), then encode groups of 3 bytes into 4 chars. encode_char: if v == 0 use backtick (avoids trailing-space stripping), else v + 32. Pad last group with null bytes; length char governs actual byte count.\n\nmode: 3-digit zero-padded octal. filename: verbatim (caller must not embed newlines).\n\nOutput is Vec\u003cu8\u003e.\n\nTests (oracle: UNIX uuencode or Python uu module, NOT this crate):\n- encode b'Cat' -\u003e verify exact begin/data/end bytes\n- round-trip encode then decode -\u003e original bytes\n- 45-byte aligned input\n- 1, 2 byte final remainders  \n- mode formatting: 0 -\u003e 000, 755 -\u003e 755",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:56:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:48:30Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.3",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:56:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.3",
+      "depends_on_id": "MIME-ksl.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

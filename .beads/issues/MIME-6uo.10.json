@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.10",
+  "title": "base64 line-folding logic duplicated in sign.rs wrap_base64 and encrypt.rs build_mime",
+  "description": "sign.rs lines 359-369 (wrap_base64) and encrypt.rs lines 487-493 (build_mime folding loop) implement the same operation: fold a base64 string at N chars per line with CRLF. They differ only in the line width (76 vs 76) and whether the trailing CRLF is included. Both use the same .chunks(width).collect::\u003cVec\u003c_\u003e\u003e().join() or push_str pattern. A shared internal helper (e.g. in a new util.rs or inline in a common module) would eliminate the duplication. Suggested rewrite: extract fn fold_base64(b64: \u0026str, width: usize) -\u003e String into an internal module.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:51:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:24Z",
+  "closed_at": "2026-05-02T08:06:24Z",
+  "close_reason": "P3 opinion/style: no correctness issue, deferred.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.10",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:51:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

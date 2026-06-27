@@ -1,0 +1,28 @@
+{
+  "id": "MIME-p4h.16",
+  "title": "cert.rs RevocationChecker injected trait is architecturally correct — no network calls in library",
+  "description": "RevocationChecker is a caller-injected trait rather than built-in OCSP/CRL support. A contributor might suggest adding a built-in HTTP-based OCSP checker. This should be resisted: (1) the crate is no-network by design invariant; (2) OCSP responder URLs are in the cert, not the crate; (3) async network I/O would violate the no-async invariant; (4) callers with production PKI needs have their own revocation infrastructure. NoRevocationCheck is the right default for offline/air-gapped use cases.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:15:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:33:46Z",
+  "closed_at": "2026-05-02T14:33:46Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.16",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:15:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

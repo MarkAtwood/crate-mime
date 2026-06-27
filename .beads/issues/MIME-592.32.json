@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.32",
+  "title": "scan() Vec return is semver-breaking, version not bumped",
+  "description": "The return type of `uuencoding::scan()` was changed from `impl Iterator\u003cItem = Result\u003cScannedBlock, UuError\u003e\u003e` to `Vec\u003cResult\u003cScannedBlock, UuError\u003e\u003e`.\n\n**Why this is breaking:** `Vec\u003cT\u003e` does not implement `Iterator` (only `IntoIterator`). Any downstream caller using iterator adapter methods directly on the return value will fail to compile:\n\n```rust\n// These patterns all break:\nlet v: Vec\u003c_\u003e = scan(input).collect();   // Vec has no .collect()\nlet n = scan(input).count();              // Vec has no .count()\nscan(input).for_each(|b| { ... });        // Vec has no .for_each()\nscan(input).map(|b| { ... });             // Vec has no .map()\n```\n\nCallers must now either call `.into_iter()` first (as mime-tree was updated to do) or use `Vec`-specific methods (`.len()`, indexing).\n\n**Semver requirement:** For a `0.x.y` crate, breaking public API changes require incrementing `x`. The crate is still at `0.2.0` and should be bumped to `0.3.0`.\n\n**Impact:** uuencoding-multi also depends on uuencoding at `= \"0.2.0\"` and would need updating.\n\n**Note:** The implementation change itself is correct (scan was always eager, Vec is honest). Only the version bump is missing.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:10:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:13:07Z",
+  "closed_at": "2026-05-04T23:13:07Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.32",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:10:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

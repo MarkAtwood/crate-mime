@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.36",
+  "title": "parse: missing_part uses (0,0) sentinel indistinguishable from real zero-offset range",
+  "description": "missing_part() in parse.rs returns header_range=(0,0) and body_range=(0,0). A caller cannot distinguish a missing/placeholder part from a real part whose headers and body genuinely start at offset 0 with zero length. decode_body_value on a missing part returns empty string without error, silently hiding the parse failure. Trigger: mail-parser reports an out-of-range part index, yielding a missing_part node; callers using body_range to slice raw bytes get empty slice instead of an error.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:46:12Z",
+  "closed_at": "2026-05-02T05:46:12Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.36",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

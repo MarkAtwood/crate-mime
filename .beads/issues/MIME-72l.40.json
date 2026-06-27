@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.40",
+  "title": "encrypt: EnvelopedData version should be V0 for KTRI-only, not V2",
+  "description": "RFC 5652 §6.1 specifies EnvelopedData.version as: 0 if all recipient infos are KeyTransRecipientInfo and no attribute certificates, 2 if any recipient is KeyAgreeRecipientInfo or KEKRecipientInfo. In encrypt.rs, the version is hardcoded to CmsVersion::V2 regardless of recipient types. When all recipients are RSA (KTRI), the version must be V0. Some strict CMS parsers (e.g. older OpenSSL) may reject an EnvelopedData with version=2 when all recipients are KTRI. Trigger: calling encrypt() with RSA-only recipients produces a non-conformant version field.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:46:19Z",
+  "closed_at": "2026-05-02T05:46:19Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.40",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

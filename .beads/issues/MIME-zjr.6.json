@@ -1,0 +1,41 @@
+{
+  "id": "MIME-zjr.6",
+  "title": "Implement reassemble() — ordered concatenation and UU decode",
+  "description": "Implement the final reassembly step in src/reassemble.rs.\n\nThis is the top-level output function of the crate. It takes a complete (or partial) PartCollection, concatenates the body bytes of data parts in order, and feeds the result to uuencoding::decode().\n\nPublic types:\n\n  pub struct ReassembledFile {\n      pub filename: String,         // from UU begin line\n      pub mode: u32,                // from UU begin line (octal permissions)\n      pub data: Vec\u003cu8\u003e,            // decoded file bytes\n      pub is_truncated: bool,       // true if any parts were missing or UU was truncated\n      pub missing_parts: Vec\u003cu32\u003e,  // gaps that were skipped\n  }\n\nPublic function:\n  pub fn reassemble(collection: \u0026PartCollection) -\u003e Result\u003cReassembledFile, MultiUuError\u003e\n\nAlgorithm:\n1. Collect data parts: all entries with part_number \u003e= 1, sorted ascending.\n2. If no data parts: return Err(MultiUuError::EmptyCollection).\n3. Detect missing parts: if collection.missing_parts() is non-empty, record them in result.missing_parts and set is_truncated=true. DO NOT return Err — reassemble best-effort with what is available (skip gaps; the UU decoder will likely hit UnexpectedEof which is handled).\n4. Concatenate body_bytes of present data parts in ascending part_number order into one Vec\u003cu8\u003e.\n5. Call uuencoding::decode(\u0026concatenated) -\u003e Result\u003cDecodedBlock, UuError\u003e.\n6. If decode returns Err: map to MultiUuError::DecodeError(e) and return Err.\n7. If decode returns Ok(block): build ReassembledFile from block.metadata (filename, mode) and block.data. Set is_truncated = block.is_truncated || !missing_parts.is_empty().\n8. Return Ok(reassembled).\n\nSecurity note (must appear in doc comment on reassemble()):\n  The decoded data is raw bytes that may be a compressed archive. The caller is\n  responsible for any decompression size limits. This crate does not decompress.\n\nTests (oracle: UNIX uuencode + uudecode or Python uu module — NOT this crate):\n  - Complete 3-part file: reassemble -\u003e correct bytes\n  - 2-of-3 parts present: reassemble -\u003e is_truncated=true, missing_parts=[2], partial data\n  - Single-part collection (part 1 only)\n  - Correct filename and mode extracted from begin line\n  - Empty collection -\u003e Err(EmptyCollection)\n  - UU decode error propagated -\u003e Err(DecodeError(...))\n\nPARENT: MIME-zjr",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:12:45Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.6",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.6",
+      "depends_on_id": "MIME-zjr.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.6",
+      "depends_on_id": "MIME-zjr.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

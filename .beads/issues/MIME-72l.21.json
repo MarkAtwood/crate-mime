@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.21",
+  "title": "sign() hardcodes SHA-256 with no public way to change it",
+  "description": "In smime-tree/src/sign.rs, sign() hardcodes DigestAlgorithm::Sha256 with the comment 'Always use SHA-256 digest.' There is no public parameter or configuration allowing the caller to choose SHA-384 or SHA-512. The DigestAlgorithm enum is public, the hash_content/digest_alg_oid helpers support all three, but the sign() signature provides no way to use them. A contributor adding SHA-384 support will not know whether the hardcoding is intentional policy or an oversight. The sign() doc comment should state explicitly that only SHA-256 is currently supported, and the comment in the body should explain why (e.g. 'RFC 5751 SHOULD use SHA-256 as default; configurable algorithm support deferred').",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:48:42Z",
+  "closed_at": "2026-05-02T05:48:42Z",
+  "close_reason": "fixed: doc comment added to sign() documenting SHA-256 hardcoding (MIME-72l.6)",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.21",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

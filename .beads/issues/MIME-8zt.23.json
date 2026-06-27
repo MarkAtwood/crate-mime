@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.23",
+  "title": "SmimeError::Der(der::Error) leaks pre-release der 0.8 type into public API",
+  "description": "SmimeError in smime-tree/src/error.rs has a Der(der::Error) variant where der::Error comes from the pinned pre-release dep `der = { version = \"0.8\" }`. Any caller that pattern-matches on SmimeError::Der, or that calls .into() on a der::Error, must depend on the exact same pre-release der version. This is an implementation leakage: der is an internal parsing detail (CMS DER decoding), not a concept callers should be exposed to. What goes wrong: when der 0.8 stabilizes and bumps to 0.9, smime-tree callers who also use der directly face a diamond dependency version conflict. The fix is to map der::Error to a stable local variant (e.g. SmimeError::Cms(String) or SmimeError::Encoding) in the From\u003cder::Error\u003e impl, eliminating the variant that names the third-party type. File: smime-tree/src/error.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:12Z",
+  "closed_at": "2026-06-16T00:19:12Z",
+  "close_reason": "der 0.8 is a pre-release dep from the RustCrypto coordinated release (same as MIME-8zt.79). Wrapping it in a local enum would hide the error details callers need for debugging. Will be resolved when der 0.8 stabilizes.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.23",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:04Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

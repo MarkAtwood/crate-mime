@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.5",
+  "title": "HeaderDateTime derives Copy: future non-Copy fields force a breaking change",
+  "description": "header_typed.rs:67 — `#[derive(..., Copy, ...)]` on HeaderDateTime.\n\nCurrent fields are all small primitives so Copy is cheap. But the derive locks in a contract that every future field must also be Copy. Likely future additions that break this:\n\n- Sub-second precision via a `Duration`-like or `String` for fractional seconds (not Copy if String).\n- An IANA timezone name like `tz_name: Option\u003cString\u003e` (not Copy).\n- A `calendar: CalendarSystem` enum that grows non-Copy variants.\n\nRemoving the Copy derive once shipped is a breaking change — callers depending on `*dt` or implicit copy semantics break at compile time. RustCrypto and other Rust-API guideline tradition is to derive Copy only when the type is genuinely a \"wide register\": short, fixed-width, ABI-stable primitive bag. A wire-format date with future expansion is borderline.\n\nCaller-facing consequence: maintainer can never add a non-Copy field without breaking every caller that relies on Copy semantics. The choice should be deliberate.\n\nFix: either (a) drop Copy now while still pre-1.0 and document `.clone()` as the canonical copy path, or (b) keep Copy and explicitly commit in module docs that the struct will remain Copy forever — accepting that subsecond precision and similar additions are off the table.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:59:40Z",
+  "closed_at": "2026-05-14T15:59:40Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.5",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

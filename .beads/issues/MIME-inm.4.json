@@ -1,0 +1,48 @@
+{
+  "id": "MIME-inm.4",
+  "title": "Implement decode() and encode() / encode_part() public API",
+  "description": "Implement the public API in src/decode.rs and src/encode.rs, wiring together the header parser and byte transform.\n\nPUBLIC TYPES:\n  pub struct YencMetadata { pub filename: String, pub size: u64, pub line_length: u8 }\n  pub struct DecodedPart {\n      pub data: Vec\u003cu8\u003e,\n      pub metadata: YencMetadata,\n      pub part: Option\u003cu32\u003e,      // from =ybegin part=\n      pub total: Option\u003cu32\u003e,     // from =ybegin total=\n      pub begin: Option\u003cu64\u003e,     // from =ypart begin= (1-based)\n      pub end: Option\u003cu64\u003e,       // from =ypart end= (1-based)\n      pub crc32_verified: bool,   // true if crc was present and matched\n      pub is_truncated: bool,     // true if =yend was not found\n  }\n\ndecode(input: \u0026[u8]) -\u003e Result\u003cDecodedPart, YencError\u003e:\n1. Scan forward line by line until a line starting with b'=ybegin ' is found. If none: Err(NoHeader).\n2. Parse =ybegin line.\n3. If next line starts with b'=ypart ': parse it; advance.\n4. Pass remaining lines through decode_bytes() until a line starting with b'=yend ' is found.\n5. Parse =yend line.\n6. Verify CRC32: if pcrc32= present, verify decoded data; if only crc32= present (single-part), verify; if mismatch: Err(CrcMismatch).\n7. If =yend never found: set is_truncated=true, return Ok with partial data.\n8. No panics on any input.\n\nencode(data: \u0026[u8], filename: \u0026str) -\u003e Vec\u003cu8\u003e:\n- Produces =ybegin line=128 size={len} name={filename}\\r\\n\n- Encoded data lines\n- =yend size={len} crc32={crc:08x}\\r\\n\n- Uses DEFAULT_LINE_LENGTH=128\n\nencode_part(data: \u0026[u8], filename: \u0026str, total_size: u64, part: u32, begin: u64, end: u64) -\u003e Vec\u003cu8\u003e:\n- Produces =ybegin part={part} line=128 size={total_size} name={filename}\\r\\n\n- =ypart begin={begin} end={end}\\r\\n\n- Encoded data lines\n- =yend size={data.len()} part={part} pcrc32={pcrc32:08x}\\r\\n\n- begin/end are 1-based byte offsets into the complete reassembled file\n\nTests (oracle: reference yEnc encoder output or Python arithmetic, NOT this crate's encode):\n- decode well-formed single-part article: correct data, metadata, crc32_verified=true\n- decode well-formed multi-part article: correct begin/end offsets, pcrc32 verified\n- decode with preceding prose before =ybegin: finds the block correctly\n- decode with CRC mismatch: Err(CrcMismatch)\n- decode with no =yend: is_truncated=true, partial data returned as Ok\n- decode empty input: Err(NoHeader)\n- encode then decode: round-trip identity (this round-trip test is OK for the combined function test; the transform tests use external oracle)\n- encode_part: =ypart line has correct begin=/end= values",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:12:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:13:53Z",
+  "close_reason": "Public API in lib.rs: decode(), encode(), encode_part() with EncodePartOptions struct, YencMetadata, DecodedPart, YencError all exported. 5 doc-tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.4",
+      "depends_on_id": "MIME-inm.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:13:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.4",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:12:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.4",
+      "depends_on_id": "MIME-inm.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:13:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.4",
+      "depends_on_id": "MIME-inm.6",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:28:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

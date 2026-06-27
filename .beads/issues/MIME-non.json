@@ -1,0 +1,19 @@
+{
+  "id": "MIME-non",
+  "title": "Review: convergence check round 7",
+  "notes": "Maintainer risk: LOW — no P0 or P1 findings; one P2 correctness edge case (RSAES-OAEP SPKI cert silent downgrade to PKCS#1v15 in encrypt()) with near-zero real-world exposure.\nConfidence: 95% chance of no missed bug. Least confident flags: (1) KARI encrypt/decrypt roundtrip has no dedicated oracle test, making it harder to detect an ECDH KDF or key-wrap regression; (2) pathLen enforcement for self-issued intermediate certs is commented as 'non-self-issued' but code always increments — harmless in practice but worth noting. Uncertainty driven by absence of KARI integration test.\nIdiom rating: CLEAN — no unwrap/expect outside provably unreachable paths, all public enums are #[non_exhaustive], no trailing return statements, iterator patterns correct, error types well-structured.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:17:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T08:22:06Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

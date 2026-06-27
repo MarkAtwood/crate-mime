@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ksl.1",
+  "title": "Scaffold uuencoding crate (Cargo.toml, lib.rs, error.rs)",
+  "description": "Create the crate skeleton.\n\n- New directory: uuencoding/ in the MIME workspace root (add to workspace Cargo.toml members)\n- Cargo.toml: name='uuencoding', version='0.1.0', edition='2021', license='MIT OR Apache-2.0', rust-version='1.75'\n- No dependencies beyond serde (optional, feature-gated) for Serialize/Deserialize on public types\n- src/lib.rs: crate-level doc explaining what UUencoding is, its pre-MIME history, the two use cases (CTE-declared and inline), and the security note (decoded output can be larger than encoded input; caller must apply size limits before passing to decompressors)\n- src/error.rs: UuError enum with variants:\n    InvalidBeginLine { line: String }  -- begin line malformed or missing\n    BeginBase64  -- begin-base64 detected; use a base64 decoder instead\n    UnexpectedEof  -- end line never found; data field on DecodedBlock will be partial\n    InvalidChar { line: usize, col: usize, byte: u8 }  -- byte outside valid UU range\n  All variants: Debug, Display, std::error::Error. Non-exhaustive.\n- Public re-exports in lib.rs: UuError, BlockMetadata, DecodedBlock, BlockLocation, decode, encode, scan\n- Quality gate must pass: cargo fmt, cargo clippy -p uuencoding -- -D warnings, cargo test -p uuencoding",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:55:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:45:48Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.1",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:55:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

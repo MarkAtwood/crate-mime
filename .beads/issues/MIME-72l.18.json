@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.18",
+  "title": "mail-parser types do not appear in mime-tree public API",
+  "description": "mail-parser is a private implementation dependency. None of its types (Message, MessagePart, PartType, etc.) appear in any public signature or re-export. All public types (ParsedPart, ParsedMessage, TransferEncoding, ParsedHeader) are defined in this crate. A future contributor might suggest exposing mail-parser types directly to reduce boilerplate. That would be wrong: it would lock the public API to mail-parser's versioning cadence, making any mail-parser major-version bump a breaking change for downstream users. The current design lets the implementation dep be upgraded without touching semver.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:38Z",
+  "closed_at": "2026-05-02T06:24:38Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.18",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

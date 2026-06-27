@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.43",
+  "title": "Zeroizing CEK throughout decrypt path",
+  "description": "The CEK is wrapped in Zeroizing\u003cVec\u003cu8\u003e\u003e from the moment it is returned by find_and_decrypt_cek() and try_decrypt_kari(), ensuring it is scrubbed on drop at the end of decrypt(). This is the correct approach. A future contributor might suggest removing Zeroizing because 'the CEK is just bytes' — this would be wrong: the CEK is the key that protects message confidentiality and must be cleared.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:54:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:38:55Z",
+  "closed_at": "2026-05-02T18:38:55Z",
+  "close_reason": "Confirmed: CEK is wrapped in Zeroizing\u003cVec\u003cu8\u003e\u003e via find_and_decrypt_cek (return type on line 100). KTRI path wraps via Zeroizing::new() at line 118; KARI path wraps via Zeroizing::new(cek) at line 249. Good defensive practice.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.43",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:54:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

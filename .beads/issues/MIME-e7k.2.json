@@ -1,0 +1,31 @@
+{
+  "id": "MIME-e7k.2",
+  "title": "sign(): extra CRLF appended to content_mime becomes part of signed content",
+  "description": "In sign(), line 186 appends b\"\\r\\n\" after content_mime before the boundary delimiter. This extra CRLF (the 'transport padding' or 'encapsulation boundary') is NOT part of what was signed — sign() hashes content_mime directly (line 80). But when verify() is called, the caller must know to extract exactly content_mime bytes (without the trailing \\r\\n). The round-trip test (Test E) works because it uses part1.header_range start to body_range end — but this extraction may or may not include the trailing \\r\\n depending on what mail-parser records as the body boundary. If a conformant MUA provides the signed bytes *including* the trailing CRLF transport padding, verify() will fail because the digest won't match. RFC 2046 §5.1.1 and RFC 5751 §3.5 distinguish between the body part bytes and the encapsulation boundary; the CRLF before -- is encapsulation padding, not part of the body. This is worth verifying against an OpenSSL-signed round trip.",
+  "notes": "INVESTIGATED: Design is correct. sign() appends '\\r\\n' after content_mime which serves as the RFC 2046 encapsulation boundary CRLF. This CRLF is 'consumed' by the boundary delimiter and is NOT part of the signed content. mail-parser's body_range for part1 ends at the content_mime bytes (excluding the encapsulation CRLF). The sign→verify round-trip test confirms this. NOT a bug.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:37:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:46:09Z",
+  "closed_at": "2026-05-02T17:46:09Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.2",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:37:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

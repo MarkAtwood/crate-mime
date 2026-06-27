@@ -1,0 +1,31 @@
+{
+  "id": "MIME-68n.16",
+  "title": "SmimeError::CertChain/Other wrap String, losing source error chain",
+  "description": "SmimeError::CertChain(String) and SmimeError::Other(String) stringify underlying errors (e.g. der::Error) losing the source chain. std::error::Error::source() returns None for these variants, so error-chain tools cannot traverse the cause. Idiomatic Rust: give CertChain a structured variant or at least store the source error alongside the message. Callers who want to match on 'why did cert validation fail' cannot do so without string parsing.",
+  "notes": "String-wrapping errors (CertChain, Other) is a known v0.1.0 limitation. Structured error variants would require a breaking change to the enum. Approach: keep String-wrapping for now, add #[non_exhaustive] (done in MIME-68n.5), document as known limitation. Will revisit at 1.0 API freeze — at that point CertChain can gain sub-variants like CertChain::Expired, CertChain::ChainTooLong, etc.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:46:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:51:52Z",
+  "closed_at": "2026-05-02T06:51:52Z",
+  "close_reason": "Deferred to post-1.0: restructuring error variants is a breaking change. #[non_exhaustive] added (MIME-68n.5) makes future structured variants possible. Notes filed for 1.0 planning.",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.16",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:46:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

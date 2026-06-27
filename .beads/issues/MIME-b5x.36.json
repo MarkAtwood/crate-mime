@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.36",
+  "title": "SmimeError::Other used for 'no signers' case — warrants MalformedInput variant",
+  "description": "verify.rs line 109: Err(SmimeError::Other('no SignerInfo entries in SignedData')) — this is a malformed-input case distinct from an operation error. Callers cannot programmatically distinguish 'empty SignedData' from any other Other(String) error. The existing MIME-b5x.16 deferred issue covers the broader String-swallowing pattern. This specific case is common enough to deserve a variant like SmimeError::MalformedInput(String) or SmimeError::EmptySignedData.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:28:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:35:13Z",
+  "closed_at": "2026-05-02T07:35:13Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.36",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:28:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

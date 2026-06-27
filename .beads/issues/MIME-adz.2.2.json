@@ -1,0 +1,34 @@
+{
+  "id": "MIME-adz.2.2",
+  "title": "smime-tree: key traits and algorithm enums",
+  "description": "All four smime-tree operations depend on these traits and enums; they are the caller's integration point for providing key material. Define in key.rs: DecryptionKey trait (decrypt_cek, matches_recipient), SigningKey trait (sign, certificate), KeyEncryptionAlgorithm enum (RsaPkcs1v15, RsaOaep, EcdhEs with named curve), DigestAlgorithm enum (Sha256, Sha384, Sha512). RecipientIdentifier type as needed. All enums Serialize+Deserialize.",
+  "acceptance_criteria": "Traits and enums compile; a trivial in-memory impl of both traits can be written in a test",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T04:46:42Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.2.2",
+      "depends_on_id": "MIME-adz.2.1",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.2",
+      "depends_on_id": "MIME-adz.2",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:24Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

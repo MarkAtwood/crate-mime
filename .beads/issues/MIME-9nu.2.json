@@ -1,0 +1,31 @@
+{
+  "id": "MIME-9nu.2",
+  "title": "decode() should delegate to decode_limited(input, None) — eliminates 110-line duplication",
+  "description": "decode() and decode_limited() share ~110 lines of identical logic: lines-splitting, begin_idx search, begin-base64 detection, begin-line parsing, mode/filename extraction, data-line loop structure. decode() could be implemented as decode_limited(input, None) — the limit checks (data.len() \u003e= usize::MAX) are trivially false and will be eliminated at compile time. Not doing this means every future fix to begin-line detection, mode parsing, or data decoding must be applied twice. This has already been a source of bugs (the begin-line detection between scan and decode was divergent for multiple passes). The first time a fix lands in decode() but not decode_limited(), or vice versa, it will produce a silent correctness bug for callers of the missed path.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:56:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:00:35Z",
+  "closed_at": "2026-05-04T19:00:35Z",
+  "close_reason": "decode() now delegates to decode_limited(input, None). Removed ~110-line duplicate. Single code path.",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.2",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:56:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

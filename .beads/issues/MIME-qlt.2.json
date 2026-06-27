@@ -1,0 +1,30 @@
+{
+  "id": "MIME-qlt.2",
+  "title": "trust anchor pathLen constraint not enforced in validate_chain()",
+  "description": "cert.rs:validate_chain() checks pathLen of intermediate CAs found in the bag, but when a trust anchor is found as the issuer (lines 80-106), the code only verifies the signature and returns Ok without checking whether the trust anchor's own pathLen constraint is satisfied. Trigger: Root CA with pathLen=0 in trust_anchors, chain is Root→IntermCA→EE with IntermCA in the cert bag. The chain should be rejected (pathLen=0 permits no intermediate CAs below root), but the current code accepts it. RFC 5280 §4.2.1.9: pathLenConstraint gives the maximum number of non-self-issued intermediate certificates that may follow this certificate.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:12:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:16:58Z",
+  "closed_at": "2026-05-02T08:16:58Z",
+  "close_reason": "Fixed: validate_chain() now checks the trust anchor's own pathLen constraint before returning Ok().",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-qlt.2",
+      "depends_on_id": "MIME-qlt",
+      "type": "parent-child",
+      "created_at": "2026-05-02T01:12:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.29",
+  "title": "VerificationResult has no helper to check overall success",
+  "description": "In smime-tree/src/verify.rs, the VerificationResult doc comment says 'The caller should check whether at least one signer has verified == true.' But there is no is_verified() or any_verified() method on VerificationResult to express this. Every caller must write the same iteration. This is a usability gap for the 2am user — the type's own documentation describes a check the type cannot perform by itself. Add a method or document the pattern more concretely (e.g. show the idiomatic check in the doc comment).",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:30:37Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.29",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:25:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

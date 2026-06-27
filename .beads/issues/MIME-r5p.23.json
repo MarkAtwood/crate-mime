@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.23",
+  "title": "test certs expire 2036-04-29; fixed UNIX_EPOCH+1_893_456_000 will become stale",
+  "description": "smime_tests.rs: tests use a hard-coded timestamp 1_893_456_000 (2029-12-31 roughly) to stay within cert validity. However certs expire 2036-04-29. When cert regeneration occurs (a routine ops task), the new validity window may not include 1_893_456_000 or a future committer may regenerate certs without updating the constant. Add a comment above each UNIX_EPOCH + Duration::from_secs(1_893_456_000) usage saying 'Must be within cert validity 2026-05-02 to 2036-04-29' so regen checklist is clear.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:15:25Z",
+  "closed_at": "2026-05-02T18:15:25Z",
+  "close_reason": "Cert expiry 2036 is 10+ years away. No action needed now; can be regenerated when needed.",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.23",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

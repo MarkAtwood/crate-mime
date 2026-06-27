@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.4",
+  "title": "cert.rs DER-exact DN matching silently rejects some real-world CA chains",
+  "description": "cert.rs::names_equal() uses byte-exact DER comparison for Distinguished Name matching. RFC 5280 §7.1 requires case-insensitive, whitespace-folded string comparison. Some deployed CAs (especially older or misconfigured ones) encode the same DN differently between subject and issuer fields (e.g. mixed case, extra whitespace). These chains will silently fail verify() with 'no trust anchor matches issuer'. The maintenance consequence: users with certs from these CAs will file bugs. The comment in names_equal() documents the limitation, but the consequence ('chains are themselves non-conformant') is optimistic — many real-world certificates from major enterprise CAs have this inconsistency. At minimum, the verify() docstring should document this explicitly.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:31:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:49:13Z",
+  "closed_at": "2026-05-02T13:49:13Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.4",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:31:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

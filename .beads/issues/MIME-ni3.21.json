@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.21",
+  "title": "uuencoding-multi: reassemble() redundant .map_err when From impl exists",
+  "description": "reassemble.rs:151: uuencoding::decode(...).map_err(MultiUuError::DecodeError)? — MultiUuError already implements From\u003cUuError\u003e so the ? operator handles conversion. Remove the explicit .map_err to use idiomatic Rust.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:53:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:59:09Z",
+  "closed_at": "2026-05-05T02:59:09Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.21",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:53:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

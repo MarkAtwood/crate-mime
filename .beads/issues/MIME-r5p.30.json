@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.30",
+  "title": "parse.rs extract_headers: String::from_utf8_lossy().trim().to_owned() — triple allocation",
+  "description": "parse.rs extract_headers line 89: .map(|bytes| String::from_utf8_lossy(bytes).trim().to_owned()). from_utf8_lossy may allocate a Cow::Owned if there are replacement chars. .trim() borrows that string. .to_owned() then allocates again. For messages with many headers (50+) this is 2-3 allocations per header. .trim_ascii() on the raw bytes before conversion, or building the owned String directly from a slice-and-trim, avoids the intermediate Cow.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:16Z",
+  "closed_at": "2026-05-02T18:49:16Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.30",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.11",
+  "title": "HeaderForm::URLs semantics defined by mail-parser address parser, not RFC 2369 — implementation choice in public contract",
+  "description": "header_typed.rs:266-273 — URLs form implementation:\n\n    HeaderForm::URLs =\u003e {\n        // RFC 8621 §4.1.2.7 / mail-parser: URLs are parsed via the same\n        // address parser, then the `address` field of each parsed\n        // mailbox is taken as the URL string ...\n        let hv = MessageStream::new(buf).parse_address();\n        HeaderValueTyped::URLs(extract_urls(\u0026hv))\n    }\n\nThe HeaderForm::URLs doc (lines 146-148) says: \"Parse as an RFC 2369 list of URLs. Surrounding angle brackets and comments are stripped.\"\n\nThe implementation does NOT parse RFC 2369. It pipes raw bytes through mail-parser's RFC 5322 address parser and pulls the `address` field of each parsed mailbox. The accidental fit is that an `\u003chttps://...\u003e` looks similar enough to an `\u003caddr-spec\u003e` that the address parser leaves the bracketed content in the `address` slot — but this is coincidence, not contract.\n\nThe behavioral contract is: \"URLs is the set of strings mail-parser's parse_address puts in the `address` field of its output, when fed these bytes.\" That is the de facto public contract. Examples of where this leaks:\n\n- A URL containing a comma, e.g., `\u003chttps://example.com/path,with,commas\u003e` — address parser treats commas as mailbox separators inside angle brackets only sometimes. Result is mail-parser-defined, not RFC 2369-defined.\n- A URL with `:` — the address parser may interpret unbracketed `https:` as a group separator (per RFC 5322 group syntax). This is the bug captured in MIME-o2c.2.\n- A `tel:+1-555-1234` URL — colons, plus signs, hyphens; whatever the address parser does.\n\nNote: this overlaps with bug MIME-o2c.2 (bare URLs misparsed) but is a different concern. MIME-o2c.2 says \"the current behavior is wrong\"; this issue says \"regardless of whether the current behavior is right or wrong for any one input, the *contract* — what URLs is allowed to return — is defined by mail-parser internals, not by the doc the caller reads.\"\n\nCaller-facing consequence: any caller writing code against the URLs form is implicitly writing code against mail-parser's address parser. A mail-parser update can change URLs behavior with no signal to mime-tree consumers.\n\nFix: write a dedicated URL tokenizer for HeaderForm::URLs that follows RFC 2369 / RFC 5988 / explicit `\u003c...\u003e` extraction. Then the contract is mime-tree's own, not delegated.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:25:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:48:36Z",
+  "closed_at": "2026-05-14T15:48:36Z",
+  "close_reason": "Fixed: URLs form now uses a dedicated RFC 2369 bracket tokenizer rather than mail-parser's address parser. Bare URLs (no \u003c...\u003e framing) produce empty result per RFC 8621 §4.1.2.7. URLs containing commas, colons (tel:, https:), and CRLF folding artifacts are now handled correctly. Contract is mime-tree's own, not delegated.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.11",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:25:24Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

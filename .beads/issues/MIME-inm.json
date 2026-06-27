@@ -1,0 +1,14 @@
+{
+  "id": "MIME-inm",
+  "title": "New crate: yencoding (yEnc encode/decode)",
+  "description": "Standalone Rust crate for yEnc encoding and decoding. yEnc is a binary-to-text encoding for Usenet binary posts (2001), offering ~1-2% overhead vs 33% for Base64/UUencode by passing most bytes raw with only 4 escape values.\n\nNo dependency on mime-tree, uuencoding, or any other workspace crate.\nNo filesystem I/O -- all operations on \u0026[u8] and Vec\u003cu8\u003e.\nNo NZB parsing -- that is a separate concern.\n\nAlgorithm:\n- Encode: add 42 to each byte (mod 256); escape NUL/LF/CR/= by preceding with = and adding 64 (mod 256); emit backtick for zero (not space) to resist mailer trailing-space stripping; wrap at configured line length (default 128).\n- Decode: subtract 42 (wrapping); when = seen, read next byte, subtract 106 (wrapping); discard CR/LF/NUL.\n\nFraming:\n- Single-part: =ybegin line= size= name=\u003cto-eol\u003e / data / =yend size= crc32=\n- Multi-part: =ybegin part= line= size= name= / =ypart begin= end= / data / =yend size= part= pcrc32= [crc32=]\n\nDesign constraints:\n- Skip unknown header fields (do not reject); field order must not matter\n- Accept both LF and CRLF line endings\n- Scan forward for =ybegin (may be embedded in larger body with preceding prose)\n- Handle dot-stuffing defensively (.. at line start -\u003e single dot)\n- std::error::Error + Display on all error types\n- Non-exhaustive error enum\n- CRC32 verification via crc32fast\n- Independent test vectors (NOT round-trip self-tests); use reference decoder output or spec examples as oracle\n\nPublic API shape:\n  pub struct YencMetadata { filename: String, size: u64, line_length: u8 }\n  pub struct DecodedPart { data: Vec\u003cu8\u003e, metadata: YencMetadata, part: Option\u003cu32\u003e, begin: Option\u003cu64\u003e, end: Option\u003cu64\u003e, crc32_verified: bool, is_truncated: bool }\n  pub enum YencError { NoHeader, InvalidHeader{field}, CrcMismatch{expected,actual}, UnexpectedEof }\n  pub fn decode(input: \u0026[u8]) -\u003e Result\u003cDecodedPart, YencError\u003e\n  pub fn encode(data: \u0026[u8], filename: \u0026str) -\u003e Vec\u003cu8\u003e   // single-part\n  pub fn encode_part(data: \u0026[u8], filename: \u0026str, total_size: u64, part: u32, begin: u64, end: u64) -\u003e Vec\u003cu8\u003e  // one part of multi\n\nMSRV: 1.75. License: MIT OR Apache-2.0. No unsafe (SIMD optimization deferred).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:11:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:17:02Z",
+  "close_reason": "All 8 children complete. yencoding 0.1.0 published."
+}

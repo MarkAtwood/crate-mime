@@ -1,0 +1,28 @@
+{
+  "id": "MIME-68n.15",
+  "title": "try_decrypt_kari: Ok(None) on unsupported algorithm OIDs — keep",
+  "description": "try_decrypt_kari() returns Ok(None) (skip) rather than Err when the KARI algorithm OID is not recognized. A contributor might say 'this should be an error'. The skip behavior is correct: an EnvelopedData may contain multiple RecipientInfo entries for different key types; one unrecognized KARI should not block decryption for an RSA KTRI that follows it. The Err path is reserved for 'recognized but broken' cases (matching recipient, correct OID, but decryption failed).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:45:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:47:09Z",
+  "closed_at": "2026-05-02T06:47:09Z",
+  "close_reason": "Decision record — no code change needed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.15",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:45:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

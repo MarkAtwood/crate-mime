@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.19",
+  "title": "decode.rs: full Base64 decode before max_bytes truncation",
+  "description": "decode_body_value() (decode.rs lines 38-52, 71-73) allocates a stripped Vec\u003cu8\u003e by scanning every byte for CR/LF, then decodes the entire base64 body into a second Vec\u003cu8\u003e, then truncates to max_bytes. For a 10 MB attachment with max_bytes=256 this performs 7+ MB of work before discarding it. The same pattern applies to the QP path. Impact: callers that pass max_bytes for preview generation pay full decode cost regardless of the limit. Fix direction: decode and collect only up to max_bytes decoded output.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:46:30Z",
+  "closed_at": "2026-05-02T05:46:30Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.19",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.9",
+  "title": "toc.rs looks_like_filename accepts bare decimal numbers (e.g. '1.5')",
+  "description": "toc.rs:227-229: looks_like_filename() returns true for any string containing '.', including bare decimal numbers like '1.5', '3.14', or version strings like '2.0'. A TOC line like '1.5  100 bytes' would be parsed with filename='1.5'. This is a false-positive in the filename heuristic. Real filenames should require at least one non-digit, non-dot character, or the dot must be followed by a known extension suffix, or the string must contain at least one alphabetic character. The current check is too permissive.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:04:11Z",
+  "closed_at": "2026-05-04T23:04:11Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.9",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

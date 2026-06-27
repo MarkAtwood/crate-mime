@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.39",
+  "title": "sign() panic on RSA RNG failure documented but should be Result::Err",
+  "description": "smime-tree/src/sign.rs documents a panic condition for RSA signature RNG failure after preflight checks. The doc comment mentions this with a # Panics section, but the function signature is Result\u003cVec\u003cu8\u003e, SmimeError\u003e — the failure mode is already compatible with being returned as an Err. Panicking on an RNG failure in a library function is not acceptable: the caller has no way to recover and the panic will unwind through arbitrary call stacks. What goes wrong: a caller running in a web server context that gets an RNG failure will have the entire thread panicked rather than receiving an Err to handle gracefully. The fix is to convert the panic into SmimeError::RngFailure (or similar) and return Err. File: smime-tree/src/sign.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:17:42Z",
+  "closed_at": "2026-06-16T00:17:42Z",
+  "close_reason": "False finding: sign() uses getrandom::fill() which returns Result, not panic. The boundary-generation retry loop also uses getrandom::fill with proper error propagation. No panic paths exist in sign().",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.39",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

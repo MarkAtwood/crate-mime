@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.67",
+  "title": "ParsedPart byte ranges are (u32, u32) — silent truncation for messages \u003e 4 GiB",
+  "description": "ParsedPart fields header_range and body_range are typed as (u32, u32) — offset and length as 32-bit unsigned integers. This silently limits the crate to inputs smaller than 4 GiB. What goes wrong: a caller passes a 5 GiB message (not unusual in enterprise email archives or Usenet binary dumps). The offset wraps silently, producing wrong byte ranges with no error. The public API documents these as 'indices into the caller's \u0026[u8]' but \u0026[u8] can exceed 4 GiB on a 64-bit system. The fix is to change to (u64, u64) or (usize, usize). This is a breaking change to the public struct fields. The earlier the type is changed (before widespread adoption), the less painful. Alternatively, document explicitly that inputs \u003e u32::MAX bytes are unsupported and parse() returns Err for them. File: mime-tree/src/part.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:12:27Z",
+  "closed_at": "2026-06-16T00:12:27Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.67",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

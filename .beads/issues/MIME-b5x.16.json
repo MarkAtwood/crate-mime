@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.16",
+  "title": "SmimeError::Other(String) and CertChain(String) swallow structured context",
+  "description": "SmimeError::Other(String) and ::CertChain(String) encode all context in a String. Callers cannot match on error detail (e.g., 'which cert expired', 'which algorithm was unsupported'). Per idiom: error variants that wrap String for the message instead of structured fields lose the values that callers might want to handle. The UnsupportedAlgorithm(String) variant is slightly better but still loses the OID in structured form. Fix: consider structured variants like CertExpired { subject: String, not_after: String } for common error paths. Lower priority since most callers just display the error.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:07:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T16:01:19Z",
+  "closed_at": "2026-05-02T16:01:19Z",
+  "close_reason": "CertChainError variants now carry subject/issuer/not_after context fields; callers can match structured data without parsing Display strings",
+  "defer_until": "2026-06-01T00:00:00Z",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.16",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:07:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

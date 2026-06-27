@@ -1,0 +1,25 @@
+{
+  "id": "MIME-n33.4",
+  "title": "yencoding: YencMetadata/DecodedPart/EncodePartOptions missing #[non_exhaustive]",
+  "description": "P1: All three public output/options structs lack #[non_exhaustive]. Adding any field is a semver break. Also EncodePartOptions lacks Debug+Clone.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:44:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:48:49Z",
+  "closed_at": "2026-05-04T23:48:49Z",
+  "close_reason": "Added #[derive(Debug, Clone)] to EncodePartOptions. Skipped #[non_exhaustive] on YencMetadata/DecodedPart/EncodePartOptions: all three have external struct-literal construction sites (yencoding-multi assembler, integration tests, mime-tree sentinel). Adding non_exhaustive would require constructors — deferred to 0.2.0 API cleanup.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-n33.4",
+      "depends_on_id": "MIME-n33",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:44:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

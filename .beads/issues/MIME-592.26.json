@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.26",
+  "title": "gen_fixtures.py: line wrapper splits escape pairs across line boundaries",
+  "description": "The Python fixture generator's yenc_line_wrap() function slices the pre-encoded byte stream at line_len=128 with no awareness of escape pairs. If an escaped byte's '=' character falls at encoded position 127 (the last byte of a line), the '=' ends up at the end of line N and the escaped byte starts line N+1. This is a valid (if uncommon) split-escape that the yEnc spec permits but that the Rust decoder currently mishandles (see MIME-592.19).\n\nThe existing fixtures happen not to trigger this: bytes(range(64)) and bytes(range(128)) have only one escaped byte (byte 19) which falls at encoded position 19, well inside the first 128-byte line. A payload with byte 19 at index 127 (e.g. [0]*127 + [19]) would trigger it.\n\nFix: update yenc_line_wrap() in gen_fixtures.py to be escape-pair-aware (don't split in the middle of a '=' + escaped pair), OR add a fixture that exercises the split-escape path to confirm the decoder handles it correctly after MIME-592.19 is fixed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:02Z",
+  "closed_at": "2026-05-04T23:03:02Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.26",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-04r.1",
+  "title": "P1: DecodedPart does not expose whole-file CRC32",
+  "description": "yencoding::decode() parses =yend crc32= (whole-file CRC) but silently drops it. DecodedPart has no field for it. yencoding-multi docs imply callers can retrieve it for set_expected_crc32(), but they cannot. Fix: add pub whole_file_crc32: Option\u003cu32\u003e to DecodedPart, populate from yend.crc32 in finish_decode().",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T00:22:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T00:25:04Z",
+  "closed_at": "2026-05-05T00:25:04Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-04r.1",
+      "depends_on_id": "MIME-04r",
+      "type": "parent-child",
+      "created_at": "2026-05-04T17:22:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

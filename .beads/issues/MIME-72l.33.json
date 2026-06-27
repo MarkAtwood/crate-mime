@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.33",
+  "title": "EnvelopedData version V2 hardcoded without explanation",
+  "description": "In smime-tree/src/encrypt.rs, the EnvelopedData struct is built with version: CmsVersion::V2. RFC 5652 section 6.1 defines version selection rules: V0 for all KTRI with IssuerAndSerialNumber, V2 if any KARI/PWRI/ORI, V4 if any PWRI with OtherRecipientInfo. The hardcoded V2 is correct for the KARI (ECDH) case but is also used when only RSA KTRI recipients are present (where V0 would be correct). There is no comment explaining the choice. A contributor adding recipient type support may not notice the version must also change. Add a comment citing RFC 5652 section 6.1 and noting the version selection rule that applies.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:48:23Z",
+  "closed_at": "2026-05-02T05:48:23Z",
+  "close_reason": "fixed: EnvelopedData version now dynamically computed per RFC 5652 §6.1 (MIME-72l.40)",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.33",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

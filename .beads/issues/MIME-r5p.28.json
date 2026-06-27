@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.28",
+  "title": "decode.rs strips CRLF with per-byte Vec::push() before base64 decode",
+  "description": "decode.rs lines 63-73: CRLF stripping allocates a Vec\u003cu8\u003e with capacity=body_bytes.len() and pushes one byte at a time in a loop. For large base64 bodies (e.g. 1 MB attachment) this is a 1 MB allocation even before base64 decoding. The base64 crate's decode_engine() already accepts any Iterator\u003cItem=u8\u003e, so the CRLF-stripped iterator can be passed directly via base64::read::DecoderReader or by using decode_engine_slice with a filtered input. Alternatively, since MIME base64 is already line-wrapped at 76 chars, a two-stage approach (strip then decode) with a reusable buffer avoids the full-body copy.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:14Z",
+  "closed_at": "2026-05-02T18:49:14Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.28",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

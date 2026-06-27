@@ -1,0 +1,33 @@
+{
+  "id": "MIME-66i.2",
+  "title": "sign(): implement multi-signer SignedData construction",
+  "description": "Loop over all keys: compute per-signer digest+attrs+signature, build one SignerInfo per key. Accumulate all DigestAlgorithmIdentifiers and all Certificates into the SignedData bag. SignedData.version: V3 if any SignerInfo uses SubjectKeyIdentifier, V1 if all use IssuerAndSerialNumber (RFC 5652 §5.1). micalg param: comma-separated list of unique digest algorithm names (RFC 5751 §3.4.3.2), deduped and sorted.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:21:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-05T04:31:29Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-66i.2",
+      "depends_on_id": "MIME-66i",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:21:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-66i.2",
+      "depends_on_id": "MIME-66i.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T21:22:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

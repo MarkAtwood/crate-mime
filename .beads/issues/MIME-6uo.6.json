@@ -1,0 +1,30 @@
+{
+  "id": "MIME-6uo.6",
+  "title": "header_range.(offset, length) semantics inconsistency: offset stored but always 0 for root",
+  "description": "parse.rs build_part line 122-125: header_range = (part.offset_header, part.offset_body - part.offset_header). For the root part, offset_header is 0 (the message starts at byte 0), which is correct. But the tuple field is documented as '(offset, length) into caller's \u0026[u8]' (part.rs line 26). This is actually correct and consistent, but the test in parse_tests.rs line 191 accesses msg.part_index.header_range as (hdr_off, hdr_len) without checking that hdr_off correctly indexes the headers — it only checks that the range doesn't extend past raw.len(). The body_range is tested for content, header_range is not. A future maintainer extending header parsing may silently regress without a test that actually reads the header bytes. Not a current bug, but a test coverage gap in a security-adjacent area.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:51:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:13Z",
+  "closed_at": "2026-05-02T08:06:13Z",
+  "close_reason": "Not a bug: header_range correctly starts at 0 for root (that IS byte 0 of the message). Test coverage gap, not a correctness issue. Low value to add a test just to assert offset==0.",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.6",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:51:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

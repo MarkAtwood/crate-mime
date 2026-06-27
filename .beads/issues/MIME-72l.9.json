@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.9",
+  "title": "encrypt: P-384 KARI wraps 16-byte AES-128 CEK with AES-192-KW producing mismatched KEK",
+  "description": "In encrypt.rs the CEK is always a 16-byte AES-128-CBC key. For P-384 recipients, build_p384_recipient() uses DH_SHA384_KDF + AES-192-KW. AES-192-KW correctly wraps a 16-byte key (AES-KW accepts any multiple of 8 bytes ≥ 16). The resulting wrapped key is 24 bytes. A compliant decryptor using AES-192-KW will unwrap to 16 bytes and use it for AES-128-CBC decryption — this works. The bug is a security level mismatch: P-384 provides ~192-bit security but content is only protected by 128-bit AES. RFC 5753 does not forbid this combination but it is an unusual pairing. A more conformant implementation would use AES-256-CBC + AES-256-KW for P-384 recipients. This is a security property deficiency, not a protocol correctness failure — decryption roundtrips correctly.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:46:44Z",
+  "closed_at": "2026-05-02T05:46:44Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.9",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

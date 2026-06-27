@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.7",
+  "title": "uuencoding: BlockLocation is dead public type with no producing function",
+  "description": "lib.rs:143-150: BlockLocation is a public struct whose doc says callers get it from a scan function, but no such function exists. Either implement scan_offsets() or remove BlockLocation from the public API.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:04:54Z",
+  "closed_at": "2026-05-04T22:04:54Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.7",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

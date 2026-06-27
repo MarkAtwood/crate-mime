@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.16",
+  "title": "HeaderDateTime::to_timestamp doc doesn't specify behavior for pre-epoch, invalid, or out-of-range dates",
+  "description": "header_typed.rs:91-95 — current doc:\n\n    /// Render as a Unix timestamp (seconds since 1970-01-01 UTC).\n    #[must_use]\n    pub fn to_timestamp(\u0026self) -\u003e i64 {\n\nThe doc covers the happy path but leaves three edge cases undocumented:\n\n1. Pre-1970 dates: returns negative i64? Saturates to 0? mail-parser-defined.\n2. Year-fields with values too large for i64 second precision (year 292277026596+): overflow? Saturates? Wraps?\n3. Invalid HeaderDateTime values (month=13, day=99): garbage out, panic, or sentinel?\n\nThese are real because HeaderDateTime fields are pub, so a caller can construct arbitrary HeaderDateTime instances (see related issue on validation). A defensive caller has no contract to write defensive code against.\n\nCaller-facing consequence: a JMAP server storing message timestamps in a DB needs to know whether to_timestamp can return a value that, e.g., crashes its serializer or breaks a NOT NULL CHECK constraint. Without docs, they have to read mime-tree's source — and then chase into mail-parser.\n\nFix: add an explicit contract clause. Example:\n\n    /// Render as a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).\n    ///\n    /// Pre-1970 dates return negative values. The result is computed\n    /// from the field values without validation; if HeaderDateTime\n    /// holds an out-of-range date (e.g., month = 0 or day = 32), the\n    /// output is unspecified and should not be relied upon.\n\nLower priority because the parse_header_typed path always produces validated HeaderDateTime values; only callers constructing manually hit the gap.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:26:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:52:41Z",
+  "closed_at": "2026-05-14T15:52:41Z",
+  "close_reason": "HeaderDateTime cleanup batch: (.31) tz_before_gmt bool replaced with TzSign enum (East/West); (.9) field invariants documented per field, plus type-level statement that out-of-range values yield unspecified output; (.10) wire-format dependency on mail-parser made explicit with a doc section; (.15) to_rfc3339 doc specifies exact output (Zulu Z for UTC, ±HH:MM otherwise) with examples and out-of-range escape hatch; (.16) to_timestamp doc specifies pre-epoch / out-of-range behaviour. Struct gains #[non_exhaustive]. New test pins Zulu-form output for UTC.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.16",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:26:22Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

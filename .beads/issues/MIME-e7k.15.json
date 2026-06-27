@@ -1,0 +1,28 @@
+{
+  "id": "MIME-e7k.15",
+  "title": "Trust anchor pre-flight and revocation ordering is correct",
+  "description": "validate_chain() correctly orders operations: (1) check trust_anchors non-empty, (2) build chain via DN matching, (3) bridge to pkix-chain and verify signatures/validity via pkix-chain::verify_chain_default with NoRevocation, (4) then run caller's revocation checker on the signature-verified chain. Running revocation AFTER signature verification is correct — you should not trust revocation responses from certs whose signatures you haven't verified.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:39:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:47:06Z",
+  "closed_at": "2026-05-02T17:47:06Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.15",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:39:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

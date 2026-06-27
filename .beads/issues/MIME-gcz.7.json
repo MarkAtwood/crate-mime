@@ -1,0 +1,30 @@
+{
+  "id": "MIME-gcz.7",
+  "title": "encode() does not validate that mode fits in 3 octal digits — mode \u003e 0o777 produces malformed begin line",
+  "description": "uuencoding/src/encode.rs encode() formats the mode as '{:03o}' (line 22). If a caller passes mode=0o1755 (setuid+sticky bits, a valid Unix mode), the begin line becomes 'begin 1755 filename\\n' — 4 digits, which most decoders handle, but the format spec says 3. More importantly, mode=0xFFFFFFFF would emit 'begin 37777777777 filename\\n' — an 11-digit octal string. The function doc says '3-digit octal' but does not enforce it. This is a silent footgun: the function accepts u32 freely but the output format is not defined for values \u003e 0o7777.",
+  "acceptance_criteria": "Either document that values \u003e 0o7777 produce multi-digit mode strings (and specify that is intentional and decoders should handle it), or clamp/mask to 12 bits (0o7777) with a doc note, or return a Result. At minimum, test mode=0o1755 and mode=0xFFFFFFFF.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:34:16Z",
+  "closed_at": "2026-05-04T18:34:16Z",
+  "close_reason": "Documented mode formatting behavior in encode(); added tests for mode=0o1755 and mode=0xFFFFFFFF",
+  "labels": [
+    "maintainer-burden",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.7",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

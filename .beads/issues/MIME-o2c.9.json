@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.9",
+  "title": "HeaderDateTime publicly constructable without validation; to_rfc3339/to_timestamp behavior undefined for out-of-range",
+  "description": "header_typed.rs:67-124 — HeaderDateTime has 9 public fields, no validation, no documented value ranges:\n\n    pub struct HeaderDateTime {\n        pub year: u16,\n        pub month: u8,\n        pub day: u8,\n        pub hour: u8,\n        pub minute: u8,\n        pub second: u8,\n        pub tz_before_gmt: bool,\n        pub tz_hour: u8,\n        pub tz_minute: u8,\n    }\n\nNone of the doc comments state the valid range for each field. RFC 5322 §3.3 implies:\n  - month ∈ 1..=12\n  - day ∈ 1..=31 (calendar-validated against month/year)\n  - hour ∈ 0..=23\n  - minute ∈ 0..=59\n  - second ∈ 0..=59 (RFC 5322 §4.3 allows 60 for leap seconds)\n  - tz_hour ∈ 0..=23 (some real-world values exceed; RFC permits up to ±9999)\n  - tz_minute ∈ 0..=59\n\nA caller can construct `HeaderDateTime { year: 0, month: 13, day: 99, hour: 25, ... }` and then call `.to_rfc3339()` or `.to_timestamp()`. Behavior is whatever mail-parser does — undocumented from this crate's perspective.\n\nCaller-facing consequence (two-pronged):\n\na) Direct construction: a JMAP server constructing dates from external sources (database, user input) cannot rely on these methods producing well-formed output. Silently malformed RFC 3339 output is a wire-protocol bug.\n\nb) Mutating after parse: a caller doing `let mut dt = parse_header_typed(...); dt.month = 0;` (e.g., to test a path) can produce an invalid struct from a valid parse. No constructor enforces invariants.\n\nFix options:\n- Add documented ranges to each field doc.\n- Add a `HeaderDateTime::new(...) -\u003e Result\u003cSelf, _\u003e` validating constructor and make fields pub(crate).\n- Document that invalid HeaderDateTime → undefined output from to_rfc3339/to_timestamp.\n\nThe cheapest fix is the doc one. Pick a contract and write it down.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:52:24Z",
+  "closed_at": "2026-05-14T15:52:24Z",
+  "close_reason": "HeaderDateTime cleanup batch: (.31) tz_before_gmt bool replaced with TzSign enum (East/West); (.9) field invariants documented per field, plus type-level statement that out-of-range values yield unspecified output; (.10) wire-format dependency on mail-parser made explicit with a doc section; (.15) to_rfc3339 doc specifies exact output (Zulu Z for UTC, ±HH:MM otherwise) with examples and out-of-range escape hatch; (.16) to_timestamp doc specifies pre-epoch / out-of-range behaviour. Struct gains #[non_exhaustive]. New test pins Zulu-form output for UTC.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.9",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

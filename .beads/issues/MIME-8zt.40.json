@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.40",
+  "title": "uuencoding: BlockMetadata, DecodedBlock, ScannedBlock missing Eq derive",
+  "description": "Why this exists: uuencoding/src/lib.rs derives PartialEq but not Eq on BlockMetadata, DecodedBlock, and ScannedBlock. All fields of these types are u32, String, Vec\u003cu8\u003e, bool, and Option\u003cT\u003e — all of which implement Eq. PartialEq without Eq is only correct when the type has floating-point fields or similar non-reflexive equality, which is not the case here.\\n\\nWhat goes wrong: these types cannot be stored in HashSet or used as HashMap keys (those require Eq), and assertions in downstream crates that want assert_eq! with fine-grained hash-map grouping will hit a trait-bound error. The omission of Eq when PartialEq is derived and all fields are Eq is an oversight that misleads readers into thinking the type has non-reflexive equality.\\n\\nFix: add Eq to the derive lists for BlockMetadata, DecodedBlock, and ScannedBlock.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:35Z",
+  "closed_at": "2026-06-16T00:08:35Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.40",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

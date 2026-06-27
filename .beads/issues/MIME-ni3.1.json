@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.1",
+  "title": "uuencoding-multi: base_subject invariant broken for stripped-to-empty input",
+  "description": "parse_subject() violates its own documented invariant that base_subject is never empty. For input like 'Re: ' (prefix only, no body), strip_prefixes+trim produces empty string. The guard checks subject.is_empty() on the *original* input, not the stripped form. Returns Some(SubjectParts{base_subject:\"\", ...}) which silently groups all such messages under an empty HashMap key. Fix: after stripping prefixes, if stripped.is_empty() return None.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:14Z",
+  "closed_at": "2026-05-05T02:58:14Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.1",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

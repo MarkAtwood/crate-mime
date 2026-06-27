@@ -1,0 +1,31 @@
+{
+  "id": "MIME-p4h.21",
+  "title": "smime-tree verify.rs: verify_sig dispatch uses if/else chain on OID constants — match would be clearer",
+  "description": "verify.rs verify_sig() and cert.rs verify_signature() use chains of if *oid == SHA_256_WITH_RSA_ENCRYPTION { } else if *oid == SHA_384... { } ... This is the only option because ObjectIdentifier const patterns don't work in match arms — but the code looks like a smell to reviewers. Idiomatic fix: encapsulate the dispatch in a macro or document why match cannot be used here. A comment explaining why if/else is required would prevent contributors from repeatedly trying to convert this to a match.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:16:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:40:31Z",
+  "closed_at": "2026-05-02T14:40:31Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.21",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:16:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

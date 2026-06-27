@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.14",
+  "title": "SmimeError string variants prevent programmatic error discrimination by callers",
+  "description": "SmimeError::CertChain(String), MalformedInput(String), and Other(String) wrap messages as strings. Callers who need to distinguish 'certificate expired' from 'pathLen violated' from 'issuer signature mismatch' must parse the string — this is brittle and breaks when error messages change. Library callers (e.g. policy enforcement, audit logging) benefit from matching on structured variants. Since the crate is pre-1.0, now is the time to introduce structured sub-types (e.g. CertChainError::Expired, CertChainError::PathLen, CertChainError::SignatureMismatch). AllSignersFailed already demonstrates the right pattern for verify(). The maintenance consequence: once published and depended on, changing CertChain(String) to CertChain(CertChainError) is a breaking change.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:34:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:49:16Z",
+  "closed_at": "2026-05-02T13:49:16Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.14",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:34:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

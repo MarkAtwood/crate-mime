@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.57",
+  "title": "decode_body_value: max_bytes=None behavior and truncation contract undocumented",
+  "description": "mime-tree::decode_body_value() takes max_bytes: Option\u003cusize\u003e. The RFC 8621 §4.1.4 spec uses this for the 'truncated' field in EmailBodyValue. The postconditions callers rely on are not documented: (1) does None mean 'return all bytes' or 'use a crate-defined default limit'? (2) when Some(n) is passed and the decoded body exceeds n bytes, is the output exactly n bytes, or n decoded characters, or n bytes of the pre-decode transfer-encoded form? (3) is the truncated flag in DecodedBodyValue set by this function, and if so, based on what threshold? What goes wrong: a JMAP adapter that passes max_bytes=Some(1024) expecting to get exactly 1024 UTF-8 characters may get 1024 bytes of a multibyte encoding, silently splitting a codepoint. File: mime-tree/src/parse.rs, mime-tree/src/message.rs (DecodedBodyValue.is_truncated field).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:15:43Z",
+  "closed_at": "2026-06-16T00:15:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.57",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:49Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

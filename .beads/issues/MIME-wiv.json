@@ -1,0 +1,19 @@
+{
+  "id": "MIME-wiv",
+  "title": "Review pass 2: session fixes",
+  "notes": "Maintainer risk: LOW — only finding was missing # Panics doc on encrypt() for RSA + OS RNG failure. Fixed. No correctness bugs.\nIdiom rating: CLEAN — one \u0026\u0026Certificate loop style issue fixed. No unsafe, no gratuitous clones, no Box\u003cdyn Error\u003e in API, no missing non_exhaustive.\nConfidence: 5% chance of missed bug. Least confident flags: UnwrapErr panic behavior under unusual RSA crate versions. Uncertainty driven by: can't inspect rsa crate internals at runtime. Would raise confidence if: rsa crate adds TryCryptoRng support.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:58:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T14:03:24Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

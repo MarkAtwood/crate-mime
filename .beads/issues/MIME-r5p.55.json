@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.55",
+  "title": "decrypt.rs: ukm allocates Vec then immediately borrows as slice",
+  "description": "try_decrypt_kari line 201: kari.ukm.as_ref().map(|u| u.as_bytes().to_vec()) allocates a Vec\u003cu8\u003e from an OctetString (which already owns its bytes) only to immediately borrow it via ukm.as_deref() on line 238. The allocation is unnecessary — OctetString::as_bytes() returns \u0026[u8] directly and kari lives for the duration of the function, so let ukm = kari.ukm.as_ref().map(|u| u.as_bytes()) yields Option\u003c\u0026[u8]\u003e with no heap allocation and no .as_deref() needed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T18:23:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:25:54Z",
+  "closed_at": "2026-05-02T18:25:54Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.55",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T11:23:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

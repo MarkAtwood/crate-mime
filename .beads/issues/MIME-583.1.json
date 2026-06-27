@@ -1,0 +1,25 @@
+{
+  "id": "MIME-583.1",
+  "title": "CLAUDE.md MSRV says 1.75 for mime-tree but Cargo.toml says 1.85",
+  "description": "CLAUDE.md line 55 states 'MSRV: 1.75 (mime-tree), 1.85 (smime-tree)'. mime-tree/Cargo.toml rust-version = '1.85'. README.md correctly says both 1.85. Stale doc misleads agents into testing wrong toolchain. Fix: update CLAUDE.md to 1.85 for mime-tree.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T01:17:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T01:18:46Z",
+  "closed_at": "2026-05-05T01:18:46Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-583.1",
+      "depends_on_id": "MIME-583",
+      "type": "parent-child",
+      "created_at": "2026-05-04T18:17:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

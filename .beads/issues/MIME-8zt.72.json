@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.72",
+  "title": "Good: walk.rs Option\u003c\u0026mut Vec\u003e nullification model is the correct JS-semantic mapping",
+  "description": "mime-tree/src/walk.rs: the RFC 8621 §4.1.4 algorithm is specified in JavaScript using null re-assignment to 'close' an accumulator pointer. The Rust translation using \u0026mut Option\u003c\u0026mut Vec\u003cString\u003e\u003e with as_deref_mut() to create non-propagating child locals correctly models this semantics: a callee setting the Option to None does not affect the caller's Option. This is the right choice — a simpler approach (passing \u0026mut Vec directly) would require a different mechanism to express 'stop adding to this list' without returning a bool, and would make the algorithm harder to compare to the RFC pseudocode. Worth defending if someone suggests simplifying.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:41:57Z",
+  "closed_at": "2026-06-16T00:41:57Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.72",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.27",
+  "title": "No constructor from JMAP form-token string to HeaderForm; every caller reimplements the match",
+  "description": "header_typed.rs:126-149 defines `HeaderForm` as the \"form-token from a JMAP `header:\u003cname\u003e:as\u003cform\u003e` property selector, normalised to an enum\" (per line 128-129 doc).\n\nThe crate provides:\n- HeaderForm variants matching the JMAP form-tokens (`asAddresses`, `asGroupedAddresses`, `asMessageIds`, `asDate`, `asURLs`, `Raw`)\n- No `impl FromStr for HeaderForm` or `impl TryFrom\u003c\u0026str\u003e for HeaderForm`\n- No `HeaderForm::from_jmap(s: \u0026str) -\u003e Option\u003cHeaderForm\u003e`\n- No `HeaderForm::as_jmap(\u0026self) -\u003e \u0026'static str`\n\nEvery JMAP server consuming this crate will have to write its own string→HeaderForm match and the inverse for outgoing responses. That match is non-trivial: the JMAP wire form is `\"asAddresses\"` (camelCase, leading \"as\"), not `\"Addresses\"`; and `Raw` maps to a special form selector (not \"asRaw\"). Each downstream implementer will reinvent it and likely diverge in edge cases (case-folding? handling of unknown tokens?).\n\nCaller-facing consequence: the crate publishes a JMAP-shaped enum but stops short of the wire-format conversion. Defensive code at every JMAP-aware call site duplicates the same match.\n\nCite: RFC 8621 §1.4 explicitly registers the form names as `\"asText\"` ... wait — RFC 8621 §4.1.2 uses `asRaw`, `asText`, `asAddresses`, `asGroupedAddresses`, `asMessageIds`, `asDate`, `asURLs`. The crate omits `asText` from HeaderForm entirely. (That is a separate concern — note here but file separately if real.)\n\nFix options:\n- Add `impl FromStr for HeaderForm` keyed on the RFC 8621 form-token strings, plus an inverse method.\n- Document the JMAP-token correspondence in the HeaderForm doc, so downstream implementers at least have a canonical string to use.\n\nThis is P3 because the workaround (write your own match) is mechanical. But the crate is explicitly named after RFC 8621 form selectors; the omission is conspicuous.\n\nLine refs:\n- header_typed.rs:126-149 — HeaderForm enum, with doc explicitly referencing JMAP form-tokens.\n- header_typed.rs:128-129 — doc claims \"form-token from a JMAP ... property selector, normalised to an enum\" but provides no normalisation function.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:36:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:10:48Z",
+  "closed_at": "2026-05-14T16:10:48Z",
+  "close_reason": "Added: (.13) six per-form entry points — parse_raw, parse_addresses, parse_grouped_addresses, parse_message_ids, parse_date, parse_urls — each returns the variant payload type directly, eliminating boilerplate match-on-variant at every call site. The sum-type parse_header_typed remains for callers that dispatch dynamically. (.27) HeaderForm now has impl Display emitting the RFC 8621 §4.1.2 form-tokens (asRaw, asAddresses, asGroupedAddresses, asMessageIds, asDate, asURLs), impl FromStr accepting that exact set with a new UnknownHeaderForm error type, and an as_jmap_token() method. asText is intentionally rejected by FromStr until MIME-o2c.28 lands.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.27",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:36:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

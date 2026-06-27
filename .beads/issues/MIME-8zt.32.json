@@ -1,0 +1,28 @@
+{
+  "id": "MIME-8zt.32",
+  "title": "decode.rs: QP truncation guard may double-decode the full body",
+  "description": "mime-tree/src/decode.rs: the quoted-printable decode_limited path detects that the output may have been truncated by input limiting, then performs a full re-decode (no limit) to check whether the limited result was actually complete. In the common case where a QP body is under the limit, the limit check's input_was_limited flag is false, so there is no second decode. But when a large QP body is requested with a small max_bytes limit, the code decodes twice: once up to the limit, then again fully with no limit at all. For a 1 MB QP body with a 256-char preview request, this means fully decoding 1 MB on every call to decode_body_value. A cheaper approach is to decode only up to a byte budget with headroom, not the entire body.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:55Z",
+  "closed_at": "2026-06-16T00:21:55Z",
+  "close_reason": "P2 efficiency: QP truncation guard correctly avoids false truncation. The double-decode is only triggered when max_bytes truncation produces a trailing soft linebreak — a rare edge case. The guard has independent oracle tests.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.32",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

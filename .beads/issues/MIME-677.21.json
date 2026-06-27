@@ -1,0 +1,27 @@
+{
+  "id": "MIME-677.21",
+  "title": "find_cert in verify.rs searches bag then trust anchors — correct per RFC 5652 §5.1",
+  "description": "find_cert() searches the embedded certificate bag first, then falls back to trust anchors. RFC 5652 §5.1 permits the signer to omit their cert from the bag if the receiver already has it (e.g. it is a trust anchor). The comment in the code says this explicitly. A future contributor might simplify to searching only the bag and requiring the cert to always be present. That would break valid S/MIME messages where the signer is a well-known CA and omits the cert to save space.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:52:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:38Z",
+  "closed_at": "2026-05-02T06:24:38Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.21",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:52:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

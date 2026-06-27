@@ -1,0 +1,49 @@
+{
+  "id": "MIME-ksl.7",
+  "title": "Fuzz / property tests: decode(encode(x)) == x for all x",
+  "description": "Add property-based round-trip tests and edge-case corpus.\n\n1. Round-trip property: for any Vec\u003cu8\u003e input, decode(encode(input, 'test', 644)) == input. Use proptest or a hand-rolled exhaustive sweep over short inputs (0..256 bytes, all byte values).\n\n2. Fuzz corpus in tests/fuzz_corpus/: a set of hand-crafted \u0026[u8] inputs that must not panic, covering:\n   - Empty input\n   - Input with no begin line\n   - Truncated begin line (e.g. b'begin')\n   - begin line with no filename\n   - begin-base64 block\n   - Data line with byte 0x00 (outside UU range)\n   - Data line with byte 0x7F\n   - Data line with byte 0xFF\n   - Line claiming 45 bytes but only 1 encoded char present\n   - 10,000-byte all-zeros input (size stress)\n   - Input that is valid UU but with CRLF endings throughout\n\n3. For each fuzz corpus item: assert no panic, assert result is Ok or a recognized UuError variant. Do not assert specific decoded content for malformed inputs.\n\n4. No external fuzzing framework required -- a #[test] that iterates the corpus is sufficient. If proptest is available in the workspace, use it; if not, do not add it as a dependency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:57:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:01:37Z",
+  "closed_at": "2026-05-04T18:01:37Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.7",
+      "depends_on_id": "MIME-ksl.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.7",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:57:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.7",
+      "depends_on_id": "MIME-ksl.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.7",
+      "depends_on_id": "MIME-ksl.5",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:24:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

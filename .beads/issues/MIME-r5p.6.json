@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.6",
+  "title": "UKM ignored during KARI decryption",
+  "description": "try_decrypt_kari() extracts ukm from the KARI and passes it to key.agree_ecdh(). However, encrypt() sets ukm: None unconditionally in build_kari_recipient() and ecdh_wrap_cek() also passes entity_u_info: None to EccCmsSharedInfo. This means round-tripping through encrypt/decrypt within this crate works, but if a peer sends a KARI with a non-None UKM, the DecryptionKey implementor receives the UKM correctly. The gap is: the doc for agree_ecdh() says 'hash Z concatenated with a counter and the SharedInfo structure (which encodes alg.key_wrap OID and ukm)' — but the SharedInfo built in ecdh_wrap_cek does NOT include the UKM (entity_u_info: None). Decrypt implementors who follow the trait doc and build SharedInfo from alg will NOT incorporate UKM from the wire, causing silent decryption failure for UKM-bearing messages.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:14:51Z",
+  "closed_at": "2026-05-02T18:14:51Z",
+  "close_reason": "UKM IS passed to agree_ecdh via the ukm parameter. Encrypt path intentionally does not generate UKM (ukm: None in build_kari_recipient) per RFC 5753 — UKM is optional.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.6",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

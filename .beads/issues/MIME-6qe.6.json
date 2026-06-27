@@ -1,0 +1,24 @@
+{
+  "id": "MIME-6qe.6",
+  "title": "smime-tree: encrypt() has no security warning about RSA PKCS#1 v1.5 weakness",
+  "description": "encrypt() uses Pkcs1v15Encrypt for RSA key transport. Neither the encrypt() doc nor lib.rs Known Limitations section warns that PKCS#1 v1.5 key transport is deprecated by RFC 8017 in favor of OAEP, or that it is vulnerable to Bleichenbacher padding oracle attacks. Add a # Security section to encrypt() and a bullet in the Known Limitations of lib.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:22Z",
+  "closed_at": "2026-05-05T03:18:22Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.6",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

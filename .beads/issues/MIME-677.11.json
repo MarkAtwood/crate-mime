@@ -1,0 +1,29 @@
+{
+  "id": "MIME-677.11",
+  "title": "cert.rs: expired anchor short-circuits when second valid anchor exists",
+  "description": "In validate_chain(), the trust-anchor loop calls check_validity(anchor, now)? inside the for loop. If two trust anchors share the same subject name (e.g., a CA that renewed its cert with the same DN) and the first match is expired, the ? propagates Err immediately without checking the second anchor. The second, valid anchor is never tried, causing a valid chain to be rejected. Trigger: trust_anchors contains [expired_root, valid_root] where both have subject == current.issuer.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:54:50Z",
+  "closed_at": "2026-05-02T05:54:50Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.11",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

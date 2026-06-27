@@ -1,0 +1,157 @@
+{
+  "id": "MIME-72l.16",
+  "title": "SmimeError::Io misleadingly named for non-I/O errors",
+  "description": "SmimeError::Io(String) is used throughout smime-tree for general string errors that have nothing to do with I/O: 'AES-128 CEK must be 16 bytes', 'no recipients', 'CBC algorithm parameters missing', 'message digest mismatch', 'messageDigest attribute not found', etc. A user seeing 'I/O error: AES-128 CEK must be 16 bytes' will be confused about whether the problem is a file or network issue. The variant should be renamed to something like Other or Internal, or multiple specific variants should be introduced. At minimum the doc comment on the variant should warn that it is used for general errors, not just I/O.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:36:46Z",
+  "closed_at": "2026-05-02T06:36:46Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.37",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.29",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.10",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.12",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.45",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.41",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.8",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:34:34Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.13",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.52",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.3",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.4",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.56",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.49",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.14",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-72l.44",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.16",
+      "depends_on_id": "MIME-677.1",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "MIME-68n.14",
+  "title": "validate_chain: cycle detection + trust-anchor validity filter — keep",
+  "description": "cert.rs validate_chain uses a HashSet to detect cycles in the certificate bag, and filters trust anchors by validity period before signature verification. A contributor might suggest removing the cycle check as 'edge case'. It prevents infinite loops on adversarially constructed bags. The trust-anchor validity filter implements RFC 5280 §6.1.3(a)(1) — an expired root must not validate a still-valid EE cert.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:45:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:47:07Z",
+  "closed_at": "2026-05-02T06:47:07Z",
+  "close_reason": "Decision record — no code change needed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.14",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:45:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

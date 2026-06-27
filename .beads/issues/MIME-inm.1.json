@@ -1,0 +1,25 @@
+{
+  "id": "MIME-inm.1",
+  "title": "Scaffold yencoding crate (Cargo.toml, lib.rs, error.rs)",
+  "description": "Create crate skeleton in yencoding/ directory. Add to workspace Cargo.toml.\n\nCargo.toml: name=yencoding, version=0.1.0, edition=2021, license=MIT OR Apache-2.0, rust-version=1.75\nDependencies: crc32fast = '1' (for CRC32 verification)\nOptional dep: serde = '1' (feature=serde, for Serialize/Deserialize on public types)\n\nerror.rs: YencError enum:\n  NoHeader                          -- no =ybegin line found in input\n  InvalidHeader { field: String }   -- =ybegin/=ypart/=yend line missing required field or unparseable value\n  CrcMismatch { expected: u32, actual: u32 }  -- decoded bytes do not match pcrc32= or crc32=\n  UnexpectedEof                     -- =yend line never found\nAll variants: Debug, Display (describe what went wrong and what the caller should do), std::error::Error. Non-exhaustive.\n\nlib.rs: crate-level doc covering:\n- What yEnc is, who invented it (Juergen Helbing, 2001), why it exists (1-2% overhead vs 33% for base64)\n- The two use cases: single-part and multi-part Usenet articles\n- Relationship to uuencoding crate (same workspace, different encoding)\n- NZB is out of scope -- link to concept, note crate does not parse NZB\n- Security note: decoded output size approximately equals encoded input size (no decompression bomb risk from the encoding itself); however decoded bytes may be a compressed archive and any subsequent decompression is the caller's responsibility\n- Quick-start example for decode() and encode()",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:11:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:13:26Z",
+  "close_reason": "Scaffolded: Cargo.toml, lib.rs, error.rs, header.rs, decode.rs, encode.rs. Added to workspace.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.1",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:11:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

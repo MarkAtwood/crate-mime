@@ -1,0 +1,31 @@
+{
+  "id": "MIME-9nu.4",
+  "title": "decode_uuencode truncation heuristic (data.len() \u003e= limit) is fragile API contract",
+  "description": "In mime-tree/src/decode.rs decode_uuencode, the caller distinguishes 'stopped at limit' from 'genuine decode error' by checking block.data.len() \u003e= limit. This works because decode_limited() guarantees data.len() \u003c= max_bytes. But this invariant is not documented on DecodedBlock or decode_limited(), and it's easy to break: if decode_limited() is ever changed to return data.len() \u003c limit when stopping at the limit (e.g., to avoid a partial UU group), the heuristic silently misclassifies the result as is_encoding_problem. Better design: decode_limited() should return an explicit StopReason enum (LimitReached | EndFound | DecodeError | NoBeginLine) so callers don't have to infer cause from data length. Or add a was_limit_reached: bool field to DecodedBlock. Current heuristic works but only because of an undocumented invariant coupling two separate modules.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:57:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:01:36Z",
+  "closed_at": "2026-05-04T19:01:36Z",
+  "close_reason": "Added comment documenting the data.len()\u003e=limit invariant coupling and its fragility. Also corrected false O(max_bytes) comment in decode_uuencode.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.4",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:57:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

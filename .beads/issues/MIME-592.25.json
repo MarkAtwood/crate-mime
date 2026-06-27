@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.25",
+  "title": "scan() is documented eager but returns impl Iterator — API misleads callers",
+  "description": "The public scan() function is documented as fully eager in lib.rs (lines 258-264):\n  'The entire input is scanned and all blocks are decoded on the first call to the returned iterator.'\n  'Calling .next() on a body with ten blocks decodes all ten immediately, not one at a time.'\n\nDespite this, the function signature is:\n  pub fn scan(input: \u0026[u8]) -\u003e impl Iterator\u003cItem = Result\u003cScannedBlock, UuError\u003e\u003e\n\nThe impl Iterator return type creates a false impression of lazy evaluation. Callers who write:\n  let first = scan(large_input).next();\nexpect that only the first block is decoded, because that is the normal contract of Iterator in Rust. In reality, ALL blocks are decoded before .next() returns, defeating the optimization.\n\nImpact:\n1. A caller processing a 100MB email with 50 embedded UU blocks, wanting only the first, pays the full O(input) decoding cost regardless.\n2. .take(N) does not limit decoding cost.\n3. This violates the principle of least surprise for anyone familiar with Rust's iterator model.\n\nFix options (in order of preference):\n(a) Return Vec\u003cResult\u003cScannedBlock, UuError\u003e\u003e directly — honest about eagerness, no false promise of lazy eval.\n(b) Implement a true lazy iterator (ScanIter struct that advances line by line), eliminating the problem entirely. The recommend() in lib.rs already suggests using decode() for single-block extraction.\n(c) Keep current signature but add a more prominent warning to the return type documentation.\n\nOption (a) is the minimal API-honest fix with no behavior change. Option (b) fixes the performance issue.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:18Z",
+  "closed_at": "2026-05-04T23:03:18Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.25",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

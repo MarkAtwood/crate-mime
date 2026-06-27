@@ -1,0 +1,29 @@
+{
+  "id": "MIME-596.1",
+  "title": "cert.rs: trust anchor loop tries only first valid-date anchor for signature",
+  "description": "In validate_chain(), when multiple trust anchors share the same DN (CA renewal scenario), the code collects all DN-matching candidates and correctly filters by validity date. However it then calls verify_signature() on only the first valid-date candidate (using find()). If that anchor's public key doesn't match (same DN, different key — which is the exact scenario the comment acknowledges), the function returns an error without trying the remaining valid-date candidates. Fix: change the anchor selection to iterate all valid-date candidates and return Ok on the first successful signature verification, returning Err only if all fail.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:57:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:58:07Z",
+  "closed_at": "2026-05-02T05:58:07Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-596.1",
+      "depends_on_id": "MIME-596",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:57:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

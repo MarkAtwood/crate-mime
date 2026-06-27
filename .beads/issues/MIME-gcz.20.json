@@ -1,0 +1,28 @@
+{
+  "id": "MIME-gcz.20",
+  "title": "is_begin_line matches 'beginning...' at line start — InvalidBeginLine false positive",
+  "description": "Trigger: input text containing a prose line that starts with 'begin' but is NOT followed by whitespace, e.g. 'beginners guide to Linux\\n' or 'beginning of part 2\\n'. is_begin_line now checks only the first 5 bytes (b\"begin\"), so any such line triggers handle_block. parse_begin_line returns None (because the char after 'begin' is not whitespace), causing Err(InvalidBeginLine{ line: \"beginners guide to Linux\" }) to be emitted. Old behavior: is_begin_line required b\"begin \" (6 chars with space), so these lines were silently ignored. New behavior causes spurious InvalidBeginLine errors for any prose text starting a line with 'begin' followed by a non-space character. Fix: is_begin_line should check that after the 5-byte 'begin' prefix, the next byte is either whitespace, end-of-line, or '-' (for begin-base64). Or: tighten is_begin_line back to 'begin ' (with space), since bare 'begin\\n' is so rare and broken that emitting no result for it is acceptable.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:46:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:51:52Z",
+  "closed_at": "2026-05-04T18:51:52Z",
+  "close_reason": "Fixed: is_begin_line now requires the byte after 'begin' to be whitespace or '-'; prose lines like 'beginners...' no longer trigger InvalidBeginLine.",
+  "labels": [
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.20",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:46:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.1",
+  "title": "decode_uuencode panics/wraps on bytes \u003c 0x20 in data line",
+  "description": "mime-tree/src/decode.rs decode_uuencode(): the expression (encoded[i] - 32) at lines 237-240 uses bare subtraction on u8. Any byte value \u003c 0x20 (e.g. 0x00) in an encoded data line causes integer underflow: panic in debug builds (overflow checks), wrapping to a wrong 6-bit value in release builds. Trigger: a UU body where any encoded data byte is \u003c 0x20 (e.g. malformed or adversarial input). The uuencoding crate correctly uses wrapping_sub; this path does not.",
+  "acceptance_criteria": "Use wrapping_sub(32) \u0026 0x3F on each encoded byte in decode_uuencode, matching the uuencoding crate. Add a test with a 0x00 byte in the encoded payload to guard regression.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:25:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:32:14Z",
+  "closed_at": "2026-05-04T18:32:14Z",
+  "close_reason": "Fixed wrapping_sub(32) \u0026 0x3F in mime-tree/src/decode.rs; added no-panic test with 0x00 byte",
+  "labels": [
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.1",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:25:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

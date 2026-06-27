@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.12",
+  "title": "verify: no upper bound on certificate bag size — memory DoS from untrusted SignedData",
+  "description": "In verify.rs, the certificate bag is collected from sd.certificates into a Vec\u003cCertificate\u003e with no size limit:\n\n  let bag_certs: Vec\u003cCertificate\u003e = sd.certificates.as_ref()\n      .map(|cs| cs.0.iter().filter_map(...).collect())\n      .unwrap_or_default();\n\nA malicious SignedData could embed thousands of certificates in the bag. Each certificate is cloned into the Vec. Then in build_chain (cert.rs), a HashMap is built over all bag certs, and the chain walk checks each cert by DER re-encoding its subject. The total work is O(bag_size) in memory and O(depth * bag_size) in DER-encode operations.\n\nWhat goes wrong: a crafted SignedData with e.g. 10,000 padded certificates causes O(10,000) Certificate allocations and O(10,000) DER encode operations in the caller's thread, enabling CPU and memory DoS against any server that calls verify() on untrusted S/MIME input.\n\nAffected code: verify.rs lines 103-114 (bag_certs collection), cert.rs build_chain() (HashMap construction from bag).\n\nFix: cap the number of certificates extracted from the bag (e.g. reject if len \u003e 50 or a caller-configurable limit). Return MalformedInput if the cap is exceeded.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:01:52Z",
+  "closed_at": "2026-06-16T00:01:52Z",
+  "close_reason": "Added MAX_BAG_CERTS (100) and MAX_SIGNER_INFOS (32) bounds.",
+  "labels": [
+    "crypto-security",
+    "review",
+    "untrusted-input"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.12",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

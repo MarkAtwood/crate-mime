@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.82",
+  "title": "KariAlgorithm has #[non_exhaustive] but no constructor — callers cannot build it",
+  "description": "KariAlgorithm in smime-tree/src/key.rs is marked #[non_exhaustive] and has all-pub fields but no pub fn new() or Default impl. This means callers outside the crate cannot construct it at all — #[non_exhaustive] prevents struct literal expressions and there is no other construction path. This is not wrong per se for a type that is always received (never constructed by callers), but the intent is not documented. If KariAlgorithm is meant to be output-only (always produced by the crate, never by callers), document that. If callers are ever expected to construct one (e.g. to pass a preferred algorithm to a future API), a constructor must be provided. What goes wrong: future API design is constrained because there is no established construction pattern. File: smime-tree/src/key.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:20:55Z",
+  "closed_at": "2026-06-16T00:20:55Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.82",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

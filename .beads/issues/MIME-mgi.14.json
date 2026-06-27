@@ -1,0 +1,31 @@
+{
+  "id": "MIME-mgi.14",
+  "title": "bag cert search uses find() — skips if first-match subject exists but sig fails on second",
+  "description": "cert.rs validate_chain bag search: 'let parent = bag.iter().find(|candidate| { subject_matches \u0026\u0026 verify_signature(current, candidate).is_ok() })'. The find() closure combines DN match with signature verification. If the bag contains two certs with the same subject DN (CA renewal: same issuer CN, different key), find() will try both because the closure returns false for the first if signature fails. This is actually correct behavior. However, in the trust_anchor path (Step 2), when candidates have the same subject DN, the code collects all valid-time anchors and tries all for signature. In the bag path (Step 3), there is no equivalent retry — it uses find() which stops at the first successful match. If the bag has two certs with the same subject (same renewal scenario), and both have valid time, only the first one that verifies the signature is used. The second is ignored, which is correct. But if the first one fails for reason OTHER than signature (e.g. its to_der() returns Err), find() silently skips it. Divergence: trust_anchor path uses explicit valid_candidates loop, bag path uses implicit find(). The inconsistency is a future maintainer trap.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:11:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:42:40Z",
+  "closed_at": "2026-05-02T15:42:40Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.14",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:11:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

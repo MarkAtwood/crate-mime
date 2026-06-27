@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.56",
+  "title": "encrypt.rs: build_p256_recipient and build_p384_recipient are structural duplicates",
+  "description": "build_p256_recipient and build_p384_recipient (encrypt.rs) share identical structure: extract public key, generate ephemeral, ECDH, ecdh_wrap_cek, build OriginatorPublicKey, build IAS, construct KARI RecipientInfo. They differ only in the curve type (NistP256/NistP384), KDF OID, wrap OID, and wrap key size. Both functions exist because each curve requires a distinct concrete type. Suggested rewrite: extract a generic helper 'fn build_ecdh_recipient\u003cC: elliptic_curve::Curve + ...\u003e(cert, cek, rng, kdf_oid, wrap_oid, wrap_bits) -\u003e Result\u003cRecipientInfo, SmimeError\u003e' and have both callers instantiate it. This removes ~50 lines of duplication and makes it obvious the two code paths are identical in structure.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:31:37Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.56",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

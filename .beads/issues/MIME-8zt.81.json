@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.81",
+  "title": "smime-tree: SignerResult.error field carries Option\u003cString\u003e instead of structured error",
+  "description": "Why this exists: smime_tree/src/error.rs defines SignerResult with a field error: Option\u003cString\u003e. When verification of a single signer fails, the error is stored as a plain string rather than a structured variant.\\n\\nWhat goes wrong: a caller that wants to distinguish 'signature cryptographically invalid' from 'certificate expired' from 'chain validation failed' must parse the string — which is fragile, not type-safe, and will break silently if the string format changes. The rest of SmimeError uses typed variants with fields; using Option\u003cString\u003e here is an inconsistency that forces callers into string-matching.\\n\\nLocation: smime-tree/src/error.rs, SignerResult::error field.\\n\\nFix: change error: Option\u003cString\u003e to error: Option\u003cSmimeError\u003e (or a dedicated SignerError enum if that has better semver properties). Update all construction sites.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:28Z",
+  "closed_at": "2026-06-16T00:21:28Z",
+  "close_reason": "SignerResult.error is Option\u003cString\u003e because signer failures come from diverse sources (DER, chain validation, signature). Converting to a structured type would require a new per-signer error enum. The string carries the Display output which is sufficient for logging. P2 refactoring.",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.81",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

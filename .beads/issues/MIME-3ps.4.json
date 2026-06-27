@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.4",
+  "title": "yencoding: yend size= field parsed but never validated",
+  "description": "decode.rs / header.rs: YendFields.size is parsed but never checked against actual decoded length. When CRC is absent, this is the only integrity check and it is not performed. Either validate or remove the field.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:04:47Z",
+  "closed_at": "2026-05-04T22:04:47Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.4",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

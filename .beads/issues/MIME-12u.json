@@ -1,0 +1,19 @@
+{
+  "id": "MIME-12u",
+  "title": "Review: da4733c decode_limited exact-limit fix",
+  "notes": "Section 0: No correctness bugs found. P0 fix (\u003e= to \u003e) is correct and does not regress any adjacent case. Traced exact-limit, zero-limit, over-limit, multi-line, malformed-line-at-boundary, empty-block-at-zero-limit. All correct. decode() delegation to decode_limited(None) is behaviorally identical (usize::MAX sentinel is safe).\nMaintainer risk: LOW — No new public API, no new footguns, no security surface. The decode() -\u003e decode_limited(None) refactor eliminates maintenance burden. The complexity note update is accurate. The decode_uuencode heuristic fragility was already documented and is not changed by this commit.\nConfidence: 5% chance of missed bug. Least confident flags: (1) the zero-limit+empty-block case (traced carefully, correct but untested). (2) the ambiguous heuristic case where encoding error at exact limit boundary misclassifies as input_was_limited — pre-existing, not changed. Uncertainty driven by: not having run under MIRI; not having a fuzz harness specifically for the exact-limit path. Would raise confidence if: added decode_limited_zero_limit_empty_block test and ran cargo-fuzz for 5 minutes on decode_limited.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:03:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:05:16Z",
+  "close_reason": "All children closed.",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-j5n.1",
+  "title": "Implement Assembler: collect parts, detect gaps, verify CRC32, finish",
+  "description": "Core implementation of yencoding-multi.\n\nAssembler internals:\n- total_size: u64 -- from =ybegin size= of any part (all parts must agree; mismatch -\u003e OutOfRange)\n- parts: Vec\u003c(Range\u003cu64\u003e, Vec\u003cu8\u003e)\u003e -- 0-based ranges and decoded data, sorted by start\n- whole_file_crc32: Option\u003cu32\u003e -- from =yend crc32= when present\n\nadd_part(part: DecodedPart):\n- Convert 1-based begin/end from DecodedPart to 0-based Range\u003cu64\u003e: range = (begin-1)..(end)\n- Verify range is within 0..total_size; else Err(OutOfRange)\n- Check for overlap with existing parts; else Err(OverlappingPart)\n- Store (range, part.data)\n- If part.data.len() != (end - begin + 1) as usize: this is a corrupt part -- decide: store anyway with is_truncated flag, or Err? Recommendation: store with a warning in AssemblyError::TruncatedPart\n\nmissing_ranges() -\u003e Vec\u003cRange\u003cu64\u003e\u003e:\n- Compute the complement of covered ranges within 0..total_size\n- Sorted by start, non-overlapping\n\nis_complete() -\u003e bool:\n- missing_ranges().is_empty()\n\nfinish(self) -\u003e Result\u003cVec\u003cu8\u003e, AssemblyError\u003e:\n- If !is_complete(): Err(Incomplete { missing: missing_ranges() })\n- Allocate Vec\u003cu8\u003e of total_size\n- Write each part's data to its offset (copy_from_slice)\n- If whole_file_crc32 is Some: compute CRC32 of assembled bytes, verify\n- Return Ok(assembled)\n\nTests:\n- 3-part file: add all 3 in order, finish -\u003e correct bytes\n- 3-part file: add out of order (3, 1, 2), finish -\u003e same correct bytes\n- Missing part 2: is_complete() = false, missing_ranges() = [correct range]\n- Overlapping parts: Err(OverlappingPart)\n- Out-of-range part: Err(OutOfRange)\n- CRC32 mismatch on finish: Err(CrcMismatch)\n- Test oracle: assemble known byte patterns split into known ranges; verify reassembled output exactly",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:13:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T17:26:46Z",
+  "closed_at": "2026-05-04T17:26:46Z",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.1",
+      "depends_on_id": "MIME-j5n.4",
+      "type": "supersedes",
+      "created_at": "2026-05-04T10:26:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.1",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:13:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

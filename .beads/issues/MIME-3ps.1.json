@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.1",
+  "title": "yencoding-multi: data/range mismatch silently produces corrupt output",
+  "description": "assembler.rs:122-168: when part.data.len() != (end_0 - begin_0), the code writes the shorter payload but records the declared range as covered. is_complete() returns true and finish() returns corrupt bytes. Must return DataLengthMismatch error instead.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:01:33Z",
+  "closed_at": "2026-05-04T22:01:33Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.1",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

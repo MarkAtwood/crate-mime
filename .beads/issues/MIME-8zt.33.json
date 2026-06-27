@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.33",
+  "title": "uuencoding::encode mode parameter: behavior for values \u003e 0o777 undocumented",
+  "description": "uuencoding::encode() takes a mode: u32 parameter that represents the Unix file permission bits in octal. The UU format uses 6 bits (0o77) per encoded character, and the standard begin line writes the mode as 3 octal digits (0-0o777). What happens when a caller passes 0o1777 (setuid/sticky bit) or 0xFFFFFFFF is not documented. What goes wrong: callers producing UU archives for interoperability with other decoders will silently truncate the mode if the implementation masks it, or produce non-standard output if it doesn't. The fix is to document exactly which bits are preserved and what happens to values outside 0o000–0o777, or to accept a newtype (e.g. UnixMode(u16)) that encodes the constraint. File: uuencoding/src/lib.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:47Z",
+  "closed_at": "2026-06-16T00:18:47Z",
+  "close_reason": "Already documented in this session's changes — mode is formatted as {:03o} and the doc comment explicitly states values above 0o7777 produce longer mode strings. Test encode_mode_large_value covers u32::MAX.",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.33",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

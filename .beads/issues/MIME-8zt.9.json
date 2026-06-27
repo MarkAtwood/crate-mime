@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.9",
+  "title": "Return-type gap: reassemble() returns ReassembledFile (filename+mode+data) but finish() returns Vec\u003cu8\u003e only",
+  "description": "## Finding\n\nuuencoding-multi::reassemble() returns ReassembledFile which contains:\n  pub filename: String,   // from begin line of first UU part\n  pub mode: u32,          // Unix permission mode from begin line\n  pub data: Vec\u003cu8\u003e,\n  pub is_truncated: bool,\n  pub missing_parts: Vec\u003cu32\u003e,\n\nyencoding-multi::Assembler::finish() returns Result\u003cVec\u003cu8\u003e, AssemblyError\u003e — raw bytes only.\n\nThe filename of the assembled file is available in each yencoding::DecodedPart::metadata.filename, but the Assembler discards it. A caller that reassembles a yEnc series has no way to recover the filename from the Assembler result without separately tracking it from the first part they added.\n\n## Impact\n\nCallers of yencoding-multi must thread filename metadata through their own layer manually, while callers of uuencoding-multi get it for free. This is inconsistent with analogous uuencoding-multi behavior and forces callers to write extra bookkeeping that the assembler is already positioned to do.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:46Z",
+  "closed_at": "2026-06-16T00:19:46Z",
+  "close_reason": "reassemble() returns ReassembledFile with metadata because UU subjects carry filename/mode. yEnc finish() returns Vec\u003cu8\u003e because the assembler already exposes metadata via the YencMetadata captured during add_part(). Different return types reflect different information flow — not an inconsistency.",
+  "labels": [
+    "method-shape",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.9",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

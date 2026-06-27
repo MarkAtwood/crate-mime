@@ -1,0 +1,25 @@
+{
+  "id": "MIME-04r.5",
+  "title": "P3: add doc notes for line_length clamping and end_0 conversion",
+  "description": "YencMetadata::line_length field should document that values \u003e255 are clamped to 255. Assembler uses end_0 = e (1-based-inclusive unchanged) as 0-based-exclusive; add clarifying comment.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T00:22:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T00:25:10Z",
+  "closed_at": "2026-05-05T00:25:10Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-04r.5",
+      "depends_on_id": "MIME-04r",
+      "type": "parent-child",
+      "created_at": "2026-05-04T17:22:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

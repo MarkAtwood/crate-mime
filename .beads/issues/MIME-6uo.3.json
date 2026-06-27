@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.3",
+  "title": "sign() wraps content_mime in extra CRLF; verify() would receive different bytes than signed",
+  "description": "sign.rs lines 176-177: the first MIME part (the signed content) is written as: content_mime bytes, then an appended '\\r\\n'. The hash in Step 2 (line 71) is computed over content_mime alone. But RFC 5751 §3.4 requires the signed content to be the exact bytes placed in the first part of the multipart/signed message. A verifier extracting the first part will see content_mime + CRLF (or content_mime without the trailing CRLF depending on multipart boundary parsing), not content_mime alone. The existing test (test_sign_output_accepted_by_openssl) passes because openssl smime -verify strips the CRLF before the boundary before hashing — but a verifier using verify() on the extracted body_range bytes would get a digest mismatch unless they know to strip the CRLF. This is a latent correctness issue for any caller that uses mime-tree to extract the signed part and feeds it to smime-tree's verify().",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:50:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:04:15Z",
+  "closed_at": "2026-05-02T08:04:15Z",
+  "close_reason": "False positive: test_sign_verify_roundtrip_via_mime_tree (new) passes. mime-tree strips the CRLF before the boundary per RFC 2046 §5.1.1, so body_range correctly excludes it. sign() hashes content_mime; verify() receives the same bytes.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.3",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:50:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

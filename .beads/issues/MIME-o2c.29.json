@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.29",
+  "title": "No composition path between ParsedHeader and parse_header_typed; caller must plumb raw bytes manually",
+  "description": "The crate's main public surface is `ParsedMessage`/`ParsedHeader`/`ParsedPart`. The new typed API is `parse_header_typed(form, raw_bytes)`. There is no glue function joining them.\n\nheader_typed.rs:23-28 module docstring tells the caller:\n\n    \"These types are independent of the [`crate::ParsedHeader`] surface, which\n     continues to expose only the decoded raw string. Add a typed view on top\n     of an existing `ParsedHeader` by slicing the original bytes covered by\n     [`crate::ParsedPart::header_range`] and feeding the field value to\n     [`parse_header_typed`].\"\n\nThis sentence offloads three responsibilities onto every caller:\n\n1. Locate `ParsedPart::header_range` for the header they want (it covers the *whole part header block*, not a single field).\n2. Slice within that range to find the specific field's value bytes (the caller must parse the header block themselves — defeating the point of using mime-tree).\n3. Determine the field boundary (the byte after `:` to the byte before the field's CRLF) — RFC 5322 §2.2 has folding rules the caller must re-implement.\n\nCaller-facing consequence: a caller who wants `header:From:asAddresses` cannot write:\n\n    let typed = parse_header_typed_for(\u0026msg, \"From\", HeaderForm::Addresses);\n\nThey must write a custom header-line locator using `ParsedPart::header_range`, hand-roll field-value extraction, and feed bytes to `parse_header_typed`. The crate's two public APIs do not compose.\n\nA typical convenience constructor would be one of:\n\n    impl ParsedMessage {\n        pub fn header_typed(\u0026self, raw: \u0026[u8], name: \u0026str, form: HeaderForm)\n            -\u003e Option\u003cHeaderValueTyped\u003e;\n    }\n\n    pub fn parse_header_typed_from(raw: \u0026[u8], header: \u0026ParsedHeader, form: HeaderForm)\n        -\u003e HeaderValueTyped;\n\nWithout these, the user-facing experience is: \"the crate gives you a `ParsedHeader` but you still have to do byte-range arithmetic to use the typed parsing it just added\".\n\nThis is P3 because the workaround (write a header locator) is mechanical and standard for byte-range-indexed parsers. But the module docstring explicitly directing callers to do plumbing themselves is a smell — it documents a missing convenience rather than providing it.\n\nLine refs:\n- header_typed.rs:23-28 — module docstring explicitly offloading the composition.\n- part.rs — `ParsedHeader` and `ParsedPart::header_range` (not read in this review pass; cited from AGENTS.md public-surface notes).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:37:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:18:43Z",
+  "closed_at": "2026-05-14T16:18:43Z",
+  "close_reason": "Final API additions: (.14) Added EmailAddress::is_addressable() helper; keeps the Option\u003cString\u003e address field but eliminates the defensive is_some() boilerplate at every call site. Doctest demonstrates the filter pattern. (.28) Added HeaderForm::Text and HeaderValueTyped::Text(String) implementing RFC 8621 §4.1.2.2 — whitespace unfold, RFC 2047 decode (via mail-parser's parse_unstructured), NFC normalisation (via new unicode-normalization dep). parse_text helper, asText accepted by FromStr and emitted by Display. Module-level table now lists all 7 RFC 8621 forms. Tests cover RFC 2047 decode and NFD-\u003eNFC normalisation. (.29) Fixed misleading module doc that directed callers at ParsedPart::header_range slicing; the natural path is header.value.as_bytes(). Added parse_header_typed_from(\u0026ParsedHeader, HeaderForm) convenience helper that wraps that pattern.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.29",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:37:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

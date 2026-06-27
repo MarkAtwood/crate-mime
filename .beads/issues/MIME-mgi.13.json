@@ -1,0 +1,31 @@
+{
+  "id": "MIME-mgi.13",
+  "title": "SmimeError::Other(String) used for 8+ distinct failure modes",
+  "description": "SmimeError::Other(String) is used for: RSA/EC public key decode failures, AES-CBC unpad errors, KEK/CEK length mismatches, ANSI X9.63 KDF failure, AES-KW failure, and RsaPublicKey parse errors. These are all distinct failure modes. Callers who want to handle 'bad padding' differently from 'bad public key' cannot do so without parsing error strings. Most of these errors are not recoverable by the caller, so Other is tolerable for now, but AES unpad errors (decrypt_aes128_cbc, decrypt_aes256_cbc) and public key decode errors (build_rsa_recipient, build_p256/p384_recipient) are plausible things callers might want to distinguish. Maintenance consequence: when a new caller needs to distinguish these, the string must be parsed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:11:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:42:43Z",
+  "closed_at": "2026-05-02T15:42:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.13",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:11:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

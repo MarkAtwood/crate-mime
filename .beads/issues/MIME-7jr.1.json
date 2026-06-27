@@ -1,0 +1,29 @@
+{
+  "id": "MIME-7jr.1",
+  "title": "try_decrypt_kari swallows UnsupportedAlgorithm as NoMatchingRecipient",
+  "description": "In decrypt.rs try_decrypt_kari: if map_kari_alg returns Err (unsupported ECDH OID), function returns Ok(None) — treating the KARI as if it simply doesn't match. When a KARI entry does match the recipient but uses an unsupported algorithm, the caller receives Err(NoMatchingRecipient) rather than Err(UnsupportedAlgorithm). Caller cannot distinguish 'wrong key' from 'algorithm not supported by crate', and may waste time debugging the wrong thing. Fix: propagate UnsupportedAlgorithm errors from map_kari_alg rather than swallowing them as Ok(None).",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:48:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:49:32Z",
+  "closed_at": "2026-05-02T07:49:32Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-7jr.1",
+      "depends_on_id": "MIME-7jr",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:48:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

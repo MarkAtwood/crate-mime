@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.15",
+  "title": "parse.rs preview double-limits: decode max_bytes=256, then chars().take(256)",
+  "description": "parse.rs lines 43-49: decode_body_value is called with max_bytes=Some(256) (byte limit), then .chars().take(256) is applied to the result. For multibyte UTF-8 (e.g. Chinese text), 256 bytes decode to fewer than 256 chars, so the preview is further truncated to fewer than 256 chars. For ASCII, 256 bytes == 256 chars, which is fine. But for single-byte encodings like ISO-8859-1 that require 2 UTF-8 bytes per char (e.g. extended Latin), 256 decoded bytes encode to up to 512 UTF-8 bytes, and .take(256) then cuts the preview at 256 *characters* not *source bytes*. The intent (256-char preview) is correct but the byte limit and char limit are redundant; the byte limit may truncate mid-character and is_encoding_problem is then set unnecessarily.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:20Z",
+  "closed_at": "2026-05-02T18:49:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.15",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "MIME-ksl.5",
+  "title": "Implement scan() — find UU blocks by byte offset in arbitrary text",
+  "description": "Implement pub fn scan(input: \u0026[u8]) -\u003e impl Iterator\u003cItem = Result\u003cBlockLocation, UuError\u003e\u003e in src/scan.rs.\n\nBlockLocation: { begin_offset: usize, end_offset: usize, metadata: BlockMetadata }\n  begin_offset: byte index of the 'b' in the 'begin' line\n  end_offset: byte index of the first byte AFTER the terminating 'end\\n' (or end of input if end line is missing)\n\nThis is the inline-uuencode case: UU blocks embedded in prose with no CTE header.\n\nAlgorithm:\n1. Scan input line by line, tracking byte offset of each line start.\n2. When a line matches /^begin(-base64)? / (ASCII, case-insensitive): record begin_offset.\n3. If begin-base64: yield Err(UuError::BeginBase64) with begin_offset in the error (add offset field to BeginBase64 variant), advance past the ==== terminator, continue scanning.\n4. Otherwise: decode the block line by line from that point (reuse decode_line). Record end_offset after the end line (or at EOF if end is missing, setting is_truncated=true on the BlockLocation -- add is_truncated: bool field).\n5. After end: resume scanning for the next begin line.\n\nThe 'begin' line must start at the beginning of a line (at offset 0, or immediately after a \\n). Do not match 'begin' in the middle of a line.\n\nThis function must not decode the data eagerly for blocks the caller does not inspect -- but since Rust iterators are lazy and we need to advance past the block to find the next one, we do decode while scanning. The data is stored in BlockLocation -- add data: Vec\u003cu8\u003e field.\n\nActually, on reflection: BlockLocation should include the fully decoded data, since we must decode to find the end anyway. Rename to ScannedBlock:\n  pub struct ScannedBlock {\n      pub begin_offset: usize,\n      pub end_offset: usize,\n      pub metadata: BlockMetadata,\n      pub data: Vec\u003cu8\u003e,\n      pub is_truncated: bool,\n  }\n\nTests:\n- Single block in plain text: correct offsets, data, metadata\n- Two sequential blocks: both found, offsets non-overlapping and correct\n- Block with surrounding prose: begin_offset \u003e 0, end_offset \u003c input.len()\n- No blocks: iterator yields nothing\n- begin-base64 block: yields Err, scanning continues after it\n- Truncated block (no end): is_truncated=true, end_offset=input.len()\n- Verify begin_offset and end_offset by slicing input: \u0026input[b.begin_offset..b.end_offset] must start with 'begin' and end with 'end\\n' (or EOF)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:56:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:57:49Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.5",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:56:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.5",
+      "depends_on_id": "MIME-ksl.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

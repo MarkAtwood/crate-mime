@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.65",
+  "title": "ParsedPart: all fields pub with no constructor allows callers to build inconsistent body_range → decode_body_value UB",
+  "description": "## Problem\n\n`mime-tree/src/part.rs` defines `ParsedPart` with all fields `pub` and no constructor:\n\n```rust\npub struct ParsedPart {\n    pub part_id: String,\n    pub content_type: String,\n    ...\n    pub body_range: (u32, u32),\n    ...\n}\n```\n\nThe invariant 'body_range indexes into the same `raw` buffer that will be passed to `decode_body_value(raw, part, ...)`' is not enforced and cannot be enforced without a constructor that takes `raw` at construction time.\n\nCallers can legally write:\n\n```rust\nlet part = ParsedPart {\n    body_range: (1_000_000, 50),  // points nowhere sensible\n    ...\n};\ndecode_body_value(some_other_raw, \u0026part, None)  // range mismatch\n```\n\n## What happens\n\n`decode_body_value` in `mime-tree/src/decode.rs` slices `raw` using `body_range` and returns `ParseError::InvalidRange` if the range is out of bounds, which is safe. However:\n\n1. The error type gives no indication that the range came from a different buffer than intended.\n2. Callers who store `ParsedPart` (which is `Serialize + Deserialize`) and later pass it alongside a different `raw` buffer get silent wrong results (range happens to be in-bounds for the wrong buffer) or the `InvalidRange` error — neither communicates the root cause.\n3. The scan functions `scan_inline_uuencode` and `scan_inline_yencode` carry the same invariant but enforce it with the same silent-bounds-check approach.\n\n## What goes wrong if left as-is\n\nA common pattern in JMAP/IMAP systems is to store the `ParsedMessage` at parse time and re-fetch the raw bytes later from a blob store for decode. If the raw bytes change between parse and decode (e.g. a re-fetch returns differently-encoded bytes), the mismatch is undetectable. The API contract that `raw` must be the same buffer is implicit and undocumented.\n\n## Files\n\n- `mime-tree/src/part.rs` — `ParsedPart` struct definition\n- `mime-tree/src/decode.rs` — `decode_body_value`\n- `mime-tree/src/uuencode.rs`, `mime-tree/src/yenc.rs` — scan functions with same invariant",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:12:40Z",
+  "closed_at": "2026-06-16T00:12:40Z",
+  "close_reason": "Resolved by #[non_exhaustive] added in MIME-8zt.19. External callers can no longer construct ParsedPart with struct literal syntax.",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.65",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

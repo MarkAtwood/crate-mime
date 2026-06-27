@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.52",
+  "title": "walk.rs: \u0026mut Option\u003c\u0026mut Vec\u003cString\u003e\u003e type signature requires explanation at every call site",
+  "description": "mime-tree/src/walk.rs: the RFC 8621 §4.1.4 walk uses \u0026mut Option\u003c\u0026mut Vec\u003cString\u003e\u003e to model JavaScript null-rebind semantics (callee sets the option to None to signal 'stop appending here'). This is the correct semantic model, and the comment explains it. But every call site that passes one of these must call as_deref_mut() to create a temporary, and readers unfamiliar with the pattern must read the comment and mentally simulate the null-propagation semantics. An alternative is a newtype wrapper (e.g., AppendTarget\u003c'_\u003e) with a .disable() method, which makes the intent visible at usage rather than only in comments. The pattern recurs in 8 call sites in walk.rs and creates cognitive overhead each time.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:43Z",
+  "closed_at": "2026-06-16T00:52:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.52",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

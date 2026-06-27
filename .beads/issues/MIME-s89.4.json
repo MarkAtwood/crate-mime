@@ -1,0 +1,24 @@
+{
+  "id": "MIME-s89.4",
+  "title": "parse_subject: part_total=Some(0) possible but undocumented",
+  "description": "A subject like 'file.bin (3/0)' produces part_total=Some(0). Passing this to PartCollection::with_total(0) makes is_complete() immediately true with no parts. Added doc warning to parse_subject.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:23:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:24:03Z",
+  "closed_at": "2026-05-04T19:24:03Z",
+  "close_reason": "Fixed: parse_subject doc warns about part_total=Some(0) and interaction with with_total.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-s89.4",
+      "depends_on_id": "MIME-s89",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:23:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "MIME-buo",
+  "title": "Release wave 2026-05-11: uuencoding 0.3, uuencoding-multi 0.2.1, mime-tree 0.3, smime-tree 0.3",
+  "description": "Coordinated crates.io publish wave covering the unpublished work accumulated since the 2026-05-04 publish window.\n\nForced publish order (dep graph):\n1. uuencoding 0.3.0 — already version-bumped locally in commit d8b22fd; 2 review-loop fix commits since 0.2.0\n2. uuencoding-multi 0.2.1 — 2 review-loop fix commits, needs uuencoding 0.3.0 published first\n3. mime-tree 0.3.0 — depends on uuencoding 0.3.0; breaking byte-range type change + RFC 8621 typed-header API\n4. smime-tree 0.3.0 — depends on mime-tree 0.3.0; large breaking+correctness batch (ECDH/KARI, SystemTime, RevocationChecker, multi-signer, non_exhaustive, P-384 digest-selection bugfix)\n\nPre-publish quality gate already run and passed: cargo fmt, clippy -D warnings, full workspace test suite.\n\nSkip in this wave: yencoding, yencoding-multi (0 commits since last publish).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-11T02:37:22Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-11T02:45:32Z",
+  "close_reason": "Publish wave complete. 6 crates published (uuencoding 0.3.0, uuencoding-multi 0.2.1, yencoding 0.2.0, yencoding-multi 0.2.0, mime-tree 0.3.0, smime-tree 0.3.0). Two unplanned bumps (yencoding family) added mid-wave when verify failure surfaced an unpublished breaking change. P0 follow-up MIME-5ha filed for yanked pkix-chain dep in smime-tree 0.3.0."
+}

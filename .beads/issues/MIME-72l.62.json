@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.62",
+  "title": "RFC 8621 §4.1.4 walk uses Option\u003c\u0026mut Vec\u003e to model JS nullable array references exactly",
+  "description": "walk.rs parse_structure() takes text_body and html_body as Option\u003c\u0026mut Vec\u003cString\u003e\u003e. Setting one to None inside the recursion suppresses further pushes to that list (the 'nullify' step from the RFC algorithm). A future contributor might refactor this to use bool flags or a separate enum to 'make it clearer'. That would be wrong: the RFC 8621 §4.1.4 algorithm is specified in JavaScript pseudocode where textBody and htmlBody are nullable references that get set to null. The Option\u003c\u0026mut Vec\u003e type maps that semantics directly — None means 'this list has been nullified by being inside a multipart/alternative that already found a matching part type'. Any other encoding would require careful re-derivation from the RFC pseudocode to avoid subtle body classification bugs.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:43Z",
+  "closed_at": "2026-05-02T06:24:43Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.62",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:27:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

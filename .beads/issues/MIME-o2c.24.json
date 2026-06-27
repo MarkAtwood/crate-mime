@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.24",
+  "title": "Derived PartialEq/Eq on HeaderDateTime is field-wise, not instant-wise: equal moments at different offsets compare unequal",
+  "description": "header_typed.rs:67-79 derives `PartialEq, Eq` on HeaderDateTime by field. The derived equality compares year/month/day/hour/minute/second/tz_before_gmt/tz_hour/tz_minute byte-for-byte.\n\nThat means two HeaderDateTime values representing the *same instant* in time at *different* offsets compare as not-equal:\n\n    let a = HeaderDateTime { year: 2024, month: 1, day: 1, hour: 12, minute: 0, second: 0,\n                             tz_before_gmt: false, tz_hour: 0, tz_minute: 0 };  // 12:00 UTC\n    let b = HeaderDateTime { year: 2024, month: 1, day: 1, hour: 13, minute: 0, second: 0,\n                             tz_before_gmt: false, tz_hour: 1, tz_minute: 0 };  // 13:00 +0100\n    assert_ne!(a, b);   // but they are the same instant\n\nCaller-facing consequence: a JMAP server normalising dates from disparate clients (some sending UTC, some sending +0100) will treat logically-identical timestamps as distinct values. Set/HashMap membership, dedup, and equality checks all silently misbehave.\n\nThe contract `parse_header_typed` documents (line 178) is \"best-effort parse the RFC 5322 §3.3 date-time\". RFC 5322 §3.3 explicitly states that a \"+HHMM\" or \"-HHMM\" offset is the difference from UTC — semantically equivalent moments. The Rust PartialEq derive does not reflect that semantics, and the doc does not warn callers.\n\nFix options:\n- Document that PartialEq is field-wise (not instant-wise). Direct the caller to `to_timestamp()` for instant-equality.\n- Drop the derive and write a hand-rolled PartialEq that compares `to_timestamp()` values. (Then `name: 2024 +0000` and `2024 +0100` are not-equal at the structural level — losing structural comparison.)\n- Make HeaderDateTime opaque (no public fields) and require `to_timestamp()`/component accessors. Callers can no longer derive their own meaningful equality.\n\nThis is distinct from MIME-o2c.9 (constructable without validation) and MIME-o2c.10 (mirrors mail_parser::DateTime). It is about *behavior of the trait derive*, not field validity or upstream mirroring.\n\nLine refs:\n- header_typed.rs:67  `#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]`\n- header_typed.rs:75-78 `tz_before_gmt`, `tz_hour`, `tz_minute` — fields that participate in derived Eq.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:36:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:07:13Z",
+  "closed_at": "2026-05-14T16:07:13Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.24",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:36:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

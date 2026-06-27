@@ -1,0 +1,31 @@
+{
+  "id": "MIME-68n.9",
+  "title": "sign(): signed_data_version comment will mislead multi-signer extensions",
+  "description": "sign.rs line 91-93: comment says 'RFC 5652 §5.1: SignedData.version is V3 if any SignerInfo uses SKI, else V1' but then sets signed_data_version = signer_info_version. This is coincidentally correct for one signer, but any contributor adding multi-signer support would implement this as 'iterate all signers, use V3 if any uses SKI'. The code needs either a comment explaining the single-signer assumption or a proper implementation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:45:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:48:07Z",
+  "closed_at": "2026-05-02T06:48:07Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.9",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:45:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

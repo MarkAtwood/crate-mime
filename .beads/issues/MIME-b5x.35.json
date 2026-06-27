@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.35",
+  "title": "ParsedPart has no tree-walk API (no find_by_id, no iter_parts)",
+  "description": "ParsedPart exposes .children: Vec\u003cParsedPart\u003e but no method to find a part by ID. The README example calls find_by_id() which doesn't exist. Callers needing to access a part by ID must implement recursive tree walking themselves. This is a leaky abstraction — the crate defines the tree structure but forces callers to re-implement traversal. Fix: add 'fn find_by_id(\u0026self, id: \u0026str) -\u003e Option\u003c\u0026ParsedPart\u003e' to ParsedPart, or add an Iterator that yields (part_id, part_ref) pairs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:28:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:35:08Z",
+  "closed_at": "2026-05-02T07:35:08Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "iterators",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.35",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:28:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

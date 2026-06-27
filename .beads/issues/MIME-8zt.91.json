@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.91",
+  "title": "smime-tree/encrypt.rs: build_mime not annotated #[must_use]",
+  "description": "Why this exists: smime_tree/src/encrypt.rs contains fn build_mime which constructs and returns the MIME envelope bytes. This is a pure function — it takes inputs, produces a Vec\u003cu8\u003e, and has no side effects. The Rust standard practice for pure functions that return meaningful values is to annotate them #[must_use] so that accidentally discarding the return value produces a compile warning.\\n\\nWhat goes wrong: a call to build_mime(...) whose return value is silently dropped produces no warning. This is unlikely in practice (the function is private and always called at a single site that uses its return value), but the annotation documents intent and guards against future refactors that might accidentally drop the result.\\n\\nLocation: smime-tree/src/encrypt.rs, fn build_mime.\\n\\nFix: add #[must_use] to fn build_mime.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:25Z",
+  "closed_at": "2026-06-16T00:22:25Z",
+  "close_reason": "build_mime is private. #[must_use] on private functions has no external benefit.",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.91",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-qlt.5",
+  "title": "sign() uses MalformedInput for MIME boundary collision, wrong semantic",
+  "description": "sign.rs line 351 returns SmimeError::MalformedInput for the case where the derived boundary string appears in the content_mime input. The MalformedInput variant is documented as 'structurally malformed CMS input' — but boundary collision is not a CMS structural issue, it is a property of the caller-supplied MIME content. SmimeError::Other would be a better fit, or a dedicated variant. This is cosmetic: it cannot cause incorrect behavior, only slightly confusing diagnostics.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:12:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:17:07Z",
+  "closed_at": "2026-05-02T08:17:07Z",
+  "close_reason": "Opinion: MalformedInput is the closest available variant for boundary collision; semantics are acceptable pre-1.0.",
+  "labels": [
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-qlt.5",
+      "depends_on_id": "MIME-qlt",
+      "type": "parent-child",
+      "created_at": "2026-05-02T01:12:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.48",
+  "title": "UnknownHeaderForm(pub String) inner value publicly accessible, bypassing abstraction",
+  "description": "UnknownHeaderForm in mime-tree/src/header_typed.rs is a tuple struct with a public inner String: `pub struct UnknownHeaderForm(pub String)`. This exposes the internal representation directly. What goes wrong: if the crate ever needs to change the internal representation (e.g. to a Cow\u003cstr\u003e or a dedicated newtype), callers who access .0 directly will break. Additionally, callers can construct UnknownHeaderForm(\"anything\".to_string()) which may or may not be meaningful depending on how the type is used. The fix is to make the inner field private (`pub struct UnknownHeaderForm(String)`) and provide an as_str() or into_string() accessor, or derive Deref\u003cTarget=str\u003e. File: mime-tree/src/header_typed.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:45Z",
+  "closed_at": "2026-06-16T00:18:45Z",
+  "close_reason": "UnknownHeaderForm(pub String) — the pub field is harmless since the type is only constructed by FromStr and only used for error reporting. Making it private would require adding an accessor for the same data. Opinion.",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.48",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

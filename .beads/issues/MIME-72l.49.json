@@ -1,0 +1,77 @@
+{
+  "id": "MIME-72l.49",
+  "title": "cert.rs and verify.rs: verify_rsa_pkcs1 and ecdsa helpers duplicated",
+  "description": "verify_rsa_pkcs1, verify_ecdsa_p256, and verify_ecdsa_p384 are implemented nearly identically in both cert.rs (for cert chain validation) and verify.rs (for SignerInfo verification). The only difference is error mapping: cert.rs maps to SmimeError::CertChain, verify.rs maps to SmimeError::Io. Suggested rewrite: move the three functions to a shared internal module (e.g. crypto_verify) with a caller-supplied error mapper, or accept a closure/fn pointer for the error type. This eliminates the duplication and ensures a fix to one path (e.g. switching to a higher-level RustCrypto verify API) applies to both callers.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:34:03Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-677.10",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-677.3",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-72l.45",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-677.14",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-72l.52",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.49",
+      "depends_on_id": "MIME-72l.37",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

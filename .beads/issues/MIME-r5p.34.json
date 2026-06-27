@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.34",
+  "title": "walk.rs parse_structure: text_body/html_body as Option\u003c\u0026mut Vec\u003e is harder to follow than a wrapper type",
+  "description": "walk.rs parse_structure uses Option\u003c\u0026'a mut Vec\u003cString\u003e\u003e for text_body and html_body to model nullable JS arrays. The resulting borrow patterns (*html_body = None; if let Some(ref mut tb) = text_body) are verbose. Suggested rewrite: introduce a small wrapper enum (Active(Vec\u003cString\u003e) | Nullified) with push/drain methods. This makes the nullification state explicit and eliminates the Option\u003c\u0026mut Vec\u003e reborrow dance. The algorithm becomes a direct translation of the RFC JS pseudocode.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:40:29Z",
+  "closed_at": "2026-05-02T18:40:29Z",
+  "close_reason": "Evaluated BodyList\u003c'a\u003e wrapper approach. Net assessment: wrapper saves ~8-10 lines at call sites but requires ~15 lines for type definition + methods — code is slightly longer overall. The existing doc comment on parse_structure already explains Option\u003c\u0026mut Vec\u003e in RFC terms. The hardest section (end-of-alternative cross-population) does not simplify proportionally. *html_body = None with RFC citation comments is already readable. Introducing an indirection type adds cognitive load for a new reader without paying for itself. All 7 walk.rs tests pass; baseline confirmed. No simpler alternative without correctness risk.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.34",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

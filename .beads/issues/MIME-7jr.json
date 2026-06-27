@@ -1,0 +1,19 @@
+{
+  "id": "MIME-7jr",
+  "title": "Final convergence review",
+  "notes": "Maintainer risk: LOW — Two new findings: one P0 correctness bug (misleading error variant on KARI unsupported algorithm path), one P1 API-lock-in (KariAlgorithm missing non_exhaustive). No security issues. No new maintainability or documentation concerns.\nIdiom rating: CLEAN — No new ownership, error handling, iterator, type design, trait, lifetime, or unsafe findings. The two prior-pass expect() calls in production code have provable safety invariants documented in comments. No clippy-level issues. The codebase is idiomatically consistent with RustCrypto conventions.\nConfidence: 5% chance of missed bug. Least confident flags: KARI path in general (only RSA decrypt path has a real-message OpenSSL oracle; KARI round-trip has no integration test). Uncertainty driven by: no KARI-path integration test against an external oracle. Would raise confidence if: an OpenSSL KARI encrypt + smime-tree decrypt integration test were added.\nRust idiom confidence: 5% chance of missed issue. Least confident flags: none. Uncertainty driven by: pre-release dependency versions (all major deps are RCs) could have subtle API behavior differences from final releases.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:45:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T07:49:34Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-p4h.4",
+  "title": "smime-tree: lib.rs has no crate-level documentation — docs.rs shows nothing",
+  "description": "smime-tree/src/lib.rs has only module declarations and pub use re-exports; no //\\! crate-level doc comment. Consequence: docs.rs renders a blank crate overview; cargo doc --open shows no description, no usage example, no list of operations. Users arriving at crates.io documentation cannot understand what the crate does without reading the README or CLAUDE.md.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:14:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:21:44Z",
+  "closed_at": "2026-05-02T14:21:44Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.4",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:14:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

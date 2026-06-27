@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.20",
+  "title": "scan() and decode() diverge: consecutive terminator lines",
+  "description": "scan() and decode() return different is_truncated values for input with two consecutive terminator lines (backtick or space) before the end line.\n\nReproduction: Input b'begin 644 f\\n#0V%T\\n\\x60\\n\\x60\\nend\\n'\n\ndecode(): first backtick triggers look-ahead over remaining lines. The second backtick is not b\"end\" and not empty (len=1), so the look-ahead loop breaks -\u003e break outer -\u003e is_truncated=true.\n\nscan(): first backtick -\u003e Ok(0) -\u003e saw_terminator=true. Second backtick -\u003e decode_line returns Ok(0) -\u003e saw_terminator=true (already). \"end\" -\u003e found_end=true -\u003e is_truncated=false.\n\nConfirmed by test: assertion 'decode.is_truncated == scan.is_truncated' fails with left=true, right=false.\n\nRoot cause: decode.rs look-ahead (lines 156-165) treats any non-empty non-\"end\" line after the terminator as malformed. scan.rs re-uses decode_line for post-terminator lines and only transitions to truncated on Ok(n\u003e0) or Err, allowing multiple Ok(0) responses to chain indefinitely.\n\nImpact: Callers using scan() then decode() on the same slice observe different is_truncated flags for the same block.\n\nFix: In scan.rs handle_block(), after the terminator is seen, accept only strictly-empty lines (b\"\") between terminator and end, matching decode.rs look-ahead semantics. Additional backtick/space lines should trigger truncation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:26Z",
+  "closed_at": "2026-05-04T22:55:26Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.20",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

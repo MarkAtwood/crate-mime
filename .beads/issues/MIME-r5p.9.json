@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.9",
+  "title": "is_none_or requires Rust 1.82; MSRV is 1.85 so this is fine, but verify",
+  "description": "walk.rs uses Option::is_none_or() which was stabilized in Rust 1.82. MSRV in Cargo.toml is now 1.85 so this compiles. However the CLAUDE.md top-level workspace file says MSRV 1.75 for mime-tree — this is now stale/conflicting with the per-crate Cargo.toml which was bumped to 1.85. The workspace CLAUDE.md still says 'MSRV: 1.75 (mime-tree)'. Need to update the workspace CLAUDE.md to 1.85 so downstream contributors don't set up the wrong toolchain.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:00:33Z",
+  "closed_at": "2026-05-02T18:00:33Z",
+  "close_reason": "MSRV is 1.85; is_none_or requires 1.82. No issue.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.9",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

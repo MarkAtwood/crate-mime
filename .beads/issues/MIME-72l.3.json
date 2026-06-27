@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.3",
+  "title": "decrypt/verify: ci.content.to_der() double-wraps EnvelopedData/SignedData",
+  "description": "NOT A BUG: der::Any::to_der() re-encodes with the Any's own tag (SEQUENCE) + value bytes, producing exactly the EnvelopedData/SignedData DER. Confirmed by test_decrypt_openssl_encrypted passing. Closing.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:27:16Z",
+  "closed_at": "2026-05-02T05:27:16Z",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.3",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

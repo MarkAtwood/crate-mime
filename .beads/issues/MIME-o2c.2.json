@@ -1,0 +1,30 @@
+{
+  "id": "MIME-o2c.2",
+  "title": "URLs form silently mis-parses bare URLs (no angle brackets)",
+  "description": "RFC 8621 §4.1.2.7: 'Any value outside of the angle bracket arguments MUST be ignored.' Bare URLs like 'https://example.com/' (no \u003c\u003e) are spec-required to be ignored, but the implementation pipes them through mail_parser::MessageStream::parse_address. The address parser treats ':' as a group separator and '/' as token content, so 'https://example.com/u/abc' is parsed as group 'https' containing addresses '//example.com/u/abc'. The address field of those parsed addrs may then surface as a URL in HeaderValueTyped::URLs, violating the spec. Probe: assert_eq!(parse_header_typed(HeaderForm::URLs, b\"https://example.com/u/abc\"), HeaderValueTyped::URLs(vec![])) — expected to fail today; expected actual is some garbage list. Fix: pre-scan raw bytes for \u003c...\u003e-delimited URL substrings and only feed those to the address parser, OR write a small dedicated \u003cURL\u003e tokenizer in this module.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T04:59:17Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:48:30Z",
+  "closed_at": "2026-05-14T15:48:30Z",
+  "close_reason": "Fixed: URLs form now uses a dedicated RFC 2369 bracket tokenizer rather than mail-parser's address parser. Bare URLs (no \u003c...\u003e framing) produce empty result per RFC 8621 §4.1.2.7. URLs containing commas, colons (tel:, https:), and CRLF folding artifacts are now handled correctly. Contract is mime-tree's own, not delegated.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.2",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-13T21:59:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

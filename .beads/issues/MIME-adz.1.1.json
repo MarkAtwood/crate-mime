@@ -1,0 +1,34 @@
+{
+  "id": "MIME-adz.1.1",
+  "title": "mime-tree: error types (ParseError)",
+  "description": "SmimeError and ParseError are needed before any other module can compile. Define ParseError in error.rs: variants for truly unparseable input (empty bytes, no headers). Export from crate root. Must implement std::error::Error and Display.",
+  "acceptance_criteria": "error.rs compiles; ParseError implements std::error::Error",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:15:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T04:44:30Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.1.1",
+      "depends_on_id": "MIME-adz.1",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:15:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.1.1",
+      "depends_on_id": "MIME-adz.3",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:17:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

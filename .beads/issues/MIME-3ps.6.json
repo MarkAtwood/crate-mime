@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.6",
+  "title": "uuencoding: decode() stops at 'beginners' before finding real begin line",
+  "description": "decode.rs:54-93: begin search matches any 5-char 'begin' prefix with no delimiter check. 'beginners guide...' before a real begin line causes decode() to return InvalidBeginLine without finding the actual block. Fix: require whitespace or '-' at position 5, matching scan.rs is_begin_line().",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:04:52Z",
+  "closed_at": "2026-05-04T22:04:52Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.6",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

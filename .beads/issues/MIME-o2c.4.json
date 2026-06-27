@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.4",
+  "title": "Public structs missing #[non_exhaustive]: EmailAddress, AddressGroup, HeaderDateTime",
+  "description": "header_typed.rs:40-46 (EmailAddress), 55-61 (AddressGroup), 67-79 (HeaderDateTime) all expose public structs with public fields and no #[non_exhaustive].\n\nHeaderValueTyped (line 153) and HeaderForm (line 131) correctly carry #[non_exhaustive]. The three struct types do not. This is asymmetric and locks the contract in three ways:\n\n1. External callers can pattern-destructure with `let EmailAddress { name, address } = e;`. Adding a third field later (e.g., RFC 8621 may grow `originalDisplayName` or similar) is a breaking change for every caller that destructures, even if they didn't care about the new field.\n\n2. External callers can struct-literal-construct: `EmailAddress { name: ..., address: ... }`. Adding a field is again breaking.\n\n3. HeaderDateTime is the worst case: 9 public fields. The author may want to add subsecond precision, BC dates (i32 year), or a calendar tag. Without #[non_exhaustive] every change is a major bump.\n\nCaller-facing consequence: maintainer cannot evolve the data model without forcing every downstream crate to update destructuring patterns. The 0.x series is supposed to be where this churn lives, but #[non_exhaustive] is the standard escape hatch and is missing.\n\nFix: add #[non_exhaustive] to all three structs, and add `fn new(...)` or builder constructors for callers that need to build instances. Document that fields may be added.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:59:34Z",
+  "closed_at": "2026-05-14T15:59:34Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.4",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

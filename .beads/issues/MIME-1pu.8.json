@@ -1,0 +1,29 @@
+{
+  "id": "MIME-1pu.8",
+  "title": "verify.rs error 'not found in certificate bag' omits trust anchors",
+  "description": "verify.rs:161 returns fail(None, 'signer cert not found in certificate bag') but find_cert() searches both the CMS certificate bag AND the trust anchors. A user debugging why verify() failed on a self-signed cert or a cert whose issuer is a direct trust anchor will be misled into thinking the cert bag is the only place searched. Should read 'signer cert not found in certificate bag or trust anchors'.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:32:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:55:19Z",
+  "closed_at": "2026-05-02T13:55:19Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.8",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:32:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

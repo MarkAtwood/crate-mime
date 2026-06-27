@@ -1,0 +1,25 @@
+{
+  "id": "MIME-n33.5",
+  "title": "yencoding-multi: begin=0 silently accepted via saturating_sub",
+  "description": "P1: b.saturating_sub(1) silently converts begin=0 to begin_0=0 instead of returning MalformedPartRange. yEnc spec mandates begin \u003e= 1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:44:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:50:01Z",
+  "closed_at": "2026-05-04T23:50:01Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-n33.5",
+      "depends_on_id": "MIME-n33",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:44:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

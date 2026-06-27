@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.8",
+  "title": "EmailAddress.name / AddressGroup.name trim-and-None-on-empty behavior undocumented",
+  "description": "header_typed.rs:42-43 EmailAddress.name doc: \"Display name from the `mailbox`, RFC 2047 encoded-words already decoded.\"\n\nheader_typed.rs:57-58 AddressGroup.name doc: \"Display name of the group, or `None` for ungrouped mailboxes.\"\n\nImplementation (convert_addr lines 281-302 and group_addresses lines 321-348) performs additional transformations that the doc does not mention:\n\n1. Surrounding ASCII whitespace is trimmed off the decoded display name.\n2. A name that is empty after trimming is mapped to `None` rather than to `Some(String::new())`.\n\nThese are intentional per the RFC 8621 §4.1.2.3 quoting rules cited in the source comment, but the public-facing doc on the EmailAddress / AddressGroup struct fields does not state them. RFC 8621 is not part of mime-tree's caller contract — callers depending on this crate do not have to read RFC 8621 to know what the fields contain.\n\nCaller-facing consequence: a caller round-tripping a header (parse, edit, serialize) will silently lose leading/trailing whitespace in display names. A caller checking `email.name.is_some()` to detect \"name was present in source\" gets a false negative when the name was `\"   \"` (whitespace only). Without doc, this is a bug-shaped surprise.\n\nFix: update the EmailAddress.name and AddressGroup.name doc comments to state the trim + empty-becomes-None behavior, citing RFC 8621 §4.1.2.3 if useful.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:06:54Z",
+  "closed_at": "2026-05-14T16:06:54Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.8",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

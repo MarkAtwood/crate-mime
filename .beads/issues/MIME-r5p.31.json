@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.31",
+  "title": "ecdh_wrap_cek match on kek_len duplicates identical blocks for 16 vs 32",
+  "description": "ecdh_wrap_cek() has two nearly identical arms in a match on kek_len. The only differences are the slice-to-array coercions and the KwAes128 vs KwAes256 type. A macro or a sealed trait on the key-wrap type could eliminate the duplication. Suggested rewrite: extract a wrap_with_aes_kw(kek: \u0026[u8], cek: \u0026[u8], out: \u0026mut [u8]) -\u003e Result\u003c(), Error\u003e that dispatches by length internally, keeping ecdh_wrap_cek clean.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:17Z",
+  "closed_at": "2026-05-02T18:49:17Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.31",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

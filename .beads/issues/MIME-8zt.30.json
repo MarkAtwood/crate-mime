@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.30",
+  "title": "PartCollection::add_part() documented footgun: inferred total causes is_complete() false positive",
+  "description": "PartCollection in uuencoding-multi/src/collection.rs infers total_parts from the first part added if not set externally. A caller that adds exactly one part (part 1 of N, where N \u003e 1) will find is_complete() returning true because the inferred total equals the count of inserted parts. The doc comment acknowledges this but every caller must know to set the total explicitly before adding parts — the type system provides no guard against the wrong order of operations. What goes wrong: a caller that iterates messages in arrival order, adds part 1 first, and immediately checks is_complete() will incorrectly believe the file is ready and call reassemble(), which will silently produce a truncated output (or panic, depending on implementation). The fix is either: (a) remove inference — require total_parts at construction time so is_complete() is always meaningful; or (b) return a distinct state from is_complete() that communicates 'total is inferred, not confirmed'. File: uuencoding-multi/src/collection.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:48Z",
+  "closed_at": "2026-06-16T00:18:48Z",
+  "close_reason": "Already documented with a warning in the PartCollection::add_part() doc comment. The false-positive is_complete() behavior is a documented tradeoff for the Usenet use case where total is commonly inferred from the subject line.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.30",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

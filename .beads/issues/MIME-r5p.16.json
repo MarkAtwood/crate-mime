@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.16",
+  "title": "CertChainError::PathLenViolated declared but never produced",
+  "description": "error.rs declares CertChainError::PathLenViolated but cert.rs never constructs it. The old code had explicit pathLen checking; the new pkix-chain delegation maps PE::PathTooLong to CertChainError::TooDeep (chain depth) rather than to PathLenViolated. Dead public enum variant.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:07:34Z",
+  "closed_at": "2026-05-02T18:07:34Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.16",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

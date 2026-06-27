@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.13",
+  "title": "cert.rs: Vec\u003c\u0026\u0026Certificate\u003e from .iter() on Vec\u003c\u0026Certificate\u003e — use .copied()",
+  "description": "cert.rs:86 collects Vec\u003c\u0026\u0026Certificate\u003e by calling .iter() on candidates: Vec\u003c\u0026Certificate\u003e. The subsequent for loop gets anchor: \u0026\u0026\u0026Certificate which relies on auto-deref to satisfy verify_signature(\u0026Certificate, \u0026Certificate). A contributor reading the code must mentally track three levels of indirection. Idiomatic fix: use .iter().copied() to convert \u0026\u0026Certificate → \u0026Certificate, producing Vec\u003c\u0026Certificate\u003e and anchor: \u0026Certificate in the loop. The code behavior is identical; the types become self-evident.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:34:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:51:18Z",
+  "closed_at": "2026-05-02T13:51:18Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.13",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:34:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

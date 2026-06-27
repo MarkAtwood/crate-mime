@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.53",
+  "title": "DecryptionKey::agree_ecdh default impl silently returns Err for all KARI recipients — ECDH decrypt silently fails",
+  "description": "## Problem\n\nIn `smime-tree/src/key.rs`, the `DecryptionKey` trait provides a default implementation of `agree_ecdh`:\n\n```rust\nfn agree_ecdh(\n    \u0026self,\n    _ephemeral_pub: \u0026[u8],\n    _algorithm: \u0026KariAlgorithm,\n) -\u003e Result\u003cVec\u003cu8\u003e, SmimeError\u003e {\n    Err(SmimeError::UnsupportedAlgorithm(\"ECDH agree_ecdh not implemented\".into()))\n}\n```\n\nThis means any implementor of `DecryptionKey` who does not explicitly override `agree_ecdh` will silently fail to decrypt any message encrypted to them using KARI (EC key agreement / `KeyAgreeRecipientInfo`). The caller sees `SmimeError::UnsupportedAlgorithm` rather than a clear error indicating that ECDH was not implemented.\n\n## What goes wrong\n\nAn EC key implementor who only reads the required trait methods (`decrypt_cek`, `matches_recipient`) will miss that ECDH requires `agree_ecdh`. Their `matches_recipient` will correctly identify them as the recipient, but `decrypt` will return an error as if the algorithm is not supported — indistinguishable from a genuine algorithm mismatch.\n\nThis is especially dangerous because:\n1. There is no doc comment on the default impl warning that EC-key implementors MUST override it.\n2. The method name `agree_ecdh` is not mentioned in the `DecryptionKey` trait doc — an EC key implementor reading the trait docs would see `decrypt_cek` and `matches_recipient` but not know `agree_ecdh` exists.\n3. The error message says 'not implemented' but is surfaced as `UnsupportedAlgorithm`, the same error used for genuinely unsupported algorithms.\n\n## Files\n\n- `smime-tree/src/key.rs` — `DecryptionKey` trait definition\n- `smime-tree/src/decrypt.rs` — `process_kari` calls `key.agree_ecdh`\n\n## What goes wrong if left as-is\n\nEC key implementors will write a `DecryptionKey` impl that appears to compile correctly, passes all type checks, but silently fails to decrypt any ECDH-encrypted message. The error they get provides no indication that they forgot to implement `agree_ecdh`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:15:45Z",
+  "closed_at": "2026-06-16T00:15:45Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.53",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

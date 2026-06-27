@@ -1,0 +1,25 @@
+{
+  "id": "MIME-240.12",
+  "title": "mime-tree: ParsedMessage.preview doc should note decode-failure → None",
+  "description": "parse.rs:43-52: preview silently returns None on decode error. Doc comment should say preview is None when first text part cannot be decoded, not just when message has no text body.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:09:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:13:46Z",
+  "closed_at": "2026-05-05T04:13:46Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-240.12",
+      "depends_on_id": "MIME-240",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:09:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

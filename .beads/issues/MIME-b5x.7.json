@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.7",
+  "title": "CLAUDE.md documents byte ranges as (usize, usize) but code uses (u32, u32)",
+  "description": "mime-tree/CLAUDE.md §Architecture and workspace CLAUDE.md both say 'header_range: (usize, usize)' and 'body_range: (usize, usize)'. The actual public types in part.rs are (u32, u32). Any agent or developer reading the docs will write code that doesn't compile (usize vs u32 mismatch). Also affects the decode.rs cast offsets. Scenario: a contributor follows the CLAUDE.md spec, writes code using usize, and gets a compile error with no obvious explanation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:40Z",
+  "closed_at": "2026-05-02T07:17:40Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.7",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

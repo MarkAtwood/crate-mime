@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.13",
+  "title": "smime-tree lib.rs has no crate-level doc",
+  "description": "smime-tree/src/lib.rs has only a one-line module doc '//\\! S/MIME sign/verify/encrypt/decrypt via key traits.' A contributor who found this on GitHub has no quick-start example, no explanation of how the four public functions relate to each other, and no guidance on what types to implement. mime-tree/src/lib.rs has the same issue. Both lib.rs files should have a doc comment with at minimum: a two-sentence description of what the crate does, a brief example showing the primary entry point, and a note directing the reader to the key traits (for smime-tree) or the parse/decode_body_value pair (for mime-tree).",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:30:40Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.13",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:25:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

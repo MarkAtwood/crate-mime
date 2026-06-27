@@ -1,0 +1,30 @@
+{
+  "id": "MIME-mgi.8",
+  "title": "parse_structure Option\u003c\u0026mut Vec\u003e signature — hard to follow without RFC context",
+  "description": "walk.rs parse_structure takes text_body and html_body as \u0026mut Option\u003c\u0026'a mut Vec\u003cString\u003e\u003e. The function-level comment explains this models JavaScript's nullable array references from RFC 8621 §4.1.4. The signature is correct and necessary, but the reborrow pattern (*text_body = None) and the three-way Option matching make the inner loop hard to audit without re-reading the comment. Improvement: add an inline comment at the *html_body = None sites referencing RFC 8621 §4.1.4 'htmlBody = null' to make the correspondence unmistakable for a contributor reviewing just the code.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:08:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:16:30Z",
+  "closed_at": "2026-05-02T15:16:30Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.8",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:08:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

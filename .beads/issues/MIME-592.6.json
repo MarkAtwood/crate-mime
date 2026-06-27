@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.6",
+  "title": "integration test missing_middle_part_is_truncated does not assert decoded data content",
+  "description": "tests/integration.rs:116: The test asserts only !result.data.is_empty() rather than validating the actual decoded bytes of the present parts. The unit test in reassemble.rs:243-255 does assert the exact bytes (b'Hello, World! ti-part test.') against an oracle. The integration test should assert the exact decoded content (PART1-decoded ++ PART3-decoded) to catch any future regression in partial-reassembly byte ordering. The current assertion is a weak smoke test, not a correctness proof.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:49:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:47Z",
+  "closed_at": "2026-05-04T23:03:47Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.6",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:49:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "MIME-ni3.6",
+  "title": "mime-tree: InlineUUBlock and InlineYEncBlock missing Serialize + Deserialize",
+  "description": "Both InlineUUBlock (uuencode.rs:49) and InlineYEncBlock (yenc.rs:60) are publicly exported types. The workspace invariant (AGENTS.md) states all public types must impl Serialize + Deserialize. Both only derive Debug, Clone, PartialEq, Eq — no serde derives. ParseError (error.rs:7) has the same gap. Fix: add #[derive(Serialize, Deserialize)] to all three types.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:37Z",
+  "closed_at": "2026-05-05T02:58:37Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.6",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

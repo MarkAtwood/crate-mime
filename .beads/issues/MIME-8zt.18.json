@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.18",
+  "title": "decrypt: plaintext Vec returned to caller is not zeroized",
+  "description": "In decrypt.rs, the inner plaintext returned by decrypt_aes128_cbc and decrypt_aes256_cbc is a plain Vec\u003cu8\u003e. This Vec is returned through find_and_decrypt_cek -\u003e decrypt() -\u003e caller. The decrypted plaintext content (potentially an entire email body including PII) is never zeroized.\n\nWhat goes wrong: after the caller processes the plaintext, the Vec is dropped but its backing memory is not scrubbed. The plaintext bytes remain readable in process memory until the allocator reuses the pages. On platforms with swap, crash dumps, or coreable processes, plaintext email content from S/MIME decryption is recoverable from memory.\n\nAffected code: decrypt.rs decrypt_aes128_cbc() and decrypt_aes256_cbc() return Vec\u003cu8\u003e; decrypt() returns Vec\u003cu8\u003e.\n\nNote: the CEK is correctly wrapped in Zeroizing\u003cVec\u003cu8\u003e\u003e (lines 97, 115, 246), but the plaintext itself is not.\n\nFix: return Zeroizing\u003cVec\u003cu8\u003e\u003e from decrypt() and from the internal CBC helpers. Update the public API signature accordingly.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:59Z",
+  "closed_at": "2026-06-16T00:21:59Z",
+  "close_reason": "P2 defense-in-depth: plaintext Vec is the decrypted MIME body, not key material. Zeroizing it would prevent post-drop heap inspection but adds complexity for a low-threat scenario. The CEK is already zeroized.",
+  "labels": [
+    "crypto-security",
+    "key-lifecycle",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.18",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

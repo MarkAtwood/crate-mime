@@ -1,0 +1,19 @@
+{
+  "id": "MIME-uus",
+  "title": "Review: feat/fix pkix-chain cert validation switch",
+  "notes": "Maintainer risk: MEDIUM — revocation-before-sig-verification is a real security concern; comment staleness is minor but confusing.\nConfidence: 10% chance of missed bug. Least confident flags: none significant. Uncertainty driven by: not testing with a live crafted-cert scenario for the revocation-order issue. Would raise confidence if: a test with a revocation checker that asserts it is only called on verified certs.\nIdiom rating: ACCEPTABLE — no ownership, unsafe, or API design issues. Only the revocation order bug and stale comments.\nRust idiom confidence: 5% chance of missed issue. Least confident flags: none. Uncertainty driven by: nothing the idiom pass adds beyond what correctness pass found.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:30:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T17:32:50Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

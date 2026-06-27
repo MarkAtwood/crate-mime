@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.1",
+  "title": "is_truncated false for base64 when max_bytes is multiple of 3",
+  "description": "In decode.rs, when transfer_encoding is Base64 and max_bytes is a multiple of 3, the pre-truncation computes max_b64_chars = exactly 4*(max_bytes/3) chars, which decodes to exactly max_bytes bytes. decoded.len() == max_bytes hits the _ branch which never sets is_truncated=true for Base64/QP. Caller sees is_truncated=false even though the body was cut. Test test_base64_max_bytes_non_multiple_of_4 does not assert is_truncated, so this is untested. Trigger: any caller using is_truncated to decide whether to fetch more data, with max_bytes divisible by 3.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:26Z",
+  "closed_at": "2026-05-02T07:17:26Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.1",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

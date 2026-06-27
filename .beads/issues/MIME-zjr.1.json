@@ -1,0 +1,25 @@
+{
+  "id": "MIME-zjr.1",
+  "title": "Research: catalog real-world multi-part subject line formats",
+  "description": "Before writing any code, catalog the actual subject line conventions used in the wild for multi-part UUencoded Usenet/email posts. This is design research, not implementation.\n\nKnown formats to document:\n- (03/17) suffix: 'filename.tar.gz (03/17)'\n- [03/17] variant\n- Part 3/17, Part 03 of 17, part3of17\n- '[BINARY] filename - Part 3 of 12'\n- Subject lines with no part marker on part 1 (TOC or first part has no number)\n- Part 0 as TOC vs part 1 as TOC\n- yEnc subject lines (document but mark as out of scope)\n\nDeliverable: a comment on this issue listing observed formats with real examples, and a proposed regex/parser design that covers at least 90% of observed cases. Get approval before filing implementation issues.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:00:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:04:22Z",
+  "close_reason": "Research complete, findings documented as issue comment",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.1",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:00:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

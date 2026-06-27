@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.9",
+  "title": "smime-tree: verify() uses non-constant-time digest comparison",
+  "description": "verify.rs:307 compares expected_bytes != content_hash with standard slice comparison. In a signature verification context, use subtle::ConstantTimeEq for the message-digest comparison to prevent timing side-channels. While this is not a direct padding oracle, digest comparisons in crypto code should be constant-time as a hygiene rule.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:17Z",
+  "closed_at": "2026-05-05T03:02:17Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.9",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

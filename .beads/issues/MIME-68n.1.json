@@ -1,0 +1,30 @@
+{
+  "id": "MIME-68n.1",
+  "title": "sign: P-384 key produces ECDSA_WITH_SHA_256 OID (wrong)",
+  "description": "sign() hardcodes DigestAlgorithm::Sha256 and calls signature_algorithm_oid(cert, Sha256), which returns ECDSA_WITH_SHA_256 for any EC key. A P-384 signing key should produce ECDSA_WITH_SHA_384. Strict receivers (e.g. OpenSSL verify, Java) will reject the SignedData because the algorithm OID does not match the key type. Trigger: caller provides a P-384 EC signing key to sign().",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:44:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:52:23Z",
+  "closed_at": "2026-05-02T06:52:23Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.1",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:44:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

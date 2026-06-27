@@ -1,0 +1,42 @@
+{
+  "id": "MIME-adz.2.4",
+  "title": "smime-tree: implement verify()",
+  "description": "Signature verification is a core S/MIME operation. Implement in verify.rs: parse the application/pkcs7-signature DER blob as ContentInfo/SignedData (via cms crate); locate each SignerInfo; compute digest over signed_content bytes; verify signature against signer cert public key; validate cert chain via cert.rs. Return VerificationResult (signers with cert info, verified flag). RFC 5751 at ~/PROJECT/MIME/standards/rfc5751.txt, RFC 5652 at rfc5652.txt.",
+  "acceptance_criteria": "verify() accepts OpenSSL-signed multipart/signed messages; rejects tampered content and expired certs",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:11:27Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.2.4",
+      "depends_on_id": "MIME-adz.2.3",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.4",
+      "depends_on_id": "MIME-adz.1.2",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:17:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.4",
+      "depends_on_id": "MIME-adz.2",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

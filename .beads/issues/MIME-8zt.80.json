@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.80",
+  "title": "Good: sign.rs random_boundary retry loop has correct probability analysis",
+  "description": "smime-tree/src/sign.rs: random_boundary() generates a 16-byte random boundary (128 bits of entropy) and retries up to 8 times if the boundary happens to appear in the content. The probability of any one boundary colliding with the content is at most 2^-128 per occurrence, making 8 retries overkill but not wrong. More importantly, the retry loop means boundary collision cannot cause a panic or a corrupted output — it always either finds a safe boundary or returns an error. This is the correct pattern: never panic on PRNG output, always have a bounded retry count, and return Err on exhaustion rather than producing a bad result.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:41:59Z",
+  "closed_at": "2026-06-16T00:41:59Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.80",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

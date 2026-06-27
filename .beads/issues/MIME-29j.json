@@ -1,0 +1,15 @@
+{
+  "id": "MIME-29j",
+  "title": "[mime-tree] Add missing test coverage",
+  "description": "Skoll test gap findings:\n- LOW-12: Add test for ParseError::NoHeaders using input with no RFC 5322 header lines\n- LOW-13: Add tests for decode_body_value InvalidRange: (1) offset+length overflows usize, (2) offset+length \u003e raw.len()\n- LOW-14: Add test for multipart/related where first child is image/jpeg, verify it appears in both text_body and html_body\n- LOW-20: Add integration tests for preview field: (1) text/plain message has preview, (2) binary-only message has None, (3) body \u003e256 chars truncates to 256",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:24:50Z",
+  "closed_at": "2026-06-04T22:24:50Z",
+  "close_reason": "Added 7 integration tests: NoHeaders, InvalidRange overflow, InvalidRange past-end, multipart/related image first child, preview text/plain, preview binary-only, preview 256-char truncation."
+}

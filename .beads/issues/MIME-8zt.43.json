@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.43",
+  "title": "smime-tree: NoRevocationCheck missing Debug derive",
+  "description": "Why this exists: smime_tree/src/key.rs defines NoRevocationCheck as a unit struct that implements RevocationChecker but is not #[derive(Debug)].\\n\\nWhat goes wrong: any struct that holds a NoRevocationCheck value (or a dyn RevocationChecker that happens to be one) cannot derive Debug. Logging or debug-printing a struct that includes this type will fail to compile. The Rust standard practice is to derive Debug on all types, including unit structs, because the cost is zero and the benefit (printability in tests and error messages) is universal.\\n\\nFix: add #[derive(Debug)] (and optionally Clone, Copy, Default, PartialEq, Eq) to NoRevocationCheck.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:40Z",
+  "closed_at": "2026-06-16T00:08:40Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.43",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

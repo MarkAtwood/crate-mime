@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.13",
+  "title": "smime-tree: P-384 CA chain limitation must be in crate-level docs, not buried in cert.rs comment",
+  "description": "The pkix-chain DefaultVerifier only validates RSA-PKCS1v15-SHA256 and ECDSA-P256-SHA256 CA signatures. Any chain through a P-384 intermediate CA fails with CertChainError::SignatureVerification. Real-world CAs (DigiCert, Comodo) frequently use P-384 intermediates. This hard operational limitation is only mentioned in a cert.rs module comment; it must be prominently documented in lib.rs at the crate level.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:52:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:39Z",
+  "closed_at": "2026-05-05T03:02:39Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.13",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:52:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

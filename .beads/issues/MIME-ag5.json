@@ -1,0 +1,14 @@
+{
+  "id": "MIME-ag5",
+  "title": "Review loop pass 9 — fresh-eyes findings",
+  "description": "Fresh-eyes code review of the full workspace. Findings span P1-P3: dead code in encrypt.rs, API inconsistencies (must_use, EcdhEs), doc mismatches, and cross-crate consistency issues.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:32:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-05T02:35:33Z",
+  "close_reason": "all steps complete"
+}

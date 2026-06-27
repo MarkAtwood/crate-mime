@@ -1,0 +1,26 @@
+{
+  "id": "MIME-adz.3",
+  "title": "Scaffold Cargo workspace and crate skeletons",
+  "description": "A working Cargo workspace must exist before any crate code can compile or be tested. Create: workspace Cargo.toml ([workspace] with members mime-tree and smime-tree, shared [profile] settings, MSRV 1.75); .gitignore; rustfmt.toml.\n\nmime-tree/Cargo.toml deps:\n- mail-parser (RFC 5322/MIME parsing engine, private impl detail)\n- encoding_rs (charset conversion)\n- base64 (Base64 transfer-decode — do NOT hand-roll)\n- quoted_printable (QP transfer-decode — do NOT hand-roll)\n- serde with derive feature\n\nsmime-tree/Cargo.toml deps:\n- cms (CMS/PKCS#7 DER parse+build — do NOT hand-roll DER)\n- x509-cert (certificate parsing)\n- rsa (RSA key transport)\n- p256, p384 (ECDH key agreement)\n- x963-kdf (ANSI X9.63 KDF for ECDH in CMS per RFC 5753 — do NOT hand-roll)\n- aes-kw (AES key wrap for ECDH KEK — do NOT hand-roll)\n- aes + cbc + aes-gcm (content encryption — do NOT hand-roll)\n- sha2 (digest)\n- rand_core (OsRng for CEK/IV generation — NOT the top-level rand crate; rand_core is the minimal CSPRNG interface used throughout RustCrypto)\n- der (DER encoding, transitive from cms but may need explicit dep)\n- serde with derive feature\n- mime-tree (path dep)\n\nStub src/lib.rs in each crate.",
+  "acceptance_criteria": "cargo check --workspace succeeds on a stub lib.rs in each crate",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:15:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T04:43:32Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.3",
+      "depends_on_id": "MIME-adz",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:15:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

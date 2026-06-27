@@ -1,0 +1,18 @@
+{
+  "id": "MIME-adz",
+  "title": "Build mime-tree and smime-tree workspace",
+  "description": "Two standalone Rust crates need to be built from scratch: mime-tree (RFC 5322/MIME parser producing a byte-range-indexed part tree) and smime-tree (S/MIME sign/verify/encrypt/decrypt via key traits). Both must pass quality gates (fmt, clippy -D warnings, tests) and satisfy all CLAUDE.md invariants: no JMAP, no async, no unsafe beyond transitive RustCrypto, owned lifetime-free public types, MSRV 1.75.",
+  "design": "No hand-spun parsers, no hand-spun crypto. Every parser and every cryptographic primitive must come from an existing crate.\n\nParsers: mail-parser (RFC 5322/MIME), cms (CMS/DER), x509-cert (certificates), der (DER encode/decode)\nTransfer decoders: base64 crate, quoted_printable crate\nCharset: encoding_rs\nCrypto primitives: rsa, p256, p384, aes+cbc, aes-gcm, sha2, x963-kdf, aes-kw\nRandomness: rand_core::OsRng — NOT the top-level rand crate. rand_core is the minimal CSPRNG interface used throughout RustCrypto; OsRng satisfies CryptoRngCore which all RustCrypto primitives accept.\nCert chain validation: x509-cert path building or webpki — research required, do not hand-roll\n\nThe one acceptable place for manual text formatting is MIME header/boundary generation in sign() and encrypt() output — that is not parsing or crypto.",
+  "acceptance_criteria": "cargo test --workspace passes clean; cargo clippy --workspace -D warnings passes; both crates compile on MSRV 1.75; all public types are Serialize+Deserialize with no lifetime params",
+  "notes": "Review converged after 3 round(s). Final review: MIME-596.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:15:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:58:35Z",
+  "close_reason": "Closed"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.13",
+  "title": "HeaderValueTyped sum type forces caller match on a variant that is statically determined by HeaderForm",
+  "description": "header_typed.rs:197-275 — `parse_header_typed(form: HeaderForm, raw: \u0026[u8]) -\u003e HeaderValueTyped` deterministically returns the variant matching `form`:\n\n    HeaderForm::Raw       ⟶ HeaderValueTyped::Raw(String)\n    HeaderForm::Addresses ⟶ HeaderValueTyped::Addresses(Vec\u003cEmailAddress\u003e)\n    HeaderForm::Date      ⟶ HeaderValueTyped::DateTime(Option\u003cHeaderDateTime\u003e)\n    ...\n\nThe Rust type system does not encode this invariant. Every caller wanting to extract the Date result must write:\n\n    let dt = match parse_header_typed(HeaderForm::Date, raw) {\n        HeaderValueTyped::DateTime(dt) =\u003e dt,\n        _ =\u003e unreachable!(\"parse_header_typed(Date, _) always returns DateTime\"),\n    };\n\nOr `if let HeaderValueTyped::DateTime(dt) = ...`. Every caller pays the boilerplate. The `unreachable!()` arm is dead code that has to be written and maintained anyway.\n\nCaller-facing consequence: 100% of typed-use sites write defensive code for impossible variants. This is the textbook \"API forces every caller to write the same boilerplate\" pattern.\n\nFix options:\n\na) Per-form entry points (sibling to the sum-type one):\n    pub fn parse_addresses(raw: \u0026[u8]) -\u003e Vec\u003cEmailAddress\u003e\n    pub fn parse_grouped_addresses(raw: \u0026[u8]) -\u003e Vec\u003cAddressGroup\u003e\n    pub fn parse_message_ids(raw: \u0026[u8]) -\u003e Vec\u003cString\u003e\n    pub fn parse_date(raw: \u0026[u8]) -\u003e Option\u003cHeaderDateTime\u003e\n    pub fn parse_urls(raw: \u0026[u8]) -\u003e Vec\u003cString\u003e\n    pub fn parse_raw(raw: \u0026[u8]) -\u003e String\n\nKeep parse_header_typed for callers that dispatch dynamically (JMAP-style \"header:Subject:asAddresses\" properties). Both forms compose.\n\nb) Convenience accessors on HeaderValueTyped: `into_addresses() -\u003e Option\u003cVec\u003cEmailAddress\u003e\u003e`, etc. Less type-safe than (a) but a smaller surface change.\n\n(a) is the cleaner contract. The current sum-type API is necessary for dynamic dispatch and should stay; per-form helpers are the missing layer for callers that know the form statically.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:25:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:10:42Z",
+  "closed_at": "2026-05-14T16:10:42Z",
+  "close_reason": "Added: (.13) six per-form entry points — parse_raw, parse_addresses, parse_grouped_addresses, parse_message_ids, parse_date, parse_urls — each returns the variant payload type directly, eliminating boilerplate match-on-variant at every call site. The sum-type parse_header_typed remains for callers that dispatch dynamically. (.27) HeaderForm now has impl Display emitting the RFC 8621 §4.1.2 form-tokens (asRaw, asAddresses, asGroupedAddresses, asMessageIds, asDate, asURLs), impl FromStr accepting that exact set with a new UnknownHeaderForm error type, and an as_jmap_token() method. asText is intentionally rejected by FromStr until MIME-o2c.28 lands.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.13",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:25:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

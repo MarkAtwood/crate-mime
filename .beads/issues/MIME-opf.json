@@ -1,0 +1,15 @@
+{
+  "id": "MIME-opf",
+  "title": "[smime-tree] Document sign() hash boundary and consider NULL for digest AlgorithmIdentifier",
+  "description": "Skoll LOW-32 + LOW-38: (1) Add comments near hash call (line 106) and CRLF emission (line 230) in sign.rs explaining that the trailing CRLF is boundary transport padding excluded from the hash, and verify() callers must supply exactly content_mime bytes. (2) Consider setting parameters to Some(Any::null()) for SHA-* digest AlgorithmIdentifiers when signing key is RSA, per RFC 4055 §3.1, for maximum interoperability.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:19:54Z",
+  "closed_at": "2026-06-04T22:19:54Z",
+  "close_reason": "Added clarifying comments about hash boundary (CRLF is transport padding, not hashed), documented RFC 4055 §2.1 rationale for absent parameters in digest AlgorithmIdentifiers."
+}

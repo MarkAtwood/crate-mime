@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.7",
+  "title": "decode_body_value returns NoHeaders for bad body_range",
+  "description": "In mime-tree/src/decode.rs, when body_range is out of bounds the function returns Err(ParseError::NoHeaders). The NoHeaders variant means 'no RFC 5322 headers found', not 'byte range is invalid'. A caller receiving this error at 2am will be confused — the error message says 'input contains no RFC 5322 headers' but the real problem is an invalid byte range. A new ParseError variant (e.g. InvalidByteRange) or a different existing variant should be used so the error message is accurate.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:39:47Z",
+  "closed_at": "2026-05-02T05:39:47Z",
+  "close_reason": "duplicate of MIME-72l.20 (same wrong error variant)",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.7",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

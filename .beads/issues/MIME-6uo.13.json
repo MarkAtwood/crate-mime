@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.13",
+  "title": "from_hex test helper panics on odd-length input with cryptic index-out-of-range",
+  "description": "smime_tests.rs lines 72-76: from_hex uses step_by(2) over 0..s.len(), which for an odd-length string will attempt to read s[len-1..len+1] at the last iteration, causing a panic with a cryptic 'byte index N is not a char boundary' or slice index panic. A test helper that panics cryptically on malformed input wastes debugging time. Should assert\\!(s.len() % 2 == 0, 'hex string must have even length') at entry. Low impact since the hex literals are correct, but a future developer adding a test fixture who accidentally truncates the hex string will waste time.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:52:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:42Z",
+  "closed_at": "2026-05-02T08:06:42Z",
+  "close_reason": "P4 test hygiene: from_hex is private test helper; cryptic panic on odd input is acceptable for internal use.",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.13",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:52:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-240.5",
+  "title": "smime-tree: AGENTS.md has outdated verify/sign function signatures",
+  "description": "AGENTS.md Public API section omits now/revocation params from verify() and now param from sign(). Subagents reading only AGENTS.md produce wrong code.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:09:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:12:57Z",
+  "closed_at": "2026-05-05T04:12:57Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-240.5",
+      "depends_on_id": "MIME-240",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:09:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

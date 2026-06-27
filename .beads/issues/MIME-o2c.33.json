@@ -1,0 +1,34 @@
+{
+  "id": "MIME-o2c.33",
+  "title": "Asymmetric borrow on HeaderDateTime conversion helpers: to_mail_parser(self), from_mail_parser(\u0026DateTime)",
+  "description": "header_typed.rs:97 takes `self` by value (HeaderDateTime is Copy). header_typed.rs:111 takes `\u0026mail_parser::DateTime` by reference. mail_parser::DateTime is itself a Copy type composed entirely of small primitives (u16, u8, bool); taking it by reference forces the caller to dereference and serves no purpose. The asymmetry signals the author did not think about the borrow uniformly. Idiomatic: pick by-value for both (since both types are Copy) or by-reference for both. Take by-value matches the corresponding `From` impl signature (`From\u003cT\u003e`, not `From\u003c\u0026T\u003e`), which is the other change MIME-o2c.[From-trait] suggests.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:41:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:00:11Z",
+  "closed_at": "2026-05-14T16:00:11Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "opinion",
+    "ownership",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.33",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:41:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

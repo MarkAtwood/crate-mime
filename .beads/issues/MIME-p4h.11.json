@@ -1,0 +1,29 @@
+{
+  "id": "MIME-p4h.11",
+  "title": "smime-tree encrypt.rs: AES-128 and AES-256 CEK-generation/encryption blocks are ~40-line duplicates",
+  "description": "encrypt.rs: the if use_aes256 { ... } else { ... } branches each contain ~40 nearly identical lines: getrandom::fill, Key::try_from, Iv::try_from, encrypt_padded_vec, cek_bytes.to_vec(), OctetString construction, AlgorithmIdentifierOwned. They differ only in key/type sizes (16 vs 32 bytes) and the OID constant. Suggested rewrite: extract an encrypt_content(inner_mime: \u0026[u8], cek_len: usize, oid: ObjectIdentifier) -\u003e Result\u003c(AlgorithmIdentifierOwned, Vec\u003cu8\u003e, Vec\u003cu8\u003e), SmimeError\u003e function, or use a generic helper parameterized by the cipher type.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:15:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:40:20Z",
+  "closed_at": "2026-05-02T14:40:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.11",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:15:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "MIME-7w0",
+  "title": "Review pass 2: pkix-chain cert validation",
+  "notes": "Maintainer risk: LOW — only an elegance issue with no correctness impact.\nConfidence: 5% chance of missed bug. Least confident flags: none. Uncertainty driven by: cannot test P-384 chain rejection path without a P-384 test fixture. Would raise confidence if: a test asserting revocation is not called when pkix fails.\nIdiom rating: CLEAN — no ownership, unsafe, or API design issues in pass 2.\nRust idiom confidence: 3% chance of missed issue. Least confident flags: none.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:33:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T17:34:06Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "MIME-5ha",
+  "title": "smime-tree 0.3.0 pins yanked pkix-chain 0.1.1 — broken for new consumers",
+  "description": "smime-tree 0.3.0 was just published with Cargo.toml pinning pkix-chain = { version = \"0.1.1\" }. That version is YANKED on crates.io (along with 0.1.0). Active pkix-chain versions on crates.io: 0.2.0 (2026-05-06), 0.3.0 (2026-05-08), 0.4.0 (2026-05-08 — current default).\n\nNote: smime-tree 0.2.0 (previously published) has the same yanked-dep flaw — this is a pre-existing bug carried forward, not a regression introduced by this release. But shipping 0.3.0 perpetuates it.\n\nImpact: New consumers who add 'smime-tree = \"0.3.0\"' to their Cargo.toml will fail dep resolution because Cargo refuses to use yanked versions in fresh resolves. Existing consumers with a Cargo.lock still work.\n\nRepro:\n  cargo new test-consumer \u0026\u0026 cd test-consumer\n  cargo add smime-tree\n  cargo build  # fails: pkix-chain 0.1.1 yanked\n\nFix path requires:\n1. Pick non-yanked pkix-chain version: 0.4.0 is current/recommended, 0.3.0 also OK, 0.2.0 oldest non-yanked.\n2. Audit smime-tree/src/cert.rs and related for any breaking API changes between pkix-chain 0.1.1 and target version. CHANGELOG note from PKIX project says pkix-chain 0.4.0 is 'transitively breaking' due to re-export of pkix-path::ValidatedPath — likely affects map_pkix_error in cert.rs.\n3. Update smime-tree/Cargo.toml: pkix-chain = ... new version\n4. Run cargo test -p smime-tree, fix any compile/test failures from API drift\n5. Bump smime-tree 0.3.0 → 0.3.1 (patch-level dep fix is not breaking for smime-tree's own API)\n6. Publish smime-tree 0.3.1\n7. Yank smime-tree 0.3.0 (and probably also yank 0.2.0 since it carries the same flaw)\n\nDecision points the user needs to weigh:\n- Yank 0.3.0 immediately or leave with a note in README?\n- Yank 0.2.0 too?\n- Target pkix-chain 0.4.0 (most current) or 0.3.0 (more conservative, smaller API delta)?\n\nRelated: this also interacts with MIME-34a (production-readiness gate for pkix-path algorithm coverage). Moving to a current pkix-chain doesn't expand algorithm coverage — the P-384/RSA-PSS gap is still in pkix-path itself. But getting onto a maintained branch positions smime-tree to benefit when pkix-path lands those algorithms.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-11T02:45:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-11T02:56:24Z",
+  "closed_at": "2026-05-11T02:56:24Z",
+  "close_reason": "Fixed: smime-tree 0.3.1 published with pkix-chain '0.4' (current). One small code change in cert.rs to use ValidationPolicy::new() constructor because pkix-path 0.3 marked the struct non_exhaustive. Quality gate clean. Yanked 0.3.0, 0.2.0, 0.1.0 (all carry the same yanked-dep flaw). Committed as fefda51 (unpushed).",
+  "labels": [
+    "pkix-gated",
+    "release-defect"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6h7.1",
+  "title": "encrypt() doc says Other(\"no recipients\"), returns NoRecipients",
+  "description": "encrypt.rs line 93: doc comment says 'Returns SmimeError::Other(\"no recipients\") when recipients is empty' but the code actually returns SmimeError::NoRecipients (added in a prior review pass). A caller who reads the doc and writes 'match err { SmimeError::Other(_) =\u003e ... }' will silently miss the empty-recipients error. Correct the doc comment to reference SmimeError::NoRecipients.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:45:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:46:37Z",
+  "closed_at": "2026-05-02T14:46:37Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6h7.1",
+      "depends_on_id": "MIME-6h7",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:45:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

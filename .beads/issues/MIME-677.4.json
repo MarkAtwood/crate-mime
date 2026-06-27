@@ -1,0 +1,29 @@
+{
+  "id": "MIME-677.4",
+  "title": "encrypt.rs ecdh_wrap_cek: AES-192-KW arm (kek_len == 24) is unreachable — remove or document",
+  "description": "ecdh_wrap_cek() contains a match arm for kek_len == 24 (AES-192-KW). The only two call sites in this file pass wrap_key_bits = 128 and wrap_key_bits = 256, so kek_len is always 16 or 32. The 24-byte arm can never execute. It adds code complexity and risks confusion about whether AES-192-KW is actually supported. Options: (a) remove the arm and let it fall to the _ =\u003e Err(...) branch, or (b) add a comment explaining it is present for future use and is untested.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:50:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:31:31Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.4",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

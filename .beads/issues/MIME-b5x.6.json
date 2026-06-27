@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.6",
+  "title": "SmimeError::AllSignersFailed creates circular module dependency",
+  "description": "error.rs imports crate::verify::SignerResult for the AllSignersFailed variant; verify.rs imports crate::SmimeError from error.rs. This circular module dependency is legal in Rust but unusual and creates tight coupling: moving or refactoring SignerResult requires touching error.rs. Scenario: a contributor adds a new field to SignerResult, which compiles fine, but the structural coupling is invisible until a future refactor. Fix: move SignerResult (and VerificationResult) to a separate types.rs or to error.rs itself, breaking the cycle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:20:17Z",
+  "closed_at": "2026-05-02T07:20:17Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.6",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-04r.2",
+  "title": "P4: uuencoding lib.rs security note has backwards size ratio",
+  "description": "The security note says 'decoded output can be substantially larger than the encoded input' — this is factually wrong. UUencoding *expands* data by ~4/3 on encode; decoding shrinks it. Fix the note to correctly describe the encode expansion, not a phantom decode expansion.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T00:22:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T00:25:06Z",
+  "closed_at": "2026-05-05T00:25:06Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-04r.2",
+      "depends_on_id": "MIME-04r",
+      "type": "parent-child",
+      "created_at": "2026-05-04T17:22:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

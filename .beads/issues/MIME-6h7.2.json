@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6h7.2",
+  "title": "decrypt.rs: structural CMS errors use Other instead of MalformedInput",
+  "description": "decrypt.rs uses SmimeError::Other for structural CMS input errors: 'EnvelopedData has no encrypted content' (line 67), 'CBC algorithm parameters missing' (line 148), and 'KARI keyEncryptionAlgorithm has no parameters' (line 255). These represent malformed CMS input, not internal operation failures. Using Other makes them indistinguishable from unexpected internal errors and prevents callers from catching malformed-input cases via SmimeError::MalformedInput. These three cases should use SmimeError::MalformedInput instead.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:45:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:46:38Z",
+  "closed_at": "2026-05-02T14:46:38Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6h7.2",
+      "depends_on_id": "MIME-6h7",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:45:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

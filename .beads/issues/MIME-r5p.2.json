@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.2",
+  "title": "CEK plaintext not zeroized in decrypt() caller path",
+  "description": "find_and_decrypt_cek() returns Zeroizing\u003cVec\u003cu8\u003e\u003e, but decrypt() passes the Zeroizing wrapper to decrypt_aes128_cbc/decrypt_aes256_cbc as \u0026[u8] via auto-deref. The Zeroizing drops only after the entire decrypt() function returns, so the CEK bytes survive on the stack or heap until that point — which is fine. BUT: the plaintext output Vec\u003cu8\u003e returned from decrypt() is not zeroized. If the caller's use case warrants zeroizing the CEK it likely also warrants zeroizing the plaintext. This is a public API ergonomics / security policy gap: the API makes it easy to forget to zeroize the output.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:50:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:42:51Z",
+  "closed_at": "2026-05-02T18:42:51Z",
+  "close_reason": "Caller responsibility. Changing return type to Zeroizing\u003cVec\u003cu8\u003e\u003e would be a breaking API change and is a caller design decision. Opinion.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.2",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:50:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

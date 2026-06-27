@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.8",
+  "title": "yencoding-multi: dead binding and unreachable! comment in add_part_auto_crc_verified_at_finish test",
+  "description": "assembler.rs:773: let _ = p; with comment 'Suppress unused variable warning'. The p binding is constructed then immediately replaced by p_single and never used. Delete the p binding and make_part_with_crc call at line 751 entirely.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:29Z",
+  "closed_at": "2026-05-05T03:18:29Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.8",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

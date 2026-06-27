@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.46",
+  "title": "Non-exhaustive public enums with #[non_exhaustive] on all exported types",
+  "description": "All public enums (SmimeError, CertChainError, RecipientIdentifier, KeyEncryptionAlgorithm, KeyWrapAlgorithm, KariKeyAgreement, DigestAlgorithm) carry #[non_exhaustive]. This is the correct semver strategy: new variants can be added without a breaking change. A future contributor might remove #[non_exhaustive] to allow exhaustive matching in downstream code — this would be a breaking API decision that should be deliberate, not accidental.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:54:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:39:45Z",
+  "closed_at": "2026-05-02T18:39:45Z",
+  "close_reason": "Confirmed: all public enums in error.rs and key.rs have #[non_exhaustive]. Specifically: SmimeError (error.rs line 144), CertChainError (error.rs line 48), RecipientIdentifier (key.rs line 13), EcCurve (key.rs line 64), KeyEncryptionAlgorithm (key.rs line 89), KeyWrapAlgorithm (key.rs line 112), KariKeyAgreement (key.rs line 131), DigestAlgorithm (key.rs line 163). KariAlgorithm is a struct and also has #[non_exhaustive] (key.rs line 153). Good semver hygiene.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.46",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:54:33Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

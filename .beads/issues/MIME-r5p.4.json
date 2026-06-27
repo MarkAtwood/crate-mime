@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.4",
+  "title": "PKCS7 padding oracle: DecryptionFailed leaks padding error vs wrong-CEK",
+  "description": "decrypt_aes128_cbc and decrypt_aes256_cbc return SmimeError::DecryptionFailed(format\\!(\"AES-128-CBC: {e}\")) where {e} is the unpad error string. The aes-cbc / block-padding crate's UnpadError variants differ between 'invalid padding' and 'invalid length' — these strings are exposed verbatim in the error. A remote caller that can observe which error variant or which substring appears can mount a padding-oracle attack on the CBC ciphertext. The error string should be flattened to a single constant message regardless of sub-cause.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:43:12Z",
+  "closed_at": "2026-05-02T18:43:12Z",
+  "close_reason": "UnpadError displays as 'unpad error' with no subtypes. Both wrong-CEK and bad-padding return the same SmimeError::DecryptionFailed variant. No information leak beyond the variant discriminant. Opinion.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.4",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

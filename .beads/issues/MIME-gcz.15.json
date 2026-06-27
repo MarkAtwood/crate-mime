@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.15",
+  "title": "SubjectParts, BlockMetadata, BlockLocation lack Debug — makes test output opaque",
+  "description": "SubjectParts (uuencoding-multi/src/lib.rs line 129), BlockLocation (uuencoding/src/lib.rs line 129), and ScannedBlock (line 145) do not derive Debug. SubjectParts in particular is returned by parse_subject() and will appear in assertion failures as '\u003cSubjectParts\u003e' rather than showing field values. BlockMetadata derives Debug but ScannedBlock and BlockLocation do not. Developers writing tests will see unhelpful output when assertions fail. (Note: DecodedBlock and InlineUUBlock do derive Debug.)",
+  "acceptance_criteria": "Derive Debug on SubjectParts, BlockLocation, and ScannedBlock.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:38:09Z",
+  "closed_at": "2026-05-04T18:38:09Z",
+  "close_reason": "Derived Debug on BlockLocation and ScannedBlock in uuencoding/src/lib.rs, and SubjectParts in uuencoding-multi/src/lib.rs",
+  "labels": [
+    "readability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.15",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

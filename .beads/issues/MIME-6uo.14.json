@@ -1,0 +1,28 @@
+{
+  "id": "MIME-6uo.14",
+  "title": "trait-based key abstraction: DecryptionKey / SigningKey is the right design",
+  "description": "The key traits (DecryptionKey, SigningKey) with default-impl stub methods (agree_ecdh, preferred_digest_algorithm, supported_key_enc_algorithm) correctly anticipate the HSM/hardware-token use case. A contributor might suggest inlining RSA/EC key types directly (simpler for the common case), but that would lock out HSM callers. The default-stub pattern for agree_ecdh is particularly clean: it compiles without error for RSA-only implementations, and fails loudly with a diagnostic error when ECDH messages arrive. This is the correct tradeoff.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:52:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:29Z",
+  "closed_at": "2026-05-02T08:06:29Z",
+  "close_reason": "P3 opinion/style: no correctness issue, deferred.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.14",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:52:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

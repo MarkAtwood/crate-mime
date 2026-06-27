@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.11",
+  "title": "decode.rs filename parsing uses manual iterator-advancing instead of split/skip — hard to read",
+  "description": "uuencoding/src/decode.rs lines 75-104: the filename extraction code manually advances a byte slice 'it' through two tokens using position() and slice operations. This is ~25 lines to do what split_once could do in 5. Suggested rewrite: let rest = begin_line.splitn(3, |b: \u0026u8| b.is_ascii_whitespace()).nth(2).unwrap_or(b\"\"); filename = String::from_utf8_lossy(rest).into_owned(); The current code is not wrong but it required re-reading to understand, which is a signal it can be simplified.",
+  "acceptance_criteria": "Rewrite the filename extraction in decode.rs to use splitn or equivalent, reducing the block to ~5 lines.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:37:56Z",
+  "closed_at": "2026-05-04T18:37:56Z",
+  "close_reason": "Refactored filename extraction in uuencoding/src/decode.rs to use a skip_token helper, reducing from ~25 to ~10 lines",
+  "labels": [
+    "elegance"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.11",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

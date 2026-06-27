@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.37",
+  "title": "names_equal uses DER byte comparison with no comment on RFC 5280 rules",
+  "description": "In smime-tree/src/cert.rs, names_equal() compares two X.509 Name values by DER-encoding both and comparing the byte sequences. RFC 5280 section 7.1 specifies that Name comparison must be case-insensitive and whitespace-folding (not byte-exact). The DER comparison is stricter than required by RFC 5280 and will fail for certificates where the issuer name and subject name are logically identical but differ in case or whitespace encoding. There is no comment noting this limitation. A contributor will not know whether the byte-exact comparison is a deliberate performance trade-off or a silent correctness gap. Add a comment stating the limitation and referencing RFC 5280 section 7.1.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:30:11Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.37",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:25:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

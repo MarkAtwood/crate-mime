@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.9",
+  "title": "b64_input_was_limited detection iterates CRLF-filtered bytes twice",
+  "description": "decode.rs lines 58-72: stripping CR/LF uses one .filter().take().collect() pass, then a second .filter().nth(max_b64_chars).is_some() pass over body_bytes to detect whether truncation occurred. For bodies larger than max_bytes this performs O(2n) work over the same slice. A single pass that counts filtered bytes while collecting would eliminate the second traversal. Impact: only relevant for large base64 bodies with a small max_bytes preview — common in mail preview scenarios. Not O(n^2) but wastes cache bandwidth on large messages.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:51:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:04Z",
+  "closed_at": "2026-05-02T08:06:04Z",
+  "close_reason": "Fixed: single-pass loop in decode.rs replaces the two separate filter passes",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.9",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:51:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

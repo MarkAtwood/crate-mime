@@ -1,0 +1,24 @@
+{
+  "id": "MIME-buo.2",
+  "title": "Publish uuencoding-multi 0.2.1 to crates.io",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-11T02:37:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-11T02:39:22Z",
+  "closed_at": "2026-05-11T02:39:22Z",
+  "close_reason": "Published uuencoding-multi 0.2.1 to crates.io",
+  "dependencies": [
+    {
+      "issue_id": "MIME-buo.2",
+      "depends_on_id": "MIME-buo",
+      "type": "parent-child",
+      "created_at": "2026-05-10T19:37:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

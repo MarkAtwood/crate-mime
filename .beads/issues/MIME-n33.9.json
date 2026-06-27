@@ -1,0 +1,25 @@
+{
+  "id": "MIME-n33.9",
+  "title": "yencoding-multi: test comment says 'end=5' but code calls make_part(..., 1, 4)",
+  "description": "P2: assembler.rs line 474 comment says begin=1 end=5 (4-byte range) but code is begin=1,end=4. Fix comment.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:44:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:50:24Z",
+  "closed_at": "2026-05-04T23:50:24Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-n33.9",
+      "depends_on_id": "MIME-n33",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:44:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

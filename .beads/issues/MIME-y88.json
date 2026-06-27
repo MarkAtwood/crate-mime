@@ -1,0 +1,15 @@
+{
+  "id": "MIME-y88",
+  "title": "[uuencoding] Docs and cleanup",
+  "description": "Skoll findings:\n- LOW-40: Dead code path in handle_block — parse_begin_line None branch is unreachable by construction. Add debug_assert or document as defensive fallback.\n- LOW-41: Redundant guard in decode_line get() closure — simplify to idx \u003c payload.len().min(encoded_needed) and update comment.\n- LOW-44: Strengthen decode_limited doc example with concrete formula for pre-slice upper bound: max_bytes / 45 * 61 + 100.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:57:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:36:44Z",
+  "closed_at": "2026-06-04T22:36:44Z",
+  "close_reason": "All 3 items addressed: LOW-40 (documented as defensive fallback for non-UTF8 mode), LOW-41 (simplified get() closure), LOW-44 (added pre-slice formula)"
+}

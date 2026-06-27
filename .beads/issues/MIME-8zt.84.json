@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.84",
+  "title": "yencoding/decode.rs: finish_decode missing doc comment",
+  "description": "Why this exists: yencoding/src/decode.rs contains a private function finish_decode with #[allow(clippy::too_many_arguments)] and no doc comment. The Rust coding standard mandates doc comments on everything rustdoc knows how to document, including module-private items. Functions with many parameters — especially those suppressing a clippy lint — particularly need documentation explaining what each argument does.\\n\\nWhat goes wrong: a developer reading the code must read the entire function body to understand what each of the arguments is for. The #[allow(clippy::too_many_arguments)] further signals that the function has a complexity that warrants explanation. Without a doc comment, the function's contract (what it expects, what it returns, what side effects it has) must be inferred from context.\\n\\nLocation: yencoding/src/decode.rs, fn finish_decode.\\n\\nFix: add a doc comment explaining the function's purpose and each parameter. Consider also restructuring into a config struct to address the too_many_arguments lint rather than suppressing it.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:23Z",
+  "closed_at": "2026-06-16T00:21:23Z",
+  "close_reason": "P2 polish: finish_decode is a private function. Internal doc comments are nice-to-have.",
+  "labels": [
+    "docs",
+    "review",
+    "rust-standards"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.84",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.56",
+  "title": "KARI static-originator Err stops multi-RI iteration",
+  "description": "try_decrypt_kari now returns Err(UnsupportedAlgorithm) when a recipient matches but the originator is static. find_and_decrypt_cek propagates this Err via ? immediately, without trying subsequent RecipientInfo entries. A multi-recipient message with a static-originator KARI block (matching the decryption key) followed by a valid ephemeral KARI or KTRI for the same key would fail with UnsupportedAlgorithm instead of succeeding via the second RecipientInfo. This is a behavioral regression vs the pre-fix code (which returned Ok(None) for static-originator KARI, allowing the loop to continue). Realistic only when one sender targets the same recipient with multiple RecipientInfo blocks of different types — unusual but valid CMS. Fix: collect first-match Err and return it only after exhausting all RecipientInfo entries, or only escalate Err when zero other RI entries remain untried.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T18:23:40Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:25:42Z",
+  "closed_at": "2026-05-02T18:25:42Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.56",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T11:23:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

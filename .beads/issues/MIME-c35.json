@@ -1,0 +1,15 @@
+{
+  "id": "MIME-c35",
+  "title": "Exclude internal files from crate packages",
+  "description": "CLAUDE.md and AGENTS.md ship inside mime-tree and smime-tree packages. Add exclude = [\"CLAUDE.md\", \"AGENTS.md\"] to their Cargo.toml. Also exclude check_unused from yencoding if present.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-16T01:38:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T01:41:45Z",
+  "closed_at": "2026-06-16T01:41:45Z",
+  "close_reason": "Closed"
+}

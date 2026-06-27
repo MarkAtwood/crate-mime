@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.26",
+  "title": "build_part warns on encoding problem but caller never surfaces warning per-part",
+  "description": "parse.rs build_part: if part.is_encoding_problem is true, a warning string is pushed to the global 'warnings: Vec\u003cString\u003e'. There is no per-part field for this flag, so callers cannot correlate a warning with the specific part struct. When a message has 3 parts and one has an encoding problem, the warnings list contains a string like 'part 1.2: encoding problem' but there is no structured way to query it. This creates a maintainer burden: any code that wants to act on per-part encoding issues must parse warning strings. Consider adding an is_encoding_problem: bool field to ParsedPart.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:19:22Z",
+  "closed_at": "2026-05-02T18:19:22Z",
+  "close_reason": "Fixed: added is_encoding_problem: bool to ParsedPart in part.rs, populated from mail-parser's flag in build_part() in parse.rs. The warning string is kept for display purposes. The decode.rs test helper also updated. All 35 tests pass.",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.26",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

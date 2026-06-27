@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.15",
+  "title": "find_ybegin() assumes caller passes line-boundary start offset but does not enforce it",
+  "description": "yenc.rs find_ybegin(body, start) assumes that 'start' is either 0 or an offset immediately following a \\n. If called with a mid-line offset, the first iteration checks body[start..].starts_with(b'=ybegin ') at a non-line-boundary position, which could produce a false positive.\n\nCurrently all call sites pass either 0 (initial) or a post-\\n position (after consuming a block), so the bug is latent. However the function's contract is not documented, and future callers could violate it silently.\n\nFix: add a debug_assert or document the precondition explicitly: 'start must be 0 or immediately after a \\n in body'.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:56Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:40Z",
+  "closed_at": "2026-05-04T23:02:40Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.15",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

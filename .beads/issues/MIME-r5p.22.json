@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.22",
+  "title": "DecryptionKey::agree_ecdh doc mismatches what ecdh_wrap_cek actually builds",
+  "description": "The agree_ecdh doc says the implementor should 'hash Z concatenated with a counter and the SharedInfo structure (which encodes alg.key_wrap OID and ukm)'. But ecdh_wrap_cek on the encrypt side builds SharedInfo with entity_u_info: None (ukm is NOT included). An implementor who reads the doc and builds SharedInfo including the UKM will produce a different KEK than the encrypt side, causing silent decryption failure. The doc should either say 'ukm is NOT included in SharedInfo by this crate' or the code should be fixed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:12:18Z",
+  "closed_at": "2026-05-02T18:12:18Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.22",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:24Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

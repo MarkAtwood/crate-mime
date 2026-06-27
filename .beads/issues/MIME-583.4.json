@@ -1,0 +1,25 @@
+{
+  "id": "MIME-583.4",
+  "title": "deprecated CertChainError variants lack forward-compat doc",
+  "description": "smime-tree/src/error.rs: CertChainError::AllTrustAnchorsExpired and PathLenViolated are #[deprecated] with note 'never produced by current validator'. They exist in a #[non_exhaustive] public enum for deserialization compat. Missing doc explaining they exist only for forward-compat with serialized data from older versions. Callers are confused about whether to handle them.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T01:17:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T01:21:48Z",
+  "closed_at": "2026-05-05T01:21:48Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-583.4",
+      "depends_on_id": "MIME-583",
+      "type": "parent-child",
+      "created_at": "2026-05-04T18:17:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

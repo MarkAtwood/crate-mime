@@ -1,0 +1,19 @@
+{
+  "id": "MIME-uxy",
+  "title": "Review: loop termination check pass 12",
+  "notes": "One P1 found: CEK returned from both key.decrypt_cek() and key.agree_ecdh() is a plain Vec\u003cu8\u003e in decrypt() — not zeroed after use. Filed as MIME-uxy.1. encrypt.rs KEK fix confirmed complete: kek_arr is a \u0026[u8;N] reference into Zeroizing\u003cVec\u003cu8\u003e\u003e kek, not a copy. Loop does NOT converge yet.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:49:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T14:51:23Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

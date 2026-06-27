@@ -1,0 +1,30 @@
+{
+  "id": "MIME-677.7",
+  "title": "verify() all-fail Err: error message not diagnostic, no per-signer detail",
+  "description": "When every signer fails, verify() returns Err(SmimeError::Io('all signers failed verification')). The individual per-signer failure reasons (message digest mismatch, bad signature, cert-chain error) are captured in SignerResult.error but are inaccessible when the top-level result is Err — the caller has no VerificationResult to inspect. The doc comment on verify() documents the Err condition but does not tell the caller how to get per-signer detail. Maintenance consequence: debugging a failing verification requires adding temporary Ok-path logic or reading internal state that is discarded on error. Any caller who wants actionable diagnostics cannot get them from the current API when all signers fail.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:55:34Z",
+  "closed_at": "2026-05-02T05:55:34Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.7",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

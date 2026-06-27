@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.3",
+  "title": "mime-tree: ParseError::InvalidRange.available is usize, breaks cross-platform serde",
+  "description": "ParsedPart uses u32 for byte ranges explicitly to ensure identical serialized representation on 32-bit and 64-bit hosts (part.rs:46-47). But ParseError::InvalidRange { available: usize } serializes usize which is 4 bytes on 32-bit and 8 bytes on 64-bit. Cross-platform deserialization of a serialized ParseError will misread or fail. Change available to u64 (or u32 with saturating cast).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:11Z",
+  "closed_at": "2026-05-05T03:18:11Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.3",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

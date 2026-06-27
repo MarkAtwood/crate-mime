@@ -1,0 +1,15 @@
+{
+  "id": "MIME-pqu",
+  "title": "[yencoding-multi] Add no-panic tests and u64::MAX offset coverage",
+  "description": "Skoll LOW-58 + LOW-64: (1) Add yencoding-multi/tests/no_panic.rs exercising adversarial inputs: begin=u64::MAX, end=u64::MAX, data.len()==0, overlapping parts with extreme offsets, many small parts. (2) Add test: part_begin=u64::MAX, part_end=u64::MAX, total_size=512 — verify OutOfRange is returned, not a panic.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:57:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:21:30Z",
+  "closed_at": "2026-06-04T22:21:30Z",
+  "close_reason": "Added 11 no-panic tests exercising u64::MAX offsets, reversed ranges, zero-length data, overlapping parts, many small parts, and MAX_TOTAL_SIZE boundary."
+}

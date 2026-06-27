@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.83",
+  "title": "Good: yencoding pending_escape flag correctly handles split-line escape sequences",
+  "description": "yencoding/src/decode.rs: yEnc escape sequences (=\u003cbyte\u003e) can legally be split across line boundaries — the '=' appears at the end of one line and the escaped byte appears at the start of the next. The decoder carries a pending_escape: bool flag across the LineIter, which means it correctly reassembles these split sequences without re-reading the previous line or buffering. This is subtle: getting it wrong would silently corrupt data or miscount byte offsets. The flag is reset on each line start correctly, and dot-stuffing removal happens before pending-escape resolution in the correct order. Worth defending because a naive line-at-a-time decoder would get this wrong.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:42:00Z",
+  "closed_at": "2026-06-16T00:42:00Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.83",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

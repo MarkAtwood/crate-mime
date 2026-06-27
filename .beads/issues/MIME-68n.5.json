@@ -1,0 +1,31 @@
+{
+  "id": "MIME-68n.5",
+  "title": "SmimeError lacks #[non_exhaustive]: adding variants is breaking",
+  "description": "SmimeError is a public enum without #[non_exhaustive]. Every new error variant (already happened: WrongContentType, AllSignersFailed) is a breaking change — downstream callers with exhaustive match arms fail to compile. Same applies to KeyEncryptionAlgorithm, DigestAlgorithm, KariKeyAgreement, KeyWrapAlgorithm, TransferEncoding, EcCurve. Add #[non_exhaustive] to all public enums before 1.0 or first wide adoption.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:44:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:52:26Z",
+  "closed_at": "2026-05-02T06:52:26Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.5",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:44:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

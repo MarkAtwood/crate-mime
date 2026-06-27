@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.53",
+  "title": "decrypt.rs: AES-GCM branch checks OID but immediately errors — dead dispatch",
+  "description": "decrypt.rs lines 58-64 match ID_AES_128_GCM and ID_AES_256_GCM only to return UnsupportedAlgorithm with a message explaining why. These OIDs are never used in standard EnvelopedData, so matching them before the catch-all provides no value — the catch-all would produce a cleaner and equally informative error. The specific match arm exists to explain a protocol distinction (GCM belongs in AuthEnvelopedData), but that explanation belongs in a code comment at the catch-all, not as a dispatch arm that will never be hit in practice. Suggested rewrite: remove the explicit GCM arm and add a comment to the catch-all explaining that GCM in EnvelopedData is not valid per RFC and would appear as an unknown OID.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:40:44Z",
+  "closed_at": "2026-05-02T05:40:44Z",
+  "close_reason": "labeled opinion; engineering rationale in MIME-72l.57 (explicit error \u003e generic unknown-OID)",
+  "labels": [
+    "elegance",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.53",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

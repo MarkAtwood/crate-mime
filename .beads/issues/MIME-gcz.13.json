@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.13",
+  "title": "decode_line() has #[allow(dead_code)] despite being pub(crate) and used by scan.rs",
+  "description": "uuencoding/src/decode.rs line 151: decode_line() is marked #[allow(dead_code)] and pub(crate). It is used by scan.rs (uuencoding/src/scan.rs line 3). The allow(dead_code) was presumably added to silence a compiler warning during development but was not removed. Since the function is actually used, the attribute is misleading and will confuse anyone wondering why dead_code is suppressed on a used function.",
+  "acceptance_criteria": "Remove the #[allow(dead_code)] attribute from decode_line(). Verify cargo build still compiles cleanly.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:38:02Z",
+  "closed_at": "2026-05-04T18:38:02Z",
+  "close_reason": "Removed #[allow(dead_code)] from decode_line() in uuencoding/src/decode.rs",
+  "labels": [
+    "elegance"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.13",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

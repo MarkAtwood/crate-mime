@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.44",
+  "title": "boundary_from_content is deterministic — security implication undocumented",
+  "description": "In smime-tree/src/sign.rs, boundary_from_content() derives the MIME boundary from the SHA-256 of the content. The doc comment describes this as making tests produce reproducible boundaries. What it does not say is that two messages with identical content will always produce the same boundary. RFC 2046 section 5.1.1 requires only that the boundary not appear in the body. The current implementation is correct and safe, but a contributor may change it to use random bytes thinking it is more secure, breaking test reproducibility. The doc comment should state that predictability is intentional and why it is safe here.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:30:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.44",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:25:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

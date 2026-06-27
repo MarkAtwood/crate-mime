@@ -1,0 +1,28 @@
+{
+  "id": "MIME-9nu.7",
+  "title": "gcz.20: '-' delimiter in is_begin_line correctly handles begin-base64 path",
+  "description": "Allowing '-' as a valid post-keyword delimiter in is_begin_line ensures that 'begin-base64' blocks still pass the initial gate and reach handle_block(), where is_begin_base64() fires first. Without '-', 'begin-base64' blocks would be silently skipped by the outer scan_impl loop and the BeginBase64 error would never be emitted. A reviewer might suggest removing '-' support to simplify the function, which would break begin-base64 detection. The '-' case is load-bearing.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:57:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:02:06Z",
+  "closed_at": "2026-05-04T19:02:06Z",
+  "close_reason": "Confirmed: no code change needed. Existing implementation is correct per review analysis.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.7",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:57:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.59",
+  "title": "VerificationResult::is_verified() returns true if ANY signer passed — security-critical callers cannot use it safely",
+  "description": "## Problem\n\nIn `smime-tree/src/error.rs`, `VerificationResult::is_verified()` returns:\n\n```rust\npub fn is_verified(\u0026self) -\u003e bool {\n    self.signers.iter().any(|s| matches!(s.status, SignerStatus::Verified))\n}\n```\n\nIn a multi-signer `SignedData` message, this returns `true` if even one signer out of N passed verification. A message where all expected signers failed verification (or are completely unknown to the caller) but a single injected unknown signer happened to verify would return `is_verified() == true`.\n\n## Concrete attack scenario\n\nAn attacker who can inject a `SignerInfo` for a certificate they control into a `SignedData` blob:\n1. Caller's expected signer: Bob (fails — signature invalid or unknown cert)\n2. Attacker's injected signer: attacker's cert (passes — valid signature from attacker)\n3. `is_verified()` returns `true`\n\nThe attacker has made an unauthenticated message appear verified.\n\n## What the API name implies\n\nThe method name `is_verified` implies 'this message has been verified'. What it actually checks is 'at least one of possibly many unknown signers passed their own verification'. These are completely different security properties.\n\n## Missing contract documentation\n\nThe doc comment on `is_verified` does not state this ANY-signer semantic. Callers who read the name and use it as a boolean gate — the overwhelmingly common pattern — will have a security vulnerability.\n\n## What goes wrong if left as-is\n\nSecurity-critical callers will write `if result.is_verified() { ... }` and believe the message was authenticated by the expected signer(s). Callers must instead inspect `result.signers` individually and verify that their specific expected signer's certificate appears with `SignerStatus::Verified`, but nothing in the API surface makes this obvious or required.\n\n## Files\n\n- `smime-tree/src/error.rs` — `VerificationResult::is_verified()`",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:23:15Z",
+  "closed_at": "2026-06-16T00:23:15Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.59",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

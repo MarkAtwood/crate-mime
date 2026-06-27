@@ -1,0 +1,61 @@
+{
+  "id": "MIME-72l.41",
+  "title": "sign.rs/encrypt.rs: unwrap_or_default silently drops base64 chunks",
+  "description": "sign.rs wrap_base64 (line 292) and encrypt.rs build_mime (line 429) both call core::str::from_utf8(chunk).unwrap_or_default() on base64-encoded output. Base64 output is always ASCII, so the error path is unreachable. But unwrap_or_default() on the impossible error branch silently returns an empty string, which would corrupt the encoded output without any indication. The comment says 'BASE64 output is ASCII-only, so from_utf8 never fails' — which is exactly when you should use unwrap() or expect() to preserve that invariant as a panic rather than silently drop output. Suggested rewrite: replace unwrap_or_default() with .expect(\"base64 output is always ASCII\") to make the invariant load-bearing.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:32:42Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.41",
+      "depends_on_id": "MIME-677.12",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.41",
+      "depends_on_id": "MIME-677.4",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.41",
+      "depends_on_id": "MIME-72l.56",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.41",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-72l.41",
+      "depends_on_id": "MIME-677.1",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:27:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

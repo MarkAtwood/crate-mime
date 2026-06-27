@@ -1,0 +1,28 @@
+{
+  "id": "MIME-677.6",
+  "title": "key.rs: supported_key_enc_algorithm() and preferred_digest_algorithm() default methods are never called by the crate",
+  "description": "Both DecryptionKey::supported_key_enc_algorithm() and SigningKey::preferred_digest_algorithm() provide default implementations returning None, but neither is called anywhere in smime-tree's own code (grep confirms). They form public API surface that the crate itself ignores, creating a false impression of algorithm negotiation. Either: (a) use them in encrypt.rs / sign.rs to drive algorithm selection, or (b) remove them and re-add when there is a concrete caller. Shipping hook methods that the library itself never consults is misleading API.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:38Z",
+  "closed_at": "2026-05-02T06:24:38Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.6",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:50:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

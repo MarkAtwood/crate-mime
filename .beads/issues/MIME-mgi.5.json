@@ -1,0 +1,31 @@
+{
+  "id": "MIME-mgi.5",
+  "title": "BodyStructure in walk.rs declared pub but should be pub(crate)",
+  "description": "walk.rs: struct BodyStructure and its fields are pub, but walk is a private module (mod walk; in lib.rs without pub). The type is not re-exported and never visible outside the crate. Declaring it pub instead of pub(crate) is misleading — a future contributor adding 'pub mod walk;' to lib.rs would accidentally expose BodyStructure as a public API type with no stability guarantee. Maintenance consequence: easy accidental public API surface increase.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:08:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:16:23Z",
+  "closed_at": "2026-05-02T15:16:23Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.5",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:08:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

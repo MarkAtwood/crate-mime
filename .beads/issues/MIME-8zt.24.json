@@ -1,0 +1,28 @@
+{
+  "id": "MIME-8zt.24",
+  "title": "scan.rs: local memchr scan vs SIMD memchr crate",
+  "description": "uuencoding/src/scan.rs uses a hand-rolled linear byte scan (iter().position()) to find newlines, rather than the memchr crate which provides SIMD-accelerated search on x86 and ARM. For large Usenet posts (1-50 MB per article), this is a hot path. The memchr crate is already widely used in the Rust ecosystem and has zero unsafe user-code cost. Staying with a plain iterator means O(n) scalar work where SIMD would process 16-32 bytes per cycle. For a 10 MB UU article the difference is measurable.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:58Z",
+  "closed_at": "2026-06-16T00:21:58Z",
+  "close_reason": "P2 efficiency: local memchr in scan.rs iterates bytes looking for newlines. The memchr crate would add a dependency for marginal speedup. UUencode scanning is not a hot path in email processing.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.24",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

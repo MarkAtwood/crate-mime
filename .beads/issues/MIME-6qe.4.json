@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.4",
+  "title": "yencoding-multi: add_part_auto_crc_verified_at_finish test uses code-under-test as CRC oracle",
+  "description": "assembler.rs test: correct_crc = crc32fast::hash(\u0026data) — this is the same function finish() calls internally. The Python oracle comment (0x2144_df1c for 4 zero bytes) is present but never used. Replace: let correct_crc: u32 = 0x2144_df1c; and delete the crc32fast::hash call.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:14Z",
+  "closed_at": "2026-05-05T03:18:14Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.4",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

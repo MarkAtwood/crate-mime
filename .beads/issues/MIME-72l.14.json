@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.14",
+  "title": "sign: message digest computed over content_mime but verify hashes signed_content directly",
+  "description": "RFC 5751 §3.4.1 requires that for multipart/signed, the SignedData MUST have econtent absent (detached). In sign.rs, EncapsulatedContentInfo is built with econtent=Some(OctetString(content_mime)), making the SignedData an attached signature at the CMS level while the outer MIME structure is multipart/signed (detached). The verify() function correctly computes the digest over signed_content (the raw MIME part bytes) and the messageDigest matches because content_mime == signed_content. However, a strict RFC 5751 parser receiving this multipart/signed will reject it because econtent is present. Additionally, the messageDigest is computed over the raw content_mime bytes, but RFC 5652 §5.4 says for attached signatures the digest is over the DER value of the econtent OCTET STRING — i.e., without the OCTET STRING tag/length wrapper. For detached signatures the digest is over the raw content bytes. Since sign() uses detached MIME structure but attached CMS, the two digest computation rules are in conflict. Trigger: any RFC-strict S/MIME implementation (e.g. Mozilla Thunderbird, Microsoft Outlook) that validates the multipart/signed structure will reject messages produced by sign().",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:43:22Z",
+  "closed_at": "2026-05-02T05:43:22Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.14",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

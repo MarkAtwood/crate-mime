@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.30",
+  "title": "Empty result is ambiguous: caller cannot distinguish 'malformed' from 'empty input' from 'parser refused'",
+  "description": "header_typed.rs:178-179 — parse_header_typed doc:\n\n    \"Parsing is best-effort. Malformed input yields the empty result for the\n    requested form (empty `Vec`, empty string, or `DateTime(None)`).\"\n\nFor each form, the \"empty\" result is the same regardless of cause:\n\n    HeaderForm::Addresses ⟶ Addresses(vec![]) for: empty input, malformed input, parser-rejected input\n    HeaderForm::Raw       ⟶ Raw(\"\")          for: empty input, all-whitespace input, non-UTF-8 input (per MIME-o2c.6)\n    HeaderForm::Date      ⟶ DateTime(None)   for: empty input, malformed date, all-zero date (per the year/month/day guard)\n    HeaderForm::URLs      ⟶ URLs(vec![])     for: empty input, malformed URL list, non-URL content\n    HeaderForm::MessageIds⟶ MessageIds(vec![]) for: empty input, malformed msg-ids\n    HeaderForm::GroupedAddresses ⟶ GroupedAddresses(vec![]) for: any failure mode\n\nThe caller has *no way* to distinguish:\n- \"header was present but value was empty\" (e.g. `Subject:` followed immediately by CRLF — legal RFC 5322 §2.2)\n- \"header value was malformed and parser gave up\"\n- \"header value parsed successfully but had zero entries\" (`Cc:` with just whitespace)\n- \"input was non-UTF-8 garbage\" (Raw only — covered by MIME-o2c.6 for that one form)\n\nFor JMAP servers, RFC 8621 §4.1.2 distinguishes these cases when reporting back to the client: a malformed header is server's choice, but a legitimately-empty header is reported as empty array. The crate collapses both into the same return value.\n\nCaller-facing consequence:\n- A JMAP server cannot warn/log on malformed headers because it cannot detect them.\n- A linter / quality tool built on this crate cannot flag \"Date header malformed\" because all unparseable Date values look identical to \"Date header is empty\" (which would itself be an RFC 5322 violation worth flagging).\n- Round-tripping a malformed header through parse → re-serialize loses fidelity silently.\n\nThe \"never returns an error\" design choice (module docs lines 20-22) is defensible but it should at minimum be paired with an *out-of-band* signal: either (a) per-call warnings (analogous to `ParsedMessage::warnings` per AGENTS.md), (b) a second-tier function `parse_header_typed_strict(...) -\u003e Result`, or (c) explicit documentation that the loss is intentional and irrecoverable.\n\nThis is distinct from:\n- MIME-o2c.6 (Raw + non-UTF-8 specifically)\n- MIME-o2c.9 (HeaderDateTime constructed without validation)\n- MIME-o2c.7 (CRLF precondition)\n\nIt is about the *general* contract gap: best-effort + return-empty-on-failure = no failure signal.\n\nFix options:\n- Document explicitly in the parse_header_typed docstring that the caller cannot distinguish \"empty\" from \"malformed\" from \"non-UTF-8\" and that recovery / warning is the caller's responsibility — even though the caller has no information to act on.\n- Add a parallel `parse_header_typed_strict` returning Result\u003cHeaderValueTyped, ParseError\u003e.\n- Add a tuple return `(HeaderValueTyped, Vec\u003cString\u003e)` matching the crate's existing `ParsedMessage.warnings` pattern.\n\nLine refs:\n- header_typed.rs:20-22 (module docs) and 178-179 (function docs) — \"never panics and never returns an error\" + \"Malformed input yields the empty result\".",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:38:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:07:25Z",
+  "closed_at": "2026-05-14T16:07:25Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.30",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:38:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.4",
+  "title": "no README.md in either crate",
+  "description": "Neither mime-tree/ nor smime-tree/ has a README.md. crates.io shows a blank description page; Rust doc pages have no overview. A new user or potential contributor has no entry point beyond reading CLAUDE.md (which is intended for AI agents, not humans) or src/lib.rs. Scenario: first-time user discovers the crate on crates.io, sees no README, and cannot understand what it does or how to use it without reading the full source — this generates avoidable issue reports.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:35Z",
+  "closed_at": "2026-05-02T07:17:35Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.4",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

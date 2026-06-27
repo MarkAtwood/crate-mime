@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.11",
+  "title": "README quick-start example uses undeclared variables",
+  "description": "README.md:36-38: The quick-start example references part1_bytes, part2_bytes, and part3_bytes which are never declared or initialised in the example. The code block is presented as runnable Rust but would fail to compile. Should either use todo!() placeholders, declare them as \u0026[u8] = b\"...\", or mark the block as no_run. Compare with lib.rs example which correctly uses todo!(\"fetch messages\") for the opaque data.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:22Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:56:32Z",
+  "closed_at": "2026-05-04T22:56:32Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.11",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.90",
+  "title": "Good: yencoding-multi Assembler overlap detection is O(log n) per part via BTreeMap",
+  "description": "yencoding-multi/src/assembler.rs: overlap detection uses a BTreeMap\u003cu64, u64\u003e (start → end of covered interval). On each add_part() call, the code uses .range(..=begin_0).next_back() and .range(begin_0..).next() to find the immediate predecessor and successor intervals in O(log n) time. This is the correct data structure for an interval coverage problem: a Vec would require O(n) scan and sort maintenance. The missing_ranges() walk is also O(n) in the number of parts, not O(total_size). Worth defending: a reviewer might suggest 'just use a Vec\u003cbool\u003e' which would be O(total_size) in space and time.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:17Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:29Z",
+  "closed_at": "2026-06-16T00:22:29Z",
+  "close_reason": "Positive finding — no action needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.90",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

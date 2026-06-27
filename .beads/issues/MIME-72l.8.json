@@ -1,0 +1,30 @@
+{
+  "id": "MIME-72l.8",
+  "title": "DecryptionKey / SigningKey traits cannot be extended without semver break",
+  "description": "Both DecryptionKey and SigningKey are public traits with required methods and no default implementations. Any new required method is a breaking change for all downstream implementors. Concrete problems already visible: (1) KARI decrypt requires passing the ephemeral public key from the KARI structure to the DecryptionKey impl — doing so requires a new method on DecryptionKey; (2) SigningKey has no way to advertise supported DigestAlgorithm variants. The traits will need to grow before 1.0, but every growth is a semver break. Neither trait is marked #[non_exhaustive] (which does not apply to traits) nor documented as 'sealed' or 'unstable'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:44:35Z",
+  "closed_at": "2026-05-02T05:44:35Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.8",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

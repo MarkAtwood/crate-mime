@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.35",
+  "title": "missing_part() silently returns zero ranges when mail-parser index is invalid",
+  "description": "In parse.rs, build_part() calls missing_part() when a child part index is out of range in the mail-parser parts array. missing_part() returns a ParsedPart with header_range=(0,0) and body_range=(0,0). The warning is added to ParsedMessage.warnings but the returned ParsedPart looks structurally valid with content_type='application/octet-stream'. A caller who does not check warnings will call decode_body_value() on this part and get the first 0 bytes of the raw buffer (an empty string, no error). The real failure — that the part tree is incomplete — is invisible unless warnings is explicitly checked. No test covers this path.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:40:02Z",
+  "closed_at": "2026-05-02T05:40:02Z",
+  "close_reason": "duplicate of MIME-72l.36 (same missing_part sentinel bug)",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.35",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

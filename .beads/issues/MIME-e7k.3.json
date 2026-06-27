@@ -1,0 +1,31 @@
+{
+  "id": "MIME-e7k.3",
+  "title": "encrypt.rs RSA preflight RNG check has documented TOCTOU window",
+  "description": "build_rsa_recipient() performs a 256-byte preflight getrandom::fill check before calling rsa_pub.encrypt(). The code comment acknowledges 'A narrow TOCTOU window between the preflight and the encrypt call remains but would only trigger on catastrophic OS-level RNG failure.' The preflight is then silently discarded with 'let _ = preflight'. This is acceptable as documented, but future maintainers may remove the preflight (it looks unused) since the binding is immediately discarded. Consider using the preflight bytes as additional seeding or add a #[allow(unused_variables)] with an explanatory comment that the binding must NOT be removed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:37:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:46:15Z",
+  "closed_at": "2026-05-02T17:46:15Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "opinion",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.3",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:37:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

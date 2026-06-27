@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.19",
+  "title": "CHAIN_INT_CERT_HEX is #[allow(dead_code)] — fixture with no test coverage",
+  "description": "smime_tests.rs: CHAIN_INT_CERT_HEX is marked #[allow(dead_code)]. The comment says it is present in the SignedData bag and 'included here for completeness'. This is dead code in the test binary. When the fixture changes (cert regeneration), the dead constant may go stale without detection. Either write a test that loads and validates CHAIN_INT_CERT_HEX independently, or remove the constant and rely solely on the bag copy.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:17:01Z",
+  "closed_at": "2026-05-02T18:17:01Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.19",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

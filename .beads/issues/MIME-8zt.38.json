@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.38",
+  "title": "decode.rs: QP false-truncation guard has three-level nesting that is hard to reason about",
+  "description": "mime-tree/src/decode.rs: the QP decode-limited path has three nested levels of logic — (1) the input limiting and input_was_limited flag, (2) the check for whether output bytes were actually cut, and (3) the fallback full decode. The interaction between these levels is subtle: the guard fires only when input was limited AND decoded output \u003c= n, meaning the decoder stopped exactly at the limit with no left-over. Extracting this into a named helper (fn qp_with_limit(input, n) -\u003e (Vec\u003cu8\u003e, bool)) with a clear contract in its doc comment would make the three-level interaction a local decision inside one function rather than inlined control flow.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:42Z",
+  "closed_at": "2026-06-16T00:52:42Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.38",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

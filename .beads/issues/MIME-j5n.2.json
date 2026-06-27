@@ -1,0 +1,25 @@
+{
+  "id": "MIME-j5n.2",
+  "title": "Scaffold yencoding-multi crate (Cargo.toml, lib.rs skeleton, error.rs)",
+  "description": "Create the yencoding-multi crate directory and initial files.\n\nWhat to do:\n- Create yencoding-multi/Cargo.toml: name=yencoding-multi, version=0.1.0, edition=2021, license=MIT OR Apache-2.0, rust-version=1.75, authors=[Mark Atwood]\n- Dependencies: yencoding (path dep to ../yencoding, not yet published), crc32fast\n- Create yencoding-multi/src/lib.rs: pub mod error; pub mod assembler; re-export Assembler and AssemblyError at crate root\n- Create yencoding-multi/src/error.rs: stub AssemblyError enum with all variants from the epic (OverlappingPart, OutOfRange, CrcMismatch, Incomplete, TruncatedPart); mark enum #[non_exhaustive]\n- Create yencoding-multi/src/assembler.rs: pub struct Assembler stub with fields (total_size: u64, parts: Vec\u003c(Range\u003cu64\u003e, Vec\u003cu8\u003e)\u003e, whole_file_crc32: Option\u003cu32\u003e); impl block with all method signatures returning todo!()\n- Do NOT add to workspace Cargo.toml yet (that is a separate issue to avoid merge ordering problems)\n- Acceptance: cargo check -p yencoding-multi compiles with warnings but no errors (todo!() stubs are fine)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:24:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:21:14Z",
+  "close_reason": "Scaffolded: Cargo.toml, lib.rs, error.rs, assembler.rs.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.2",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:24:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

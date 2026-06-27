@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.39",
+  "title": "KeyEncryptionAlgorithm::EcdhEs doc says 'currently not produced by decrypt()' — confusing because agree_ecdh IS used",
+  "description": "key.rs: KeyEncryptionAlgorithm::EcdhEs doc says 'Reserved; currently not produced by decrypt(). See type-level doc.' and the type-level doc explains ECDH decryption uses agree_ecdh(). The variant exists but is never constructed by this crate. A new contributor reading the code will be confused: why is EcdhEs in KeyEncryptionAlgorithm if it is never used? The doc should say explicitly: 'This variant is never returned by decrypt(); it exists as an extension point for external callers.' Alternatively, remove the variant if it has no current users.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:11:34Z",
+  "closed_at": "2026-05-02T18:11:34Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.39",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

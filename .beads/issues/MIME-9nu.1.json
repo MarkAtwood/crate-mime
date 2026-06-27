@@ -1,0 +1,30 @@
+{
+  "id": "MIME-9nu.1",
+  "title": "decode_limited: is_truncated=true for exact-limit complete block",
+  "description": "Trigger: call decode_limited(b'begin 644 f\\n#0V%T\\n \\nend\\n', Some(3)). The block is structurally complete (3 bytes, has terminator and end). Expected: is_truncated=false. Actual: is_truncated=true. Cause: the limit check (data.len() \u003e= max) fires at the start of the loop iteration for the terminator line, before decode_line is called on the ' ' terminator line. So decode_line never processes the terminator, the 'end' lookahead never runs, and is_truncated remains at its initial true value. The data is complete and correct (no data loss), but is_truncated=true causes callers doing preview to believe there are more bytes when there aren't, triggering a redundant full re-fetch. Affects any caller that uses is_truncated to decide whether to fetch more bytes after a max_bytes-bounded preview query.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:56:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:59:50Z",
+  "closed_at": "2026-05-04T18:59:50Z",
+  "close_reason": "Fixed: changed \u003e= to \u003e in limit check so terminator line is processed when data.len()==max. Added 5 regression tests.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.1",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:56:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

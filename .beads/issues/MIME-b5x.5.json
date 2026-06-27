@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.5",
+  "title": "test_verify_openssl_rsa_signed uses SystemTime::now() — time bomb 2036",
+  "description": "smime_tests.rs test_verify_openssl_rsa_signed passes std::time::SystemTime::now() to verify(). The CA cert and RSA leaf cert in the fixtures expire 2036-04-29. CI will start failing on or after that date with no code change. The verify() API accepts an explicit 'now' parameter precisely to avoid this; tests must pass a fixed time that is within the cert validity window, not the real clock. Scenario: in 10 years, CI breaks silently without any code change.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:38Z",
+  "closed_at": "2026-05-02T07:17:38Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.5",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

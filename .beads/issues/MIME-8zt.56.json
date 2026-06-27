@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.56",
+  "title": "uuencoding/yencoding: String-carrying error variants",
+  "description": "Why this exists: uuencoding/src/error.rs has UuError::InvalidBeginLine { line: String, begin_offset: usize }. yencoding/src/error.rs has YencError::InvalidHeader { field: String }. Both carry a raw String where a structured type would preserve the actual value for programmatic inspection.\\n\\nWhat goes wrong: a caller that wants to log UuError::InvalidBeginLine with the specific byte offset it tried to parse loses nothing because begin_offset is present as a structured field — but 'line: String' is the entire line, which is potentially unbounded in length. More importantly, a caller that wants to extract just the malformed begin-line content must rely on the String being the full line text, an implicit contract that is not type-enforced. For YencError::InvalidHeader, field: String gives no indication of whether it was a missing field, an out-of-range value, or an invalid character — that distinction is lost in the String.\\n\\nFix: for InvalidBeginLine, consider replacing line: String with begin_offset: usize only (the offset is the structured diagnostic; the full line text is not needed for programmatic handling). For InvalidHeader, add a separate reason field or split into multiple variants (MissingField, InvalidFieldValue) with the field name as a \u0026'static str or an enum.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:53Z",
+  "closed_at": "2026-06-16T00:21:53Z",
+  "close_reason": "P2 refactoring: InvalidBeginLine{line:String} and InvalidHeader{field:String} carry the field value for error messages. Structured alternatives would need new enums per variant. Low priority.",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.56",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

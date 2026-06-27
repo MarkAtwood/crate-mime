@@ -1,0 +1,19 @@
+{
+  "id": "MIME-b5x",
+  "title": "Review: entire project — mime-tree + smime-tree",
+  "notes": "Maintainer risk: MEDIUM — Three P0 correctness bugs (is_truncated false-negative, missing pathLen, bounds panic). No security CVE-level issues in the core crypto paths. API surface is small and well-constrained. Biggest ongoing risk is no README for either crate.\nConfidence: 15% chance of missed bug. Least confident flags: pathLen (MIME-b5x.2) — I did not verify that the certificate chain test fixtures exercise this path, so the bug may already be impossible to trigger in practice given the test certs. Also uncertain about exact mail-parser behavior for empty parts (MIME-b5x.3). Uncertainty driven by: mail-parser internals not read, no ECDH decrypt tests, no negative test cases for chain validation. Would raise confidence if: read mail-parser source for parts guarantee; run tests with pathLen=0 cert; verify QP is_truncated behavior with a test.\nIdiom rating: ACCEPTABLE — No unsafe blocks. No Box\u003cdyn Error\u003e in public API. No gratuitous clones. Error variants are stringly-typed (noted as MIME-b5x.16) but not a safety issue. Main idiom gaps are minor: redundant cast, intermediate Vec in wrap_base64, missing PartialEq. The codebase is clean and would pass a serious Rust code review with minor notes.\nRust idiom confidence: 20% chance of missed issue. Least confident flags: did not grep for all .unwrap() occurrences; did not check all match arms for return-as-last-statement. Uncertainty driven by: some code paths (ECDH encrypt/decrypt) have complex type interactions that I reviewed at a high level only.\nMaintainer risk: MEDIUM — three P0 docs/API bugs (find_by_id, signer.certificate, preview always None) will immediately confuse users copying examples. The core crypto/parsing logic is sound. Risk is concentrated in user-facing documentation and a missing preview implementation.\nIdiom rating: ACCEPTABLE — ownership and borrowing are sound, no gratuitous clones, error handling is consistent (all use SmimeError). Main idiom gaps: missing ParsedPart tree-walk API, SmimeError::Other overuse for structured cases. No unsafe blocks outside test code.\nConfidence: 10% chance of missed bug. Least confident flags: (1) CMS signed_attrs DER tag handling (verify.rs step 4) — passed tests suggest correct but I could not inspect the cms crate internals; (2) RFC 8621 §4.1.4 multipart/related-inside-alternative walk behavior — no tests for this combination. Uncertainty driven by: no test for ECDH decrypt path (agree_ecdh default), no test for multipart/related inside alternative, cannot verify cms crate SetOfVec tag rewriting behavior without reading that crate. Would raise confidence if: ECDH round-trip test existed, multipart/related tests added.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T18:49:31Z",
+  "close_reason": "Review loop complete: two full iterations, all P0/P1 fixed, P3+ closed as opinion or deferred. 0 open issues remain.",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

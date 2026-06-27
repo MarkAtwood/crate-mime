@@ -1,0 +1,19 @@
+{
+  "id": "MIME-p4h",
+  "title": "Review: entire project — MIME and S/MIME crates",
+  "notes": "Maintainer risk: MEDIUM — one RFC non-conformance that misclassifies unlabeled body parts (octet-stream vs text/plain default), one security gap (CEK not zeroed), one panic in library code (RSA encrypt RNG failure), two missing test coverage areas (ECDH path, intermediate CA chains). The crypto logic itself is sound for the happy paths covered by existing tests.\nConfidence: 15% chance of missed bug. Least confident flags: (1) RFC 8621 §4.1.4 walk algorithm edge cases — the JS pseudocode is subtle and my reading may miss a corner case; (2) the sign() multipart construction — whether header_range exactly captures what was hashed is verified by test E but the test itself is load-bearing. Uncertainty driven by: not being able to run the test suite from this review context; not cross-checking the walk algorithm against the RFC JS pseudocode line-by-line for all branching cases. Would raise confidence if: cargo test --workspace passes clean; walk.rs tests cover all 12 RFC §4.1.4 example cases (currently 7 covered); a second reviewer checks the RFC 8621 cross-population logic.\nIdiom rating: ACCEPTABLE — no unsafe blocks to audit, no unwrap() hiding real bugs, no Box\u003cdyn Error\u003e in library API. The main idiom gaps are: stringly-typed error sub-variants in SmimeError, missing #[non_exhaustive] on two result structs (VerificationResult, SignerResult) and KariAlgorithm, and SmimeError lacking Eq. These are all API-surface issues that are breaking changes to fix after publication.\nRust idiom confidence: 20% chance of missed issue. Least confident flags: I did not audit the der/cms crate re-export chain to confirm no lifetime issues bleed through, and I did not check whether the p256/p384 crates' EphemeralSecret usage matches the RFC 5753 shared-secret extraction contract exactly. Uncertainty driven by: pre-release pinned crate versions may have API differences from published docs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:10:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T14:40:35Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

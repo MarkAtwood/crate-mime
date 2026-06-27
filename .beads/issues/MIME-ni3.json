@@ -1,0 +1,14 @@
+{
+  "id": "MIME-ni3",
+  "title": "Review loop pass 10 — fresh eyes",
+  "description": "Full codebase review with clear eyes, independent of git history. Covers all six workspace crates: uuencoding, uuencoding-multi, yencoding, yencoding-multi, mime-tree, smime-tree.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:50:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-05T03:03:01Z",
+  "close_reason": "all steps complete"
+}

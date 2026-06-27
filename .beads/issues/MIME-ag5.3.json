@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ag5.3",
+  "title": "uuencoding: missing #[must_use] on encode/decode/scan — inconsistent with yencoding",
+  "description": "uuencoding/src/lib.rs — encode(), decode(), decode_limited(), and scan() all return values (Vec\u003cu8\u003e or Result/DecodedBlock) but none are marked #[must_use]. yencoding/src/lib.rs marks encode() and encode_part() with #[must_use]. The cross-crate inconsistency is a footgun: discarding a uuencoding::encode() return value produces no compiler warning. Fix: add #[must_use] to encode(), decode(), decode_limited(), and scan() in uuencoding/src/lib.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:32:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:35:30Z",
+  "closed_at": "2026-05-05T02:35:30Z",
+  "close_reason": "Added #[must_use] to encode() and scan() only; decode/decode_limited already return Result which is inherently must_use (clippy double_must_use)",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ag5.3",
+      "depends_on_id": "MIME-ag5",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:32:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

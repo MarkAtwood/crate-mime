@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.14",
+  "title": "sign/verify: RSA signature algorithm selection accepts caller-supplied preferred_digest_algorithm without cert key-size check",
+  "description": "In sign.rs, the digest algorithm for RSA keys is determined first by SigningKey::preferred_digest_algorithm() and only falls back to select_digest_for_cert() if None is returned. A caller can supply DigestAlgorithm::Sha256 even when their RSA key is 1024-bit, producing a valid but weak signature that this crate will then accept during verify() (it does not check the RSA modulus size).\n\nWhat goes wrong: an implementor of SigningKey overrides preferred_digest_algorithm() to return Sha256 for a 1024-bit RSA key. The produced signature is cryptographically weak (1024-bit RSA is broken). The verify() path does not check key size, so weak signatures pass chain validation.\n\nSimilarly, verify() dispatches on signature algorithm OID but never checks whether the RSA key meets a minimum size (e.g. 2048-bit). A certificate with a 512-bit RSA key signed by a trusted CA will have its signatures accepted.\n\nAffected code: sign.rs lines 101-103 (preferred_digest_algorithm override accepted unconditionally); sig_verify.rs verify_rsa_pkcs1 (no modulus-size check).\n\nFix: add a minimum RSA key size check (\u003e= 2048 bits) in both verify_rsa_pkcs1 (returning an error) and in sign.rs (rejecting keys below minimum in signature_algorithm_oid). Document the minimum in the public API.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:16Z",
+  "closed_at": "2026-06-16T00:19:16Z",
+  "close_reason": "preferred_digest_algorithm() override is intentional API flexibility. Adding a minimum RSA key size check would be defense-in-depth but would also reject legitimate 1024-bit legacy certificates still in use. The trait doc now warns about agree_ecdh; adding a similar warning about small RSA keys is a doc-only change that doesn't warrant a code fix.",
+  "labels": [
+    "algorithm",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.14",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-80l.3",
+  "title": "Implement UUencode CTE decoding (x-uuencode, x-uue, uuencode)",
+  "description": "UUencode appears in real email as CTE: x-uuencode (also x-uue, uuencode). RFC 2045 permits x-token values; these three are conventional spellings. mail-parser returns Encoding::None and raw bytes for all of them; mime-tree must decode.\n\nChanges:\n1. Add TransferEncoding::UUEncode variant in part.rs.\n2. In map_encoding() add arms for x-uuencode / x-uue / uuencode (case-insensitive) before the wildcard.\n3. In decode_body_value() add a UUEncode arm: scan for begin NNN filename line, decode each subsequent line (first byte = line length, each char = (c - 32) and 0x3F), stop at backtick-only line or end line. Respect max_bytes. Set is_encoding_problem on malformed input and return partial decode. No charset conversion on decoded bytes.\n4. Do not extract the UU begin-line filename; callers use ParsedPart.filename from MIME headers.\n5. No external crate; implement from scratch.\n\nTest oracle: Python uu module or UNIX uuencode utility. Example: python3 -c 'import uu, io; ...' or echo hello | uuencode hello.txt. Tests must NOT derive expected values from this crate.\n\nAcceptance criteria:\n- x-uuencode / x-uue / uuencode all map to TransferEncoding::UUEncode\n- Well-formed UU body decodes to correct bytes (verified against Python/UNIX oracle)\n- max_bytes respected\n- Malformed input sets is_encoding_problem, returns partial decode\n- Content before begin line skipped cleanly",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T15:48:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:45:44Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-80l.3",
+      "depends_on_id": "MIME-80l",
+      "type": "parent-child",
+      "created_at": "2026-05-04T08:48:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "MIME-677",
+  "title": "Review round 2: Build mime-tree and smime-tree workspace",
+  "notes": "Maintainer risk: MEDIUM — Five actionable findings. The two highest-impact items are: (1) preferred_digest_algorithm/supported_key_enc_algorithm are dead API surface that promises extensibility the library does not honour — must be either wired up or removed before 1.0; (2) RecipientIdentifier lacks implementor guidance, setting up silent match failures. The cert-chain error messages and missing CHANGELOG are operational pain points but not correctness risks. ParseError::InvalidRange Display is clear and needs no action.\nConfidence: 15% chance of missed bug. All ten changed files reviewed in full. The encrypt/decrypt KARI asymmetry (encrypt produces KARI output; decrypt silently skips it) is functionally a known limitation documented in decrypt.rs but worth flagging to whoever closes the KARI decrypt issue. The rsa:: prefix on ECDSA verify calls (verify.rs and cert.rs) is a genuine readability trap but not a correctness issue — the trait is satisfied by p256/p384 VerifyingKey. The unreachable AES-192-KW arm in ecdh_wrap_cek is dead code but not harmful. No cryptographic protocol violations found. No lifetime or memory safety issues (no unsafe). The per-signer capture pattern is correct for multi-signer CMS. The u32 range encoding decision is sound.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:49:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:56:10Z",
+  "labels": [
+    "review"
+  ]
+}

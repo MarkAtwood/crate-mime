@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.29",
+  "title": "issuer DER encode re-run for every bag cert in build_chain inner find()",
+  "description": "build_chain()'s inner find() closure calls c.tbs_certificate().subject().to_der() for every certificate in the bag on each iteration of the outer loop. For a bag of 50 certs and a chain depth of 5, this is 250 DER encodes. Pre-computing subject DER for all bag certs once (like anchor_subjects is pre-computed) would reduce this to 50 encodes total — O(bag) vs O(bag * depth).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:15Z",
+  "closed_at": "2026-05-02T18:49:15Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.29",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "MIME-c97",
+  "title": "[uuencoding-multi] Fix parse_subject yEnc filter ordering and trailing-dash trim",
+  "description": "Skoll LOW-42 + LOW-43: (1) yenc_re().is_match() is applied to raw subject before strip_prefixes, inconsistent with other checks. Move yEnc check after prefix stripping. (2) base_subject trailing-dash trim applies unconditionally but should only apply when pattern 5 (dash-separated fraction) matched, to avoid corrupting filenames ending in dash.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:18:30Z",
+  "closed_at": "2026-06-04T22:18:30Z",
+  "close_reason": "Moved yEnc check after strip_prefixes. Restricted trailing-dash trim to pattern 5 only. Added tests for both fixes."
+}

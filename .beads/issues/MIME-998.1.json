@@ -1,0 +1,30 @@
+{
+  "id": "MIME-998.1",
+  "title": "verify: messageDigest errors use Other instead of MalformedInput",
+  "description": "verify.rs check_message_digest returns SmimeError::Other for 'messageDigest attribute not found' (line 287) and 'messageDigest attribute has no value' (line 293). These are CMS structural defects — malformed input — not catch-all errors. SmimeError::MalformedInput already exists for this category. Using Other makes it impossible for callers to programmatically distinguish a structurally malformed SignedData (missing required attribute) from an unclassified error. Should use MalformedInput.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:38:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:44:25Z",
+  "closed_at": "2026-05-02T07:44:25Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-998.1",
+      "depends_on_id": "MIME-998",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:38:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.12",
+  "title": "verify_sig maps RSA/ECDSA failure to SmimeError::Other not SignatureVerification",
+  "description": "verify.rs line 321: verify_sig passes 'let e = |msg: String| SmimeError::Other(msg)' as the error constructor. So when an RSA or ECDSA signature fails in sig_verify, the error is SmimeError::Other, not SmimeError::SignatureVerification. Compare: cert.rs verify_signature line 253 maps cert-chain sig errors to CertChain, which is correct for that context. But verify.rs line 321 mapping to Other means that a signature failure in step 4 of verify_one arrives as Other('RSA sig verify: ...'), not SignatureVerification. The public API contract implied by the variant name is broken: SignatureVerification exists precisely for this case, but it is not used here.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:52:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:39Z",
+  "closed_at": "2026-05-02T08:06:39Z",
+  "close_reason": "P4 opinion: verify_sig maps sig failures to Other; acceptable until a specific caller use-case requires finer discrimination.",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.12",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:52:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

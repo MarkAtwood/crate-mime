@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.23",
+  "title": "BlockMetadata, DecodedBlock, ScannedBlock missing Clone and PartialEq",
+  "description": "The three public result types (BlockMetadata, DecodedBlock, ScannedBlock) derive only Debug. They are missing Clone and PartialEq, which are standard derives for data-carrying types in library crates.\n\nMissing Clone means:\n- Callers cannot store a decoded block in multiple places without an explicit reconstruction.\n- Cannot use block.clone() in test helpers, iterators that need to yield twice, or any place that requires ownership duplication.\n\nMissing PartialEq means:\n- Callers cannot compare two decoded blocks with ==.\n- Tests must compare fields individually (block.data == expected_data, block.metadata.filename == ...) instead of asserting block == expected_block.\n- Property-based tests and snapshot tests are harder to write.\n\nUuError already derives PartialEq (error.rs line 2), so there is precedent in this crate for deriving equality.\n\nAll fields (Vec\u003cu8\u003e, String, u32, usize, bool) implement both Clone and PartialEq, so no manual implementation is required.\n\nFix: Add #[derive(Clone, PartialEq)] to BlockMetadata, DecodedBlock, and ScannedBlock in lib.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:12Z",
+  "closed_at": "2026-05-04T22:55:12Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.23",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

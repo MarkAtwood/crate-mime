@@ -1,0 +1,19 @@
+{
+  "id": "MIME-6uo",
+  "title": "Review: convergence check round 5",
+  "notes": "Maintainer risk: MEDIUM — Two structural API issues (error discrimination, sign/verify byte mismatch) will generate issue reports once callers build on top of this. The pathLen off-by-one is a security bypass that is unlikely to be hit in practice (requires a chain with two intermediates where the first has pathLen=0) but would be embarrassing if discovered. No credentials are logged, no unsafe code, no network calls.\nConfidence: 85% chance of missed bug. Least confident flags: MIME-6uo.3 (sign() CRLF issue) — the RFC 5751 transport encoding rules around CRLF canonicalization are complex and I may have the exact byte-for-byte comparison wrong; the OpenSSL test passing is evidence either way. MIME-6uo.2 (pathLen off-by-one) — RFC 5280 §4.2.1.9 language is dense and I am moderately confident the check should be \u003e= not \u003e, but the exact semantics of 'certs below' vs 'certs between' require careful re-reading. Uncertainty driven by: not reading the RFC text files directly from standards/, relying on memory of RFC 5280. Would raise confidence if: writing a unit test with a two-intermediate chain where first CA has pathLen=0 and verifying the current behavior.\nIdiom rating: ACCEPTABLE — code is idiomatic Rust, uses ? correctly throughout, no gratuitous clones, no unwrap in non-test code, error types are structured. The primary non-idiomatic patterns are error variant misuse (Other where SignatureVerification applies) and the duplicated base64 folding. No lifetime issues, no Arc/Rc, no bool parameters.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:50:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T08:06:44Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

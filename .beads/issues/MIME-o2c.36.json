@@ -1,0 +1,34 @@
+{
+  "id": "MIME-o2c.36",
+  "title": "Missing Default derive on EmailAddress, AddressGroup — both have an obvious empty state",
+  "description": "header_typed.rs:40 `EmailAddress` has `name: Option\u003cString\u003e` and `address: Option\u003cString\u003e`, both with the natural default `None`. header_typed.rs:55 `AddressGroup` has `name: Option\u003cString\u003e` (None) and `addresses: Vec\u003cEmailAddress\u003e` (empty). The rubric calls out 'missing Default where there is an obvious zero or empty state' as an idiom failure. Adding `#[derive(Default)]` is zero-cost, lets callers write `EmailAddress { address: Some(s), ..Default::default() }` and `AddressGroup { addresses, ..Default::default() }`, and works well in builder-like code. Less compelling for HeaderDateTime, where 'all zeros' would represent a date that the parser itself rejects in the year/month/day != 0 check (header_typed.rs:259), so Default::default() would build an invalid value — skip there. See related: MIME-o2c.9 (HeaderDateTime publicly constructable without validation).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:42:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:00:29Z",
+  "closed_at": "2026-05-14T16:00:29Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "opinion",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.36",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:42:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.15",
+  "title": "Trait-set inconsistency: DecodedBlock derives Clone+PartialEq; DecodedPart derives neither",
+  "description": "## Finding\n\nuuencoding/src/lib.rs:\n  #[derive(Debug, Clone, PartialEq)]\n  pub struct DecodedBlock { ... }\n  \n  #[derive(Debug, Clone, PartialEq)]\n  pub struct BlockMetadata { ... }\n  \n  #[derive(Debug, Clone, PartialEq)]\n  pub struct ScannedBlock { ... }\n\nyencoding/src/lib.rs:\n  #[derive(Debug)]\n  #[cfg_attr(feature = \"serde\", derive(serde::Serialize, serde::Deserialize))]\n  pub struct DecodedPart { ... }\n  \n  #[derive(Debug)]\n  #[cfg_attr(feature = \"serde\", derive(serde::Serialize, serde::Deserialize))]\n  pub struct YencMetadata { ... }\n\n## Impact\n\nA caller that wants to clone a DecodedPart (e.g. to store the most recently decoded part while processing a stream) or compare two DecodedPart values in tests cannot do so without manual copying. yencoding-multi's assembler.rs test code constructs DecodedPart values by hand in test helpers; those could use Clone if it were available. Any future crate in this workspace that stores decoded results uniformly must treat the two decode-result types differently.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:39Z",
+  "closed_at": "2026-06-16T00:08:39Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review",
+    "trait-shape",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.15",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

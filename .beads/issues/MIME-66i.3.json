@@ -1,0 +1,33 @@
+{
+  "id": "MIME-66i.3",
+  "title": "sign(): add multi-signer test with OpenSSL oracle",
+  "description": "Add a test that calls sign() with two keys (RSA + P-256 ECDSA). Verify: (1) the output is accepted by openssl smime -verify; (2) verify() returns two SignerResults both verified=true; (3) SignedData.version is V1 (both use IAS). Also test the SKI path: if a key uses SubjectKeyIdentifier, SignedData.version must be V3. The two-signer fixture must be generated via OpenSSL independently to serve as an oracle for verify(), not just sign()-\u003everify() round-trip.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:22:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:31:31Z",
+  "closed_at": "2026-05-05T04:31:31Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-66i.3",
+      "depends_on_id": "MIME-66i.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T21:22:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-66i.3",
+      "depends_on_id": "MIME-66i",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:22:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.57",
+  "title": "AES-GCM in EnvelopedData is explicitly rejected with a descriptive error, not silently mishandled",
+  "description": "decrypt.rs detects ID_AES_128_GCM and ID_AES_256_GCM OIDs in the content encryption algorithm position of an EnvelopedData and returns SmimeError::UnsupportedAlgorithm with the message 'AES-GCM in EnvelopedData is not supported; use AuthEnvelopedData'. A future contributor might remove this branch or collapse it into the generic 'unknown OID' fallback. That would be wrong: AES-GCM legitimately appears as an OID in the RFC's OID registry, so falling through to the generic error would produce a confusing message. The explicit rejection with an explanation is a usability and correctness guard — it tells the caller exactly why decryption failed and what the correct structure is (RFC 5083 AuthEnvelopedData), which is non-obvious.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:42Z",
+  "closed_at": "2026-05-02T06:24:42Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.57",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:27:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

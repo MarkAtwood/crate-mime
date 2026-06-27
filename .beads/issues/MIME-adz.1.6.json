@@ -1,0 +1,42 @@
+{
+  "id": "MIME-adz.1.6",
+  "title": "mime-tree: test suite",
+  "description": "Correctness must be verified against independent oracles, not against this crate's own output. Write tests in tests/ and src/: unit tests for parse() with hand-crafted RFC 5322 messages; RFC 8621 §4.1.4 body structure tests using hand-crafted multipart fixtures with known expected structure; decode_body_value() tests cross-validated against Python email.parser. Include at least one real-world message fixture. No test may use this crate as its own oracle.",
+  "acceptance_criteria": "cargo test -p mime-tree passes; all oracles are external (Python email.parser, hand-crafted expected values)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:12:49Z",
+  "closed_at": "2026-05-02T05:12:49Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.1.6",
+      "depends_on_id": "MIME-adz.1",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.1.6",
+      "depends_on_id": "MIME-adz.1.4",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.1.6",
+      "depends_on_id": "MIME-adz.1.5",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

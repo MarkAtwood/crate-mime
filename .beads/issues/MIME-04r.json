@@ -1,0 +1,14 @@
+{
+  "id": "MIME-04r",
+  "title": "Review loop: yEncoding crates (today's work)",
+  "description": "Fresh-eyes review of all work done today: yencoding, yencoding-multi crates, mime-tree yenc.rs, and uuencoding fixes. Scope: commits since midnight.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T00:17:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-05T00:25:11Z",
+  "close_reason": "all steps complete"
+}

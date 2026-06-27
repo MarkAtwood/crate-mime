@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.30",
+  "title": "overlapping_part_rejected test comment: overlap is 11 bytes, not 10",
+  "description": "yencoding-multi/tests/integration.rs line 202 reads:\n\n  // Part 2: bytes 49..99 (yEnc begin=50, end=100) — overlaps part 1 by 10 bytes\n\nThe actual overlap is 11 bytes, not 10.\n\nPart 1: yEnc begin=1, end=60 → 0-based exclusive range [0..60) — bytes 0..=59\nPart 2: yEnc begin=50, end=100 → 0-based exclusive range [49..100) — bytes 49..=99\n\nOverlap = {49, 50, ..., 59} = 11 bytes (60 − 49 = 11).\n\nThe author computed 59 − 49 = 10, treating 59 as an exclusive end (as if Part 1 covered [0..59)), but begin=1 end=60 gives range_len = 60 − 1 + 1 = 60, so the 0-based exclusive end is 60, not 59.\n\nThe functional overlap-detection code is correct; only the comment is wrong. Fix: change '10 bytes' to '11 bytes' in the comment.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:07:56Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:13:08Z",
+  "closed_at": "2026-05-04T23:13:08Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.30",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:07:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

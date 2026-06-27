@@ -1,0 +1,29 @@
+{
+  "id": "MIME-677.15",
+  "title": "parse.rs build_part: 'let _ = nested' for message/rfc822 silently drops children without explanation",
+  "description": "In parse.rs line 156, PartType::Message(nested) sets let _ = nested and returns an empty children vec. The comment says 'actual decode happens in decode_body_value' but does not explain that nested message/rfc822 parts are intentionally treated as leaves with their byte range intact (the raw bytes are still accessible via body_range). A reader might think nested message parsing is simply broken or forgotten. The comment should explain the design intent: the outer part's body_range covers the nested message bytes, and the caller can call parse() on those bytes if needed.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:34Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:30:29Z",
+  "closed_at": "2026-05-02T06:30:29Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.15",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

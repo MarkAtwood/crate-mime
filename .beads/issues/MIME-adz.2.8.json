@@ -1,0 +1,58 @@
+{
+  "id": "MIME-adz.2.8",
+  "title": "smime-tree: test suite with OpenSSL oracles",
+  "description": "Correctness must be verified against OpenSSL as the external oracle — never against this crate's own output. Generate test fixtures with: openssl smime -sign, openssl smime -verify, openssl smime -encrypt, openssl smime -decrypt. Hardcode fixture bytes as hex literals or committed binary files. Tests: verify() accepts OpenSSL-signed messages; decrypt() recovers OpenSSL-encrypted plaintext; sign() output passes openssl smime -verify; encrypt() output decrypts with openssl smime -decrypt. Cover both RSA and ECDH paths for encrypt/decrypt.",
+  "acceptance_criteria": "cargo test -p smime-tree passes; all test vectors sourced from OpenSSL, not from this crate",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:20:40Z",
+  "closed_at": "2026-05-02T05:20:40Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.2.8",
+      "depends_on_id": "MIME-adz.2",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.8",
+      "depends_on_id": "MIME-adz.2.5",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:17:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.8",
+      "depends_on_id": "MIME-adz.2.7",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:17:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.8",
+      "depends_on_id": "MIME-adz.2.4",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.8",
+      "depends_on_id": "MIME-adz.2.6",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:17:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

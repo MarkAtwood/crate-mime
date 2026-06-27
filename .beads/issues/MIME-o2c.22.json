@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.22",
+  "title": "CRLF normalization uses awkward split_last with dead fallback",
+  "description": "mime-tree/src/header_typed.rs:213-236 — the LF→CRLF normalization branch is written as raw_value.split_last().map(|(_, head)| { ... build vec ... }).unwrap_or_else(|| b\"\\r\\n\".to_vec()). The split_last() can only return None if raw_value is empty, but the enclosing else-if already verified raw_value.ends_with(b\"\\n\"), which implies non-empty. The unwrap_or_else branch is dead code. Idiomatic rewrite: let head = \u0026raw_value[..raw_value.len() - 1]; let mut v = Vec::with_capacity(head.len() + 2); v.extend_from_slice(head); v.extend_from_slice(b\"\\r\\n\"); — or factor the whole if/else if/else block into a helper returning Cow\u003c'_, [u8]\u003e. The current shape signals 'I do not trust the invariant I just verified' which is the kind of pattern reviewers wince at.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:30:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:03:39Z",
+  "closed_at": "2026-05-14T16:03:39Z",
+  "close_reason": "Code cleanup batch: (.3) removed dead 'year != 0' guard in date arm and replaced comment with accurate description of what month/day == 0 catches (year mapping in mail-parser-0.11 means parts[2] is never 0 after remap); (.21) eliminated unreachable! by folding Raw and URLs handling into the same outer match as the other forms — no top-level if-and-then-match anymore; (.22) replaced split_last + unwrap_or_else with straightforward slice arithmetic via a new crlf_terminated helper returning Cow; (.23) extracted trim_or_none helper for the RFC 8621 §4.1.2.3/§4.1.2.4 display-name normalisation rule, called from both convert_addr and group_addresses.",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.22",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:30:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-e7k.8",
+  "title": "encrypt.rs: ecdh_wrap_cek match arms duplicate AES-128/256-KW code",
+  "description": "ecdh_wrap_cek() has two nearly identical match arms for kek_len 16 and 32, differing only in the concrete type (KwAes128 vs KwAes256). Since aes-kw types don't share a common trait accessible here, a clean deduplication requires a macro or internal helper. The current duplication is ~10 lines and low-risk to maintain, but future additions (e.g. AES-192) would require a third copy. Consider a small macro or closure pattern to reduce repetition.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:38:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:46:35Z",
+  "closed_at": "2026-05-02T17:46:35Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.8",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:38:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

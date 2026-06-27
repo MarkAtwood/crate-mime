@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.31",
+  "title": "decode_body_value is on-demand; no decoding happens at parse time",
+  "description": "Transfer-encoding decode and charset conversion are deferred to decode_body_value(), called explicitly by the caller. parse() produces only the structural tree and byte ranges. A future contributor might suggest decoding all parts eagerly at parse time to 'simplify' the API. That would be wrong: most callers only need one or two parts (e.g., the text/plain body), and decoding every attachment, every inline image, and every nested part is wasteful. The on-demand model also fits the intended use case of storing ParsedMessage in a database and only decoding bodies when a client requests them.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:39Z",
+  "closed_at": "2026-05-02T06:24:39Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.31",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

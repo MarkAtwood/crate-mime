@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.60",
+  "title": "smime-tree: encrypt_aes_cbc return type warrants a named struct",
+  "description": "Why this exists: smime_tree/src/encrypt.rs has #[allow(clippy::type_complexity)] on encrypt_aes_cbc, whose return type is Result\u003c(AlgorithmIdentifierOwned, Vec\u003cu8\u003e, Zeroizing\u003cVec\u003cu8\u003e\u003e), SmimeError\u003e. The tuple has three elements with no names; callers use .0, .1, .2 indexing.\\n\\nWhat goes wrong: the three elements of the tuple are (algorithm_id, encrypted_content, encrypted_key) — but the caller reading .0, .1, .2 at the call site has no documentation of which is which. Swapping any two elements in the tuple compiles fine but produces a subtle bug. The #[allow(clippy::type_complexity)] annotation acknowledges the problem without fixing it. A named struct with fields alg_id, encrypted_content, encrypted_cek makes the positions self-documenting and makes the swap a compile error.\\n\\nFix: define a private struct AesCbcEncryptResult { alg_id: AlgorithmIdentifierOwned, encrypted_content: Vec\u003cu8\u003e, encrypted_cek: Zeroizing\u003cVec\u003cu8\u003e\u003e } and return it from encrypt_aes_cbc. Remove the #[allow] annotation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:26Z",
+  "closed_at": "2026-06-16T00:21:26Z",
+  "close_reason": "P2 refactoring: the 3-tuple return from encrypt_aes_cbc is used in one place. Named struct adds a type definition for a single call site. Low priority.",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.60",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

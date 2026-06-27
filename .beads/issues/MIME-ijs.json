@@ -1,0 +1,15 @@
+{
+  "id": "MIME-ijs",
+  "title": "[yencoding] Fix pending-escape + dot-unstuffing wrong decoded byte",
+  "description": "Skoll HIGH-52: When pending_escape is true on entry to decode_line and the line begins with '..' (NNTP dot-stuffing), dot-unstuffing fires first (stripping the first byte), then pending-escape consumes the second dot as the escape target, producing the wrong decoded byte. Fix: apply dot-unstuffing after resolving pending escape, not before. Also add test for pending-escape with entirely dot-stuffed framing line (MEDIUM-53).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:55:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:01:37Z",
+  "closed_at": "2026-06-04T22:01:37Z",
+  "close_reason": "False positive from skoll. The current dot-unstuff-before-pending-escape order is correct: NNTP dot-stuffing is a transport-layer transformation that must be removed before content interpretation. Added explanatory comment and two tests (split escape with dot-stuffed target, split escape with all-framing line) confirming correct behavior."
+}

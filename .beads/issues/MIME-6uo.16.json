@@ -1,0 +1,28 @@
+{
+  "id": "MIME-6uo.16",
+  "title": "RFC 2046 §5.1.1 boundary collision check in sign()",
+  "description": "boundary_from_content (sign.rs) derives the boundary from SHA-256 of content and then explicitly checks that the boundary does not appear as a substring of the content. The comment correctly explains the security reasoning (birthday-attack level collision resistance). A contributor might suggest removing the check as 'paranoid', but without it, any content that happens to contain the boundary string would produce a structurally broken MIME message that parsers reject silently or misparse.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:52:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:34Z",
+  "closed_at": "2026-05-02T08:06:34Z",
+  "close_reason": "P3 opinion/style: no correctness issue, deferred.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.16",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:52:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

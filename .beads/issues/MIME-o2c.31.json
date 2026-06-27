@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.31",
+  "title": "HeaderDateTime::tz_before_gmt is a bool that is really a two-variant Sign enum",
+  "description": "header_typed.rs:76 exposes `pub tz_before_gmt: bool` as a public field. The rubric's textbook example: a bool parameter/field that is really a two-variant enum in disguise. At a call site like `HeaderDateTime { tz_before_gmt: true, tz_hour: 5, .. }` the reader cannot tell whether `true` means 'west of GMT' or 'east of GMT' without looking at the doc comment. Idiomatic Rust would expose `pub tz_sign: TzSign` where `enum TzSign { East, West }` (or similar), making the meaning self-documenting at every construction and pattern-match. Distinct from MIME-o2c.10 (which is about mirroring mail-parser's representation generally); even if the crate intentionally mirrors mail-parser internally, the public surface does not have to inherit the bool. Note: this is also a serde wire-format change if fixed after publish, so it should be settled before 1.0.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:41:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:52:47Z",
+  "closed_at": "2026-05-14T15:52:47Z",
+  "close_reason": "HeaderDateTime cleanup batch: (.31) tz_before_gmt bool replaced with TzSign enum (East/West); (.9) field invariants documented per field, plus type-level statement that out-of-range values yield unspecified output; (.10) wire-format dependency on mail-parser made explicit with a doc section; (.15) to_rfc3339 doc specifies exact output (Zulu Z for UTC, ±HH:MM otherwise) with examples and out-of-range escape hatch; (.16) to_timestamp doc specifies pre-epoch / out-of-range behaviour. Struct gains #[non_exhaustive]. New test pins Zulu-form output for UTC.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.31",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:41:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

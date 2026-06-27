@@ -1,0 +1,14 @@
+{
+  "id": "MIME-n33",
+  "title": "review-loop pass 4: yencoding / yencoding-multi / mime-tree yenc",
+  "description": "Fresh-eyes review of all yEncoding work done today. Findings from three parallel subagent reviews.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:43:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T23:51:34Z",
+  "close_reason": "all steps complete"
+}

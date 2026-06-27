@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.58",
+  "title": "header_typed.rs: parse_header_typed feeds already-decoded String back as bytes",
+  "description": "mime-tree/src/header_typed.rs: parse_header_typed() takes a header value that has already been decoded from raw bytes (possibly with encoded-word unfolding by mail-parser), converts it to a String, then re-encodes it as bytes via .as_bytes() to feed back into MessageStream::new(\u0026buf) for mail-parser's typed parsers (parse_address(), parse_date(), etc.). This round-trip (decoded → String → \u0026[u8] → parse again) is necessary because mail-parser's typed APIs take byte slices, but it is non-obvious. The crlf_terminated() call adds another re-encode pass to ensure the mail-parser stream terminates correctly. A comment explaining why the round-trip is unavoidable (mail-parser typed API requires raw bytes, there is no 'parse from already-decoded string' path) would prevent a future reader from 'simplifying' the code by removing one of the encode steps.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:45Z",
+  "closed_at": "2026-06-16T00:52:45Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.58",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

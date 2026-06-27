@@ -1,0 +1,15 @@
+{
+  "id": "MIME-ilg",
+  "title": "[smime-tree] Validate content-type signed attribute value per RFC 5652",
+  "description": "Skoll MEDIUM-24: verify.rs check_message_digest only checks that the content-type signed attribute OID is present, but never decodes and validates the attribute's value equals id-data per RFC 5652 §11.1. After confirming presence, decode the value as ObjectIdentifier and verify it equals ID_DATA.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:06:04Z",
+  "closed_at": "2026-06-04T22:06:04Z",
+  "close_reason": "Added validation that the content-type signed attribute value equals id-data per RFC 5652 §11.1. Previously only checked for attribute presence."
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-o2c.1",
+  "title": "MessageIds form leaks invalid bytes into result vec",
+  "description": "Trigger: parse_header_typed(HeaderForm::MessageIds, b\"not-an-id\") or any input where mail-parser's parse_id() finds no \u003c...\u003e tokens but accumulates token_invalid_start\u003e0. parse_id returns HeaderValue::Text(\u003clossy UTF-8 of invalid range\u003e). text_list() in header_typed.rs:352-358 maps HeaderValue::Text(s) to vec![s.to_owned()] without distinguishing it from a single valid stripped msg-id. The module doc (lines 20-22) and RFC 8621 §4.1.2.5 require malformed input to yield an empty Vec. Currently malformed input yields a one-element vec containing the unparsed garbage. Probe: cargo test -- with assert_eq!(parse_header_typed(HeaderForm::MessageIds, b\" not an id\"), HeaderValueTyped::MessageIds(vec![])) — expected to fail today. Fix: in HeaderForm::MessageIds arm, only accept HeaderValue::TextList; OR reject single-element HeaderValue::Text results unless they look like a valid msg-id (no whitespace, no angle brackets). The cleanest fix is to inspect mail-parser's id.rs invariants and only forward results that came through the \u003c\u003e-stripping branch.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T04:59:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:46:26Z",
+  "closed_at": "2026-05-14T15:46:26Z",
+  "close_reason": "Fixed: MessageIds form now distinguishes mail-parser's valid single-Text result (bracket-stripping branch) from broken-client recovery (no brackets in input). Added regression test for inputs with no angle brackets and inputs with @-but-no-brackets. Both must yield empty vec per RFC 8621 §4.1.2.5.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.1",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-13T21:59:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "MIME-ksl.2",
+  "title": "Implement line decoder (core UU bit manipulation)",
+  "description": "Implement the low-level per-line decode logic in src/decode.rs. This is the heart of the crate; everything else builds on it.\n\nFunction signature (private):\n  fn decode_line(line: \u0026[u8], out: \u0026mut Vec\u003cu8\u003e) -\u003e Result\u003cusize, UuError\u003e\n  // line: raw bytes of ONE data line, with leading/trailing whitespace already stripped (including \\r)\n  // out: append decoded bytes here\n  // returns: number of bytes appended (0 for terminator lines)\n\nAlgorithm:\n1. Strip trailing \\r if present (defensive — caller should have done this but be safe)\n2. If line is empty, or first byte is backtick (0x60), or first byte is space (0x20): this is the zero-length terminator line. Append nothing, return Ok(0).\n3. Read length byte: N = (line[0] - 32) \u0026 0x3F. This is the number of decoded bytes this line should produce.\n4. If N == 0: terminator. Return Ok(0).\n5. Compute minimum encoded chars needed: encoded_needed = ((N + 2) / 3) * 4\n6. If line[1..].len() \u003c encoded_needed: right-pad with spaces (0x20) conceptually — do not mutate line; just treat missing bytes as 0x20.\n7. Decode groups of 4 encoded bytes into 3 decoded bytes using the UU alphabet: decoded_byte = (a\u003c\u003c2)|(b\u003e\u003e4), etc. Both 0x20 and 0x60 decode to 6-bit value 0. Bytes outside 0x20..=0x5F and not 0x60 return Err(UuError::InvalidChar{...}).\n8. Emit only min(3, remaining_N) bytes from each group, stopping when N bytes have been emitted.\n9. Ignore any encoded chars beyond encoded_needed (long lines are tolerated).\n\nNo begin/end parsing here. No allocation beyond appending to out.\n\nTest oracle: Python's uu module (stdlib) or the UNIX uuencode/uudecode utilities.\nSpecifically test:\n- Full 45-byte line (M prefix)\n- Short final line (1, 2, 3 bytes)\n- Line with trailing spaces stripped (shorter than length implies)\n- Terminator as backtick, as space, as blank\n- Both 0x20 and 0x60 as zero in data positions\n- Byte outside valid range -\u003e Err\n- Do NOT test begin/end framing here",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:55:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:48:29Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.2",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:55:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.2",
+      "depends_on_id": "MIME-ksl.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

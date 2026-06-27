@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3y0.5",
+  "title": "mime-tree: add tests for QP false-truncation, octet-stream walk, and solo begin-base64 scan",
+  "description": "Three test gaps: (1) QP decode where 4x pre-truncation overshoots — decoded output fits within max_bytes but is_truncated is incorrectly true; (2) walk.rs: application/octet-stream without Content-Disposition: attachment should land in attachments; (3) uuencode.rs: scan_inline_uuencode on a body with only a begin-base64 block (no valid UU block) should return one error item.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:29:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:35:31Z",
+  "closed_at": "2026-05-05T03:35:31Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3y0.5",
+      "depends_on_id": "MIME-3y0",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:29:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

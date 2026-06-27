@@ -1,0 +1,30 @@
+{
+  "id": "MIME-68n.10",
+  "title": "find_cert: ias.issuer.to_der() called inside loop (N allocs per signer)",
+  "description": "In verify.rs find_cert(), for the IssuerAndSerialNumber case, ias.issuer.to_der() is called inside the .find() closure — once per certificate in the bag. The issuer DER is constant for a given SID; it should be hoisted outside the closure. Expected impact: small for typical cert bags (5-20 certs), but avoids repeated allocations during verification.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:45:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:52:33Z",
+  "closed_at": "2026-05-02T06:52:33Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.10",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:45:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.62",
+  "title": "scan.rs: parse_begin_line re-parses what is_begin_line already matched",
+  "description": "uuencoding/src/scan.rs: is_begin_line() checks whether a line starts with 'begin ' and has the right shape. When it returns true, handle_block() then calls parse_begin_line() on the same line, which re-runs essentially the same matching logic to extract mode and filename. This is a double-parse of the same bytes. The fix is to combine the two into one function that returns Option\u003c(mode, filename)\u003e — None means 'not a begin line', Some means 'parsed successfully'. Alternatively, is_begin_line could be replaced entirely with a call to parse_begin_line that returns Option. As-is, a future change to the begin-line format must be applied in both places.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:46Z",
+  "closed_at": "2026-06-16T00:52:46Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.62",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

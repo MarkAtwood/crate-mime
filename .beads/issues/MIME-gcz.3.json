@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.3",
+  "title": "scan handle_block emits DecodeError per-line but then still pushes ScannedBlock — caller gets mixed Ok/Err in results for same block",
+  "description": "uuencoding/src/scan.rs handle_block() (lines 192-198): when decode_line() returns Err, the error is pushed to results[], then scan_pos advances and decoding continues. At the end, a ScannedBlock Ok result is ALSO pushed for the same block. This means a single block with one bad data line produces both an Err and an Ok in the results vector, with whatever bytes were decoded before AND after the bad line concatenated into data. This is undocumented, surprising, and contradicts the decode() behavior where the first bad line stops decoding. A caller iterating results() and calling .unwrap() will get both items.",
+  "acceptance_criteria": "Document or fix the mixed-signal behavior. Options: (a) stop decoding on first line error, emit only Ok(truncated), like decode() does; or (b) explicitly document that a single block can produce N errors + 1 Ok, and add a test. The current behavior is a de-facto silent API contract that contributors will break.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:32:21Z",
+  "closed_at": "2026-05-04T18:32:21Z",
+  "close_reason": "handle_block now stops on first decode error, emits single truncated Ok; added test",
+  "labels": [
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.3",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

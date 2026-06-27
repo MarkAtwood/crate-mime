@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.18",
+  "title": "Happy-path integration tests don't exercise CRC verification path",
+  "description": "In integration.rs, three_parts_in_order calls encode_and_assemble() which does set_expected_crc32(whole_crc), but the whole_crc is computed by crc32fast::hash (self-referential). The test validates that finish() succeeds and returns the expected bytes, but the CRC comparison in finish() is always crc32fast::hash(buffer) == crc32fast::hash(original) — which is trivially true.\n\nA proper happy-path CRC test needs a hardcoded CRC from an independent source (e.g. Python binascii.crc32). For example:\n  bytes(range(90)) → Python: binascii.crc32(bytes(range(90))) \u0026 0xFFFFFFFF = 0x4E495A52\n  This value should be hardcoded and used as the expected CRC rather than computed by crc32fast.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:51:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:54Z",
+  "closed_at": "2026-05-04T23:02:54Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.18",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:51:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

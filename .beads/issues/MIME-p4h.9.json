@@ -1,0 +1,29 @@
+{
+  "id": "MIME-p4h.9",
+  "title": "mime-tree: base64 decode allocates stripped copy of full body even when max_bytes is None",
+  "description": "decode.rs: the base64 path strips CR/LF by pushing non-newline bytes into a new Vec\u003cu8\u003e in a for loop (no capacity hint). For a 10 MB base64 attachment (common for PDF), this allocates a second ~10 MB Vec before passing to BASE64_STANDARD.decode() which allocates a third ~7.5 MB buffer. Total transient allocation: ~3x the body size. Fix: use Vec::with_capacity(body_bytes.len()) for the stripped buffer, or use a base64 engine that accepts a custom byte iterator to avoid the intermediate copy.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:15:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:40:16Z",
+  "closed_at": "2026-05-02T14:40:16Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.9",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:15:04Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

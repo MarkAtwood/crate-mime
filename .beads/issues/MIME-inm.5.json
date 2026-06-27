@@ -1,0 +1,33 @@
+{
+  "id": "MIME-inm.5",
+  "title": "Documentation and security note",
+  "description": "Write all documentation for the yencoding crate.\n\nRequired:\n1. Crate-level doc: what yEnc is, its history (Juergen Helbing, 2001), why it exists, single-part vs multi-part, relationship to uuencoding crate, NZB out of scope.\n\n2. Security note (mandatory, prominent):\n   yEnc decoded output is approximately the same size as the encoded input -- there is no amplification from the encoding itself. However, decoded bytes are often compressed archives (RAR, ZIP, 7z). Any decompression the caller performs is outside this crate and must be independently guarded against decompression bombs. This crate does not decompress anything.\n\n3. All public types: full doc comment on struct and every field.\n\n4. All public functions: doc comment with parameters, return, error conditions, at least one doc-test that compiles and passes.\n\n5. YencError variants: each variant's doc explains when it is produced and what the caller should do.\n\n6. Note about dot-stuffing: explain what it is, why this crate handles it defensively, and that callers using NNTP transports should be aware their transport layer may or may not have already removed it.\n\n7. Note about existing crates: this crate was written because yenc 0.2.2 (a) writes to filesystem paths rather than returning Vec\u003cu8\u003e, (b) rejects unknown header fields rather than skipping them. Document this design rationale.\n\nAll doc-tests must use externally-derived expected values, not round-trip self-tests.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:12:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:15:12Z",
+  "close_reason": "Docs complete: lib.rs has full module-level docs, background, use cases, security note, quick-start examples. All public types and functions documented.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.5",
+      "depends_on_id": "MIME-inm.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:13:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.5",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:12:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

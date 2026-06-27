@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3bt.1",
+  "title": "UuError::UnexpectedEof is declared but never constructed",
+  "description": "uuencoding/src/error.rs:40 declares UnexpectedEof with full doc comment claiming 'Produced when decode() reaches end of input'. But decode() and decode_limited() never return this variant — they return Ok(DecodedBlock { is_truncated: true }) instead. Callers reading the doc comment would write match arms that can never fire. Fix: either (a) remove the variant (breaking change, but it was never reachable), or (b) add a note to the doc comment that this variant is reserved for future use / not currently returned, or (c) actually use it. Option (b) is least disruptive for a published 0.1.0 crate.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:13:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:14:19Z",
+  "closed_at": "2026-05-04T19:14:19Z",
+  "close_reason": "Fixed: doc comment now accurately states variant is reserved and not currently returned.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3bt.1",
+      "depends_on_id": "MIME-3bt",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:13:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

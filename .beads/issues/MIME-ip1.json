@@ -1,0 +1,15 @@
+{
+  "id": "MIME-ip1",
+  "title": "[uuencoding-multi] API improvements: derives, looks_like_filename",
+  "description": "Skoll findings:\n- INFO-51: Add Clone to SubjectParts and ReassembledFile; add PartialEq to SubjectParts\n- LOW-46: looks_like_filename accepts bare path separators ('/', '\\') as valid filenames. Add minimum length or require non-separator chars around separators.\n- LOW-45: PartCollection::new() false-positive is_complete() — consider typed return distinguishing Complete/CompleteInferred/Incomplete, or require explicit total.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:57:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:27:59Z",
+  "closed_at": "2026-06-04T22:27:59Z",
+  "close_reason": "Added Clone+PartialEq+Eq to SubjectParts, Clone to ReassembledFile. Fixed looks_like_filename to reject bare separators. Added tests. Skipped is_complete typed return (documented warning is sufficient, API change not warranted for LOW finding)."
+}

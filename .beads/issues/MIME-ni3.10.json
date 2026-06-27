@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.10",
+  "title": "smime-tree: verify() returns Ok if any ONE signer passes, hiding other failures",
+  "description": "VerificationResult::is_verified() returns true if any signer passes. A message with 3 signers where 2 fail and 1 passes returns is_verified()=true. Callers treating this as 'all good' silently accept partially-verified content. The doc on VerificationResult must prominently warn that is_verified() is permissive and direct callers to inspect the signers vec individually for security-critical decisions.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:22Z",
+  "closed_at": "2026-05-05T03:02:22Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.10",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

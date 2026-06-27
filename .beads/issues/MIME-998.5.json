@@ -1,0 +1,29 @@
+{
+  "id": "MIME-998.5",
+  "title": "ecdh_wrap_cek: duplicated AES-KW arm code across kek_len 16 and 32",
+  "description": "encrypt.rs ecdh_wrap_cek() lines 434-461: the 16-byte and 32-byte kek_len arms are structurally identical — both do try_into().map_err(...)?, then KwAes{128,256}::new(...).wrap_key(...).map_err(...). The only difference is the array size and the Kw type. Suggested rewrite: use a helper macro or a two-branch function that takes the KW operation as a closure. Alternatively, encode the KW type selection in a trait object dispatch. As-is, a future change to error handling must be made in two places — the second arm is invisible when reading the first.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:39:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:44:34Z",
+  "closed_at": "2026-05-02T07:44:34Z",
+  "close_reason": "The two arms use KwAes128 and KwAes256 — distinct concrete types in Rust's type system. Factoring out the duplication would require trait objects or macros, adding complexity with no benefit for 2 arms. Won't-fix.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-998.5",
+      "depends_on_id": "MIME-998",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:39:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

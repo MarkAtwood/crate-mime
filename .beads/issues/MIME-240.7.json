@@ -1,0 +1,25 @@
+{
+  "id": "MIME-240.7",
+  "title": "smime-tree: add #[must_use] to is_verified() and verify()",
+  "description": "error.rs:37-39: is_verified() is security-critical predicate and should have #[must_use]. verify() in verify.rs should also have it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:09:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:13:15Z",
+  "closed_at": "2026-05-05T04:13:15Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-240.7",
+      "depends_on_id": "MIME-240",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:09:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

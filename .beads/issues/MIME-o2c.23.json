@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.23",
+  "title": "trim-and-None-on-empty closure duplicated in convert_addr and group_addresses",
+  "description": "mime-tree/src/header_typed.rs:290-297 and 335-342 — the same 8-line closure name.as_ref().and_then(|s| { let trimmed = s.as_ref().trim(); if trimmed.is_empty() { None } else { Some(trimmed.to_owned()) } }) appears verbatim in convert_addr and in group_addresses. Two idiomatic fixes: (a) extract a private helper fn trim_optional(s: Option\u003c\u0026str\u003e) -\u003e Option\u003cString\u003e; (b) write it as a single iterator-chain expression Some(trimmed).filter(|s| !s.is_empty()).map(str::to_owned). Either eliminates the duplication and makes the rule (trim → empty becomes None) visible at one site. Code duplication of business rules is exactly what the prompt's iterators/clippy guidance targets — if the trim semantics ever change, both copies must update in lockstep.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:30:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:03:45Z",
+  "closed_at": "2026-05-14T16:03:45Z",
+  "close_reason": "Code cleanup batch: (.3) removed dead 'year != 0' guard in date arm and replaced comment with accurate description of what month/day == 0 catches (year mapping in mail-parser-0.11 means parts[2] is never 0 after remap); (.21) eliminated unreachable! by folding Raw and URLs handling into the same outer match as the other forms — no top-level if-and-then-match anymore; (.22) replaced split_last + unwrap_or_else with straightforward slice arithmetic via a new crlf_terminated helper returning Cow; (.23) extracted trim_or_none helper for the RFC 8621 §4.1.2.3/§4.1.2.4 display-name normalisation rule, called from both convert_addr and group_addresses.",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.23",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:30:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ag5.4",
+  "title": "yencoding-multi integration test: wrong CRC value in comment at line 371",
+  "description": "yencoding-multi/tests/integration.rs:371 — The comment says 'three_parts_in_order test (hardcoded Python-derived CRC 0xb095_e0e9)' but the actual EXPECTED_CRC constant is 0xb43b1251 (matching the Python oracle at line 74). The comment references the wrong hex value. Fix: change 0xb095_e0e9 to 0xb43b1251 in the comment on line 371.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:32:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:34:01Z",
+  "closed_at": "2026-05-05T02:34:01Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ag5.4",
+      "depends_on_id": "MIME-ag5",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:32:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

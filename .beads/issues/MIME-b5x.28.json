@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.28",
+  "title": "SmimeError missing Clone — asymmetric with VerificationResult (Clone+Eq)",
+  "description": "error.rs: SmimeError derives only Debug, and has Display+Error impls. VerificationResult and SignerResult derive Clone+PartialEq+Eq. Callers who wrap SmimeError in their own error type cannot derive Clone if they store SmimeError. AllSignersFailed(Vec\u003cSignerResult\u003e) contains Clone data but the parent enum is not Clone. Fix: derive Clone on SmimeError (the Der variant contains der::Error; check if that's Clone — if not, manual impl or remove the constraint).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:26:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:35:03Z",
+  "closed_at": "2026-05-02T07:35:03Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.28",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:26:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

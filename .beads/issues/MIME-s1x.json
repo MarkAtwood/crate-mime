@@ -1,0 +1,24 @@
+{
+  "id": "MIME-s1x",
+  "title": "Update mime-tree to depend on yencoding 0.3.0",
+  "description": "mime-tree/Cargo.toml declares yencoding = { version = \"0.2.0\" } but calls DecodedPart::new and YencMetadata::new which only exist in the local (unreleased) yencoding. Update to version = \"0.3.0\" after yencoding 0.3.0 is published. Bump mime-tree version as needed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-16T01:38:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T01:41:45Z",
+  "closed_at": "2026-06-16T01:41:45Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-s1x",
+      "depends_on_id": "MIME-nhg",
+      "type": "blocks",
+      "created_at": "2026-06-15T18:38:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

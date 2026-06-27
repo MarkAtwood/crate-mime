@@ -1,0 +1,31 @@
+{
+  "id": "MIME-p4h.6",
+  "title": "smime-tree: no ECDH (P-256/P-384) encrypt/decrypt test coverage",
+  "description": "smime_tests.rs only has RSA fixture-based tests. There are no round-trip tests for P-256 or P-384 ECDH encrypt/decrypt. The KARI path in decrypt.rs (try_decrypt_kari, map_kari_alg, ecdh_wrap_cek) and build_p256_recipient/build_p384_recipient in encrypt.rs have zero test coverage. Scenario: a future contributor changes ecdh_wrap_cek SharedInfo construction or the KDF order and the bug is invisible because no test catches it. Minimum acceptable: one P-256 round-trip test using an OpenSSL-generated fixture or a Python pyca/cryptography-generated fixture as oracle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:14:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:27:35Z",
+  "closed_at": "2026-05-02T14:27:35Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.6",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:14:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

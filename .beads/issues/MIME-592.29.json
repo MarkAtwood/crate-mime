@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.29",
+  "title": "No test for scan() with truncated begin-base64 (no ==== terminator)",
+  "description": "scan.rs handle_block() skips past a begin-base64 block by advancing until it finds '====' or EOF (lines 175-187). The case where EOF is reached without finding '====' is untested.\n\nMissing test scenario:\n  Input: 'begin-base64 644 file.txt\\naGVsbG8=\\n' (no ==== terminator, no further content)\n\nExpected behavior per the code: scan_pos reaches input.len(), the while-loop exits naturally, *pos = scan_pos = input.len(). One Err(BeginBase64) is emitted and the outer scan loop terminates.\n\nRisk: If the no-==== path has a bug (e.g. off-by-one causing scan_pos \u003e input.len() which would panic on the next \u0026input[scan_pos..] slice), it would only be discovered in production.\n\nFix: Add a test for scan_impl() on a begin-base64 block without a ==== terminator. Assert: exactly one Err(BeginBase64) result, no panic, no subsequent blocks dropped.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:53:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:33Z",
+  "closed_at": "2026-05-04T23:03:33Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.29",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:53:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

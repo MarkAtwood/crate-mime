@@ -1,0 +1,19 @@
+{
+  "id": "MIME-1pu",
+  "title": "Review: entire MIME workspace",
+  "notes": "Maintainer risk: MEDIUM — One panic-instead-of-Err in encrypt() (RNG failure), one guidance comment that leads P-521 users into a broken sign/verify combination, and one test suite that panics rather than skips when openssl is absent. No memory unsafety, no data corruption. The correctness surface is well-tested for the RSA+AES path; risk is primarily in edge cases (P-521, non-conformant CA chains, adversarial content).\nConfidence: 15% chance of missed bug. Least confident flags: (1) RFC 5652 §5.4 signed attribute DER encoding (IMPLICIT [0] vs EXPLICIT SET) — the sign/verify round-trip test passes but I did not independently verify the DER encoding byte-by-byte; (2) chain_depth semantics in cert.rs pathLen check — logic appears correct but was reasoned about rather than tested with a 3-deep chain. Would raise confidence if: round-trip test with a P-384 ECDH encrypted message was present; integration test against a real-world S/MIME email with a 3-level chain was present.\nIdiom rating: ACCEPTABLE — Code is generally idiomatic Rust. No unsafe, no gratuitous clones, error types are non_exhaustive, public API uses owned types. Main issues: (1) pre-1.0 string-wrapped error variants that will fossilize before v1.0; (2) reference-layer accumulation in cert.rs that confuses type reasoning; (3) minor allocation patterns in non-hot paths.\nRust idiom confidence: 10% chance of missed issue. Least confident flags: DER-encoding path for SignedAttributes (correct behavior verified by round-trip test but not byte-checked independently). Uncertainty driven by: the cms/der crate API surface is pre-release (=0.3.0-pre.2) and its encoding behavior is not fully specified in public docs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:31:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T13:55:24Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

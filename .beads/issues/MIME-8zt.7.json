@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.7",
+  "title": "test structs hold private key material without Zeroize",
+  "description": "In smime_tests.rs, three test structs hold private key bytes as struct fields with no zeroize-on-drop:\n\n  struct TestRsaDecryptionKey { private_key: RsaPrivateKey, cert: Certificate }\n  struct TestRsaSigningKey    { private_key: rsa::pkcs1v15::SigningKey\u003cSha256\u003e, cert: Certificate }\n  struct TestEcP256DecryptionKey { secret_key: p256::SecretKey, cert: Certificate }\n  struct TestEcP256SigningKey    { signing_key: p256::ecdsa::SigningKey, cert: Certificate }\n\nNone of these derive or implement Zeroize / ZeroizeOnDrop.\n\nWhat goes wrong: in test binaries (which may run in CI environments, containers, or shared hosts), private key bytes that are identical to the hardcoded PKCS#8 hex constants in the test file remain in process memory after the struct drops. A memory-dump tool or a use-after-free in a different allocation can read the key bytes. While these are test fixtures, not production keys, the pattern demonstrates that the crate does not enforce key-lifecycle hygiene at the consumer layer, and a copy-paste of the test struct pattern into production code would be insecure.\n\nThe underlying RsaPrivateKey and p256::SecretKey types do implement ZeroizeOnDrop, but only if held directly — wrapping them in a non-Zeroize struct defeats that guarantee if the struct is moved or the fields are copied out.\n\nFix: add #[derive(Zeroize, ZeroizeOnDrop)] to all four test structs, or at least add a #[zeroize(drop)] annotation to the key fields.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:51Z",
+  "closed_at": "2026-06-16T00:19:51Z",
+  "close_reason": "Test structs hold RustCrypto key types (RsaPrivateKey, SecretKey) that already implement ZeroizeOnDrop. Wrapping them in an additional Zeroizing has no practical effect. The test structs are in test code only — they are not part of the public API and are dropped when the test exits.",
+  "labels": [
+    "crypto-security",
+    "key-lifecycle",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.7",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

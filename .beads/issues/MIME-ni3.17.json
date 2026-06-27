@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.17",
+  "title": "uuencoding-multi: SubjectParts should be defined in subject.rs, not lib.rs",
+  "description": "SubjectParts is defined in lib.rs but only ever constructed in subject.rs. Every other struct/producer pair (TocEntry/ParsedToc, PartEntry/PartCollection, ReassembledFile) is colocated. The inconsistency requires looking in two files to understand SubjectParts. Move SubjectParts to subject.rs and re-export from lib.rs.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:52:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:54Z",
+  "closed_at": "2026-05-05T02:58:54Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.17",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:52:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

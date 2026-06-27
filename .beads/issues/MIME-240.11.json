@@ -1,0 +1,25 @@
+{
+  "id": "MIME-240.11",
+  "title": "mime-tree: S/MIME parts test missing attachments assertion",
+  "description": "tests/parse_tests.rs:287-313: test_smime_parts_are_opaque_leaves verifies parts not in text_body/html_body but does not assert they appear in attachments. A silent drop would pass.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:09:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:13:42Z",
+  "closed_at": "2026-05-05T04:13:42Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-240.11",
+      "depends_on_id": "MIME-240",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:09:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

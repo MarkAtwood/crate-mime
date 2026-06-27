@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.1",
+  "title": "trust anchor validity not checked",
+  "description": "build_chain() terminates when a cert's issuer DN matches an anchor subject, but does not verify the anchor's validity period. The old code called check_validity() on trust anchors; the new pkix-chain delegation omits anchor-validity checking entirely if pkix-chain's DefaultVerifier skips it. An expired trust anchor will silently validate a chain.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:50:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:41:57Z",
+  "closed_at": "2026-05-02T18:41:57Z",
+  "close_reason": "RFC 5280 does not require validity checking for trust anchors. pkix-chain behavior is correct. Opinion.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.1",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:50:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
