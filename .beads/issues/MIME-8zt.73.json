@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.73",
+  "title": "uuencoding-multi/yencoding-multi: error types missing Clone derive",
+  "description": "Why this exists: uuencoding_multi/src/error.rs defines MultiUuError with #[derive(Debug, PartialEq, Eq)] but not Clone. yencoding_multi/src/error.rs defines AssemblyError with #[derive(Debug, PartialEq, Eq)] but not Clone.\\n\\nWhat goes wrong: Result\u003cT, MultiUuError\u003e and Result\u003cT, AssemblyError\u003e cannot be cloned. This prevents storing errors in collections or propagating them through code that expects Clone (e.g. channel sends, cache entries). The inconsistency with uuencoding::UuError (which does derive Clone) makes the API surface non-uniform. The Rust standard practice is to derive Clone on error types unless they contain non-Clone fields — MultiUuError::DecodeError(uuencoding::UuError) is clonable if UuError is clonable, and AssemblyError has no non-Clone fields.\\n\\nFix: add Clone to MultiUuError and AssemblyError, contingent on UuError (MIME-8zt.37 / yencoding) also gaining Clone.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:41Z",
+  "closed_at": "2026-06-16T00:08:41Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.73",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

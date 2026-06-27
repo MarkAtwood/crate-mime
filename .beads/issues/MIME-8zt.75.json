@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.75",
+  "title": "Good: cert.rs build_chain pre-computes issuer lookup structures in O(n)",
+  "description": "smime-tree/src/cert.rs: build_chain() pre-computes anchor_subjects: HashSet\u003cVec\u003cu8\u003e\u003e and bag_by_subject: HashMap\u003cVec\u003cu8\u003e, \u0026Certificate\u003e before beginning chain traversal. This gives O(1) issuer lookup during the walk vs the O(n * chain_depth) that a naive linear scan over the bag per step would produce. The same HashMap pattern in encrypt.rs is used for recipient lookup. Both show consistent application of the 'pre-compute once, look up cheap' discipline. Worth noting because a naive implementation of chain building is easy to write incorrectly as a nested loop.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:41:58Z",
+  "closed_at": "2026-06-16T00:41:58Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.75",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

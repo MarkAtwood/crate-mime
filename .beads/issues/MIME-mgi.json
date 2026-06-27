@@ -1,0 +1,19 @@
+{
+  "id": "MIME-mgi",
+  "title": "Review: entire project — my-oss pass",
+  "notes": "Maintainer risk: MEDIUM — Two P0 bugs: expired EC384 test cert and missing KARI decrypt oracle test. Three P1 issues: wrong error variant for boundary failure, library panic on OS RNG (documented limitation of rsa crate), pub-vs-pub(crate) visibility. No CVEs, no data loss paths, no panics in normal operation.\nConfidence: 85% chance of no missed bugs. Least confident: KARI decrypt path — only tested from encrypt-side (our code → OpenSSL), never from decrypt-side (OpenSSL → our code). The agree_ecdh trait contract and KDF parameters are correct in isolation but the round-trip is not independently validated. Uncertainty driven by: not running OpenSSL as the encryptor for KARI. Would raise confidence if: an OpenSSL-encrypted KARI fixture + our own DecryptionKey::agree_ecdh implementation test existed.\nIdiom rating: ACCEPTABLE — No unsafe, no Box\u003cdyn Error\u003e in API, no gratuitous clones, all expect() have justification comments. Missing Display on three key types, SmimeError::Other overused for 8+ failure modes, BodyStructure pub vs pub(crate). Nothing that would make a Rust practitioner wince at the structural level.\nRust idiom confidence: 90% chance of no missed issue. Least confident: SmimeError::Other subcategories — there may be more distinct failure modes that deserve structured variants that I missed. Uncertainty driven by: not checking every call site for Other(). Would raise confidence if: running clippy::pedantic and addressing all lints.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:07:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T15:43:43Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

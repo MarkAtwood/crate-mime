@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.22",
+  "title": "byte ranges are (offset, length) indices into caller's buffer, not stored slices",
+  "description": "ParsedPart.header_range and body_range are (usize, usize) tuples — offset and length into the caller's original \u0026[u8]. The crate never stores the raw message bytes internally. A future contributor might suggest storing Arc\u003cVec\u003cu8\u003e\u003e or slices in ParsedPart to avoid the caller needing to pass raw bytes to decode_body_value. That would be wrong for three reasons: (1) it would introduce lifetime parameters or reference-counted overhead into the public types; (2) it would prevent Serialize+Deserialize from working without a custom impl; (3) byte-range indexing is the correct model for lazy blob fetch — the caller can store the parsed tree and fetch bodies on demand from object storage without re-parsing.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:39Z",
+  "closed_at": "2026-05-02T06:24:39Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.22",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

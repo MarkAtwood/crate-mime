@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.92",
+  "title": "Good: decrypt.rs CEK wrapped in Zeroizing\u003cVec\u003cu8\u003e\u003e prevents key material in heap dumps",
+  "description": "smime-tree/src/decrypt.rs: the content-encryption key (CEK) is held in a Zeroizing\u003cVec\u003cu8\u003e\u003e throughout decrypt(). When the Zeroizing wrapper drops, it overwrites the heap allocation with zeros. This is the correct defense-in-depth measure: if the process crashes or a heap dump is captured after decryption, the CEK is not present in memory. The pattern is applied consistently — the CEK is never copied out of the Zeroizing wrapper into a plain Vec. Worth noting because it is easy to forget and the consequence (CEK in a coredump or heap profiler output) is a real vulnerability for keys used across multiple messages.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:28Z",
+  "closed_at": "2026-06-16T00:22:28Z",
+  "close_reason": "Positive finding — no action needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.92",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

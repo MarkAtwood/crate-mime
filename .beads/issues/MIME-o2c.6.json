@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.6",
+  "title": "HeaderForm::Raw silently drops non-UTF-8 input",
+  "description": "header_typed.rs:199-204 — Raw form implementation:\n\n    if matches!(form, HeaderForm::Raw) {\n        let s = std::str::from_utf8(raw_value).unwrap_or(\"\").trim();\n        return HeaderValueTyped::Raw(s.to_owned());\n    }\n\nThe HeaderForm::Raw doc (line 133) says: \"Trim whitespace; return the raw bytes as a UTF-8 string.\" This does not state what happens for non-UTF-8 input. The implementation choice — `unwrap_or(\"\")` — silently substitutes an empty string. RFC 8621 §4.1.2.1 itself says the Raw form is just the field value with surrounding whitespace removed; it does not specify UTF-8 enforcement.\n\nCaller-facing consequence: a header value in Latin-1, Windows-1252, or any non-UTF-8 byte sequence (legal in raw RFC 5322 — header field bodies are 7-bit US-ASCII per RFC 5322 §2.2 but many real-world messages carry 8-bit junk) becomes an indistinguishable empty string. The caller cannot tell \"this header was missing\" from \"this header had non-UTF-8 bytes\". For a JMAP server, this is a wire-protocol bug: Raw is supposed to be lossless.\n\nFix options:\n- Use `String::from_utf8_lossy(raw_value)` to preserve the structure with U+FFFD replacements (RFC 8621 implicitly assumes UTF-8 throughout the API but lossy replacement is at least lossier-than-empty).\n- Return `HeaderValueTyped::Raw` containing a documented sentinel for non-UTF-8.\n- Document the current behavior explicitly and add a test pinning it.\n\nThe contract gap is the bug; the fix is a follow-up decision. File this so the contract is explicit one way or the other.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:24:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:49:36Z",
+  "closed_at": "2026-05-14T15:49:36Z",
+  "close_reason": "Fixed: Raw form now uses String::from_utf8_lossy. Non-UTF-8 bytes become U+FFFD rather than collapsing into an empty string indistinguishable from a missing header. Behavior documented on HeaderForm::Raw. Matches mail-parser's own handling of non-UTF-8 header bytes.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.6",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:24:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

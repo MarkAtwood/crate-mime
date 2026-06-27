@@ -1,0 +1,28 @@
+{
+  "id": "MIME-gcz.19",
+  "title": "scan() silently drops all blocks after first decode error in a block",
+  "description": "Trigger: a multi-block input where one block has a corrupt data line, followed by a valid block. In handle_block, the Err(_) arm breaks out of the data-line loop without updating scan_pos. end_offset is initialized to input.len() and is never updated (found_end stays false). After the break, *pos = end_offset = input.len(), which causes the outer scan_impl loop to exit immediately. All blocks after the corrupt block are silently dropped. The doc promises 'scanner continues past the offending construct' but this only applies to begin-base64 and malformed begin lines, not decode errors. Callers scanning a Usenet archive body expecting all blocks will get only the blocks up to and including the first bad one. Fix: when breaking on Err(_), advance scan_pos = le (past the bad line), then set *pos = scan_pos rather than *pos = end_offset.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:46:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:51:51Z",
+  "closed_at": "2026-05-04T18:51:51Z",
+  "close_reason": "Fixed: in handle_block Err(_) arm, now sets end_offset=le before break so *pos advances past the bad line, allowing subsequent blocks to be scanned.",
+  "labels": [
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.19",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:46:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

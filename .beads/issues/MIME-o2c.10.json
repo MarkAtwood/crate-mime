@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.10",
+  "title": "HeaderDateTime mirrors mail_parser::DateTime; to_rfc3339/to_timestamp delegate upstream — locks crate to mail-parser's representation",
+  "description": "header_typed.rs:63-66 — HeaderDateTime doc explicitly says:\n\n    \"Mirrors `mail_parser::DateTime` but is owned and lifetime-free so it can\n    be embedded in `ParsedMessage`-adjacent state and serialized.\"\n\nThe fields (lines 69-78) match mail_parser::DateTime field-for-field by name and type. The implementation methods (lines 86-95) delegate to mail-parser:\n\n    pub fn to_rfc3339(\u0026self) -\u003e String { self.to_mail_parser().to_rfc3339() }\n    pub fn to_timestamp(\u0026self) -\u003e i64 { self.to_mail_parser().to_timestamp() }\n\nThis is implementation leakage in three ways:\n\n1. **Structural leak**: every field of HeaderDateTime is paid in mime-tree's stability surface. If mail-parser 0.12 expands year to i32 to support BC dates, or adds nanoseconds, the maintainer must either mirror the change (breaking) or stop mirroring (and document that HeaderDateTime is no longer \"just mail-parser's DateTime owned\").\n\n2. **Behavioral leak**: the exact string produced by to_rfc3339 is defined by mail-parser's formatter. If mail-parser changes the format (e.g., always emit `+00:00` instead of `Z`, or trim trailing `:00` seconds), every caller storing these strings — in databases, in indexes, in JMAP responses — sees a wire-format change without a major bump of mime-tree.\n\n3. **Behavioral leak**: to_timestamp behavior on edge cases (overflow, pre-epoch, invalid date) is whatever mail-parser does. Undocumented and out of mime-tree's control.\n\nCaller-facing consequence: a JMAP server depending on mime-tree's HeaderDateTime cannot guarantee output stability across mail-parser patch bumps. The Cargo.toml pins `mail-parser = \"0.11\"` (caret range), so 0.11.x patch bumps that change formatter output are accepted automatically. Callers downstream get unexpected wire-format changes.\n\nFix options:\n- Document that HeaderDateTime's wire representation is intentionally identical to mail-parser's and is only stable across mail-parser minor bumps.\n- Implement to_rfc3339 / to_timestamp inside mime-tree with a fixed, documented algorithm and decouple from mail-parser's formatter.\n- Pin mail-parser to a specific patch version, not a caret range.\n\nThe cheapest correct fix is to document the leak and accept it; the engineering-cleanest fix is to vendor the formatter.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:25:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:52:30Z",
+  "closed_at": "2026-05-14T15:52:30Z",
+  "close_reason": "HeaderDateTime cleanup batch: (.31) tz_before_gmt bool replaced with TzSign enum (East/West); (.9) field invariants documented per field, plus type-level statement that out-of-range values yield unspecified output; (.10) wire-format dependency on mail-parser made explicit with a doc section; (.15) to_rfc3339 doc specifies exact output (Zulu Z for UTC, ±HH:MM otherwise) with examples and out-of-range escape hatch; (.16) to_timestamp doc specifies pre-epoch / out-of-range behaviour. Struct gains #[non_exhaustive]. New test pins Zulu-form output for UTC.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.10",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:25:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

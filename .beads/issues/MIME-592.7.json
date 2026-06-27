@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.7",
+  "title": "subject.rs: first-match-wins policy for multiple markers is undocumented",
+  "description": "parse_subject() iterates patterns in priority order and returns on the first match (subject.rs:172-215). If a subject contains multiple markers of the same type, e.g. 'file.bin [1/5] extra [2/5]', the first bracketed match wins (part=1, total=5) and the second is silently ignored. This policy is not documented in the parse_subject() docstring. Callers have no way to detect ambiguous subjects. The doc should state explicitly that when multiple markers match, the first one in priority order wins, and that ambiguous subjects are resolved deterministically (not randomly or by error).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:59Z",
+  "closed_at": "2026-05-04T23:03:59Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.7",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

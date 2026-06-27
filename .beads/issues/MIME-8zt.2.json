@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.2",
+  "title": "Naming: DecodedBlock (uuencoding) vs DecodedPart (yencoding) for same concept",
+  "description": "## Finding\n\nuuencoding::DecodedBlock and yencoding::DecodedPart are analogous types — both are the result returned by the crate's decode() function representing a single successfully decoded binary payload with metadata. They differ only in name.\n\n## Locations\n\n- uuencoding/src/lib.rs: pub struct DecodedBlock { pub data: Vec\u003cu8\u003e, pub metadata: BlockMetadata, pub is_truncated: bool, pub was_limit_hit: bool }\n- yencoding/src/lib.rs: pub struct DecodedPart { pub data: Vec\u003cu8\u003e, pub metadata: YencMetadata, pub part: Option\u003cu32\u003e, ... }\n\n## Impact\n\nA caller using both crates (e.g. mime-tree, which depends on both) must remember two unrelated type names for the same concept. A maintainer adding a third encoding crate has no consistent naming convention to follow. The divergence becomes load-bearing when uuencoding-multi and yencoding-multi embed these types: uuencoding-multi's ReassembledFile was shaped to match DecodedBlock, but yencoding-multi's Assembler::add_part takes \u0026yencoding::DecodedPart — the asymmetry propagates upward.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:24Z",
+  "closed_at": "2026-06-16T00:22:24Z",
+  "close_reason": "DecodedBlock vs DecodedPart — different names reflect the different encoding formats (UU blocks vs yEnc parts). Renaming would be breaking.",
+  "labels": [
+    "naming",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.2",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-e7k.6",
+  "title": "cert.rs: build_chain re-encodes trust-anchor subjects on every iteration",
+  "description": "build_chain() calls trust_anchors.iter().any(|a| a.tbs_certificate().subject().to_der()...) on each iteration of the MAX_DEPTH loop. This encodes every trust anchor's subject DN to DER bytes on every loop step. For a depth-N chain with M trust anchors, this is O(N*M) DER encodes. Pre-computing a HashSet\u003cVec\u003cu8\u003e\u003e of trust anchor subject DERs before the loop would reduce this to O(N) lookups. Same optimization applies to validate_chain's bridge_cert call for anchors - those are done upfront which is good. The chain building step should pre-hash the anchor subjects.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:38:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:43:31Z",
+  "closed_at": "2026-05-02T17:43:31Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.6",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:38:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

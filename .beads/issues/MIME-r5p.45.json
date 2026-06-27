@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.45",
+  "title": "getrandom preflight before RSA encrypt to surface OS RNG failure before panic-only path",
+  "description": "build_rsa_recipient() calls getrandom::fill() on 256 bytes before invoking rsa::encrypt(), converting a silent panic into a SmimeError::RngFailure on OS RNG failure. This is the right approach given that the rsa crate takes an UnwrapErr(SysRng) that panics on failure. A future contributor might remove the preflight as 'unnecessary overhead' — this would silently convert a recoverable error back into a panic.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:54:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:39:30Z",
+  "closed_at": "2026-05-02T18:39:30Z",
+  "close_reason": "Confirmed: encrypt.rs build_rsa_recipient (lines 278-280) performs a 256-byte getrandom::fill preflight before calling rsa::encrypt(). The comment documents the TOCTOU window. The preflight converts an otherwise-silent panic (rsa uses UnwrapErr(SysRng) internally) into a SmimeError::RngFailure on OS RNG failure. The let _ = preflight; line is intentional — the bytes serve only to test RNG liveness.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.45",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:54:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

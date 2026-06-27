@@ -1,0 +1,30 @@
+{
+  "id": "MIME-gcz.4",
+  "title": "scan.rs is_begin_line requires 'begin ' (with space) but decode.rs matches bare 'begin' — divergent begin-line detection",
+  "description": "uuencoding/src/scan.rs is_begin_line() (line 50) requires the line to start with 'begin ' (6 chars including space) and rejects 'begin' alone. uuencoding/src/decode.rs looks for any line where the lowercased version starts_with(b'begin') (line 29), which includes 'begin\\n'. These two entry points diverge on edge inputs. A bare 'begin\\n' block would be found by decode() (returning mode=0, filename='') but skipped by scan(). This is a latent user-confusion bug: calling decode() on a slice discovered by scan() is safe, but calling scan() to detect if a body has blocks, then decode() on the whole body, will disagree on membership.",
+  "acceptance_criteria": "Unify begin-line detection into one shared function used by both decode.rs and scan.rs. The canonical behavior should be documented clearly.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:32:24Z",
+  "closed_at": "2026-05-04T18:32:24Z",
+  "close_reason": "is_begin_line now accepts bare begin (no trailing space); parse_begin_line handles bare begin with defaults; added test",
+  "labels": [
+    "maintainer-burden",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.4",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

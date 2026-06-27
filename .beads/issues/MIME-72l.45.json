@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.45",
+  "title": "verify.rs: verify_one repeats SignerResult failure construction 5 times",
+  "description": "verify_one has 5 early-return arms each constructing SignerResult { verified: false, subject: ..., error: Some(e.to_string()) } manually. The repetition obscures the verification flow — a reader must scan all five arms to understand the control structure. Suggested rewrite: extract a helper 'fn fail(subject: Option\u003cString\u003e, e: impl Display) -\u003e SignerResult' and use the ? operator via a Result-returning inner function. The outer verify_one converts the inner Err to a failed SignerResult in one place. This makes the happy path readable without all the early-return noise.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:30:22Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.45",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

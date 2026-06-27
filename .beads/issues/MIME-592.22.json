@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.22",
+  "title": "scan() rejects non-UTF8 filenames; decode() accepts them",
+  "description": "scan() and decode() handle non-UTF8 bytes in the begin-line filename field differently, causing inconsistent behavior for the same input.\n\nscan.rs parse_begin_line (line 137):\n  std::str::from_utf8(filename_bytes).ok()?\nThis returns None on any non-UTF8 byte sequence, causing handle_block() to emit Err(InvalidBeginLine).\n\ndecode.rs (line 132):\n  String::from_utf8_lossy(rest).into_owned()\nThis never fails; invalid UTF-8 bytes are replaced with the Unicode replacement character U+FFFD.\n\nResult: For a begin line like 'begin 644 \\xFF\\xFE file.bin', decode() succeeds with a lossy filename, but scan() emits InvalidBeginLine.\n\nImpact: Any real-world UU block with a non-ASCII (or malformed UTF-8) filename will be decoded successfully by decode() but rejected by scan() with a spurious error, breaking the documented API equivalence.\n\nThe same asymmetry applies to the mode token via std::str::from_utf8(mode_bytes).ok()? in scan.rs line 127, though non-UTF8 mode tokens are extremely unlikely in practice.\n\nFix: Either (a) change scan.rs parse_begin_line to use String::from_utf8_lossy for both mode and filename, matching decode.rs; or (b) change decode.rs to also use strict UTF-8 and return an error. Option (a) is preferred for real-world tolerance.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:39Z",
+  "closed_at": "2026-05-04T22:55:39Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.22",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

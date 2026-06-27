@@ -1,0 +1,24 @@
+{
+  "id": "MIME-s89.5",
+  "title": "ReassembledFile::is_truncated: two causes not distinguished in doc",
+  "description": "is_truncated=true can mean (a) missing parts or (b) per-part UU truncation. Added doc note explaining the is_truncated \u0026\u0026 missing_parts.is_empty() diagnostic pattern.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:23:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:24:04Z",
+  "closed_at": "2026-05-04T19:24:04Z",
+  "close_reason": "Fixed: is_truncated doc explains both causes and the diagnostic pattern.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-s89.5",
+      "depends_on_id": "MIME-s89",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:23:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

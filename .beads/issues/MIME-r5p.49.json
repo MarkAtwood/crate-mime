@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.49",
+  "title": "walk.rs Option\u003cmut Vec\u003e nullification correctly models RFC 8621 null propagation",
+  "description": "walk.rs parse_structure uses Option\u003c\u0026mut Vec\u003cString\u003e\u003e to model RFC 8621 §4.1.4 JavaScript 'htmlBody = null'. A future contributor might replace this with separate Vec accumulators plus post-processing. That would break null-propagation across recursive calls. The RFC algorithm mutates a shared reference during traversal; Option\u003c\u0026mut Vec\u003e directly reflects this. None propagates exactly as null propagates in the JS pseudocode. Any refactor breaking shared-mutability will silently misclassify parts in multipart/alternative trees.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:54:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:40:44Z",
+  "closed_at": "2026-05-02T18:40:44Z",
+  "close_reason": "Confirmed: walk.rs parse_structure uses Option\u003c\u0026mut Vec\u003cString\u003e\u003e for text_body and html_body (line 61-62). Setting *html_body = None (line 130) and *text_body = None (line 133) models the RFC 8621 §4.1.4 JS pseudocode htmlBody = null / textBody = null exactly. Subsequent pushes guarded by if let Some(ref mut tb) = text_body silently no-op when None, matching JS null-propagation. Test 7 (alternative_mixed_subtree_nullifies_html_body) validates this path.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.49",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:54:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

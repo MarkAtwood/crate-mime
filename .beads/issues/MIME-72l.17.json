@@ -1,0 +1,28 @@
+{
+  "id": "MIME-72l.17",
+  "title": "parse.rs: unnecessary clone of child_ids in multipart arm",
+  "description": "build_part (line 135-136) does 'let ids: Vec\u003cu32\u003e = child_ids.clone(); ids.iter()...' The clone exists only because the author did not try iterating the reference directly. child_ids is a \u0026Vec\u003cu32\u003e from the match arm, so child_ids.iter() works without cloning. Suggested rewrite: remove the 'let ids' binding and replace with 'child_ids.iter().enumerate().map(|(n, \u0026child_idx)| { ... })'.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:48:51Z",
+  "closed_at": "2026-05-02T05:48:51Z",
+  "close_reason": "duplicate of MIME-72l.26 (same child_ids clone)",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.17",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

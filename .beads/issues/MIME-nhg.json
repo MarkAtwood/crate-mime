@@ -1,0 +1,15 @@
+{
+  "id": "MIME-nhg",
+  "title": "Bump yencoding to 0.3.0 and publish",
+  "description": "yencoding has new public constructors (DecodedPart::new, YencMetadata::new) added after 0.2.0 was published. Bump version to 0.3.0 so mime-tree can depend on it. Update CHANGELOG if one exists.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-16T01:38:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-06-16T01:41:45Z",
+  "close_reason": "Closed"
+}

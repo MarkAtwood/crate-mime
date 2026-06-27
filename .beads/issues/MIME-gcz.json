@@ -1,0 +1,16 @@
+{
+  "id": "MIME-gcz",
+  "title": "Review loop: uuencoding + uuencoding-multi",
+  "description": "Pre-merge review of the uuencoding and uuencoding-multi crates. Scope: uuencoding/ and uuencoding-multi/ directories, commits b860a9d..aef41a3.",
+  "notes": "Maintainer risk: MEDIUM — Three correctness bugs exist: an integer underflow in mime-tree decode_uuencode (panics in debug, wrong output in release on hostile input), a scan/decode disagreement on empty filenames that silently drops valid blocks, and a surprising mixed Ok+Err output from scan() for a single block with bad data lines. Five P1 API design issues will generate user friction but do not cause silent data corruption. The two decoders in mime-tree that duplicate the uuencoding crate are the most likely source of future divergence bugs.\nConfidence: 15% chance of missed bug. Least confident flags: (1) the mode overflow in encode() — I flagged it but the real-world impact depends on whether callers ever pass mode \u003e 0o7777; (2) the scan/decode 'end' line case-sensitivity — I noted the inconsistency but both paths appear to handle 'end', 'End', 'END' correctly in their own contexts. Uncertainty driven by: not having run the no_panic corpus under MIRI or libfuzzer to catch UB in the mime-tree decode path with hostile data; not having tested whether the pan-line-error + Ok behavior in scan actually produces corrupt data or just extra items in the results vec. Would raise confidence if: ran cargo-fuzz on decode() and scan() for 10 minutes; ran MIRI on the full test suite.\nPass 2 maintainer risk: MEDIUM — Two new P1 bugs introduced by the P0.3 fix: (1) scan() drops all subsequent blocks after a decode error due to *pos=end_offset=input.len() instead of advancing past the bad line; (2) is_begin_line now matches any 'begin' prefix causing false-positive InvalidBeginLine errors for prose lines starting with 'beginning', 'beginners', etc. The mime-tree delegation to uuencoding::decode() is correct but has an efficiency regression for max_bytes preview queries (always decodes full block). P0 original bugs are all correctly fixed; the panic/wrap in mime-tree decode is gone.\nPass 2 confidence: 20% chance of missed bug. Least confident flags: (1) the is_begin_line false-positive severity — depends on how callers handle Err results from scan(); callers that only process Ok results are unaffected; (2) whether the *pos=end_offset=input.len() bug actually affects any existing caller since there are no tests for multi-block input where one block has a corrupt data line followed by a valid block. Uncertainty driven by: not having run the test suite with a constructed test for the two P1 bugs to confirm exact behavior; not having reviewed callers of scan() to see if they process Err items. Would raise confidence if: added the two failing tests to the test suite and confirmed the bugs reproduce, then fixed them.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:24:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:38:22Z",
+  "close_reason": "all steps complete"
+}

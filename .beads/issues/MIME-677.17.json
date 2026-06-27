@@ -1,0 +1,29 @@
+{
+  "id": "MIME-677.17",
+  "title": "decode.rs: base64 pre-truncation yields non-multiple-of-4 length, causing false decode error",
+  "description": "In decode_body_value(), the pre-truncation formula max_b64_chars = n.saturating_mul(4) / 3 + 4 produces values that are not multiples of 4 when n is not divisible by 3 (e.g., n=1 → 5, n=2 → 6, n=4 → 9, n=5 → 10). Standard base64 (STANDARD engine with padding) rejects inputs whose length is not a multiple of 4. This causes the Err arm to fire: is_encoding_problem=true and Vec::new() returned, even though the body is perfectly valid base64 and only a preview was requested. Trigger: decode_body_value with max_bytes=Some(n) where n mod 3 != 0 on a valid base64 body longer than max_b64_chars characters. Fix: round max_b64_chars up to next multiple of 4.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:55:03Z",
+  "closed_at": "2026-05-02T05:55:03Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.17",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

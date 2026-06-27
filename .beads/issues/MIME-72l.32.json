@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.32",
+  "title": "All pre-release dep pins will break on every RustCrypto rc bump",
+  "description": "smime-tree/Cargo.toml has 11 exact-version pre-release pins (cms =0.3.0-pre.2, x509-cert =0.3.0-rc.4, rsa =0.10.0-rc.18, p256/p384 =0.14.0-rc.9, elliptic-curve =0.14.0-rc.32, aes-gcm =0.11.0-rc.3, ansi-x963-kdf =0.1.0-rc.2, signature =3.0.0-rc.10). Each new RC from RustCrypto requires a manual coordinated bump of all pins simultaneously or the crate fails to compile. Anyone who tries 'cargo update' will get a broken build. This is routine for RustCrypto monorepo work but creates ongoing maintenance overhead and will confuse contributors who do not know this convention.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:17Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:40:25Z",
+  "closed_at": "2026-05-02T05:40:25Z",
+  "close_reason": "expected; pre-release pins required for RustCrypto compatibility cluster",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.32",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

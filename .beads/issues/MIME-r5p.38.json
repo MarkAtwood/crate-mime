@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.38",
+  "title": "decode.rs Step 2 comment says 'possible for Base64' but is also possible for QP",
+  "description": "decode.rs line 119: comment says 'either the decoded output itself exceeded max_bytes (possible for Base64, where the input limit rounds up to the next multiple of 4)'. QP can also produce more decoded bytes than max_bytes since the 4x multiplier is a bound, not exact. The parenthetical '(possible for Base64...)' is misleading. Remove or generalize the parenthetical to say 'this can occur for any encoding where input is pre-truncated at a loose bound'.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:11:19Z",
+  "closed_at": "2026-05-02T18:11:19Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.38",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

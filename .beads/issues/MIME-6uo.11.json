@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.11",
+  "title": "build_mime accumulates MIME header via format! macro; could use a Write impl",
+  "description": "encrypt.rs lines 496-504: build_mime uses format!() to assemble the MIME headers, which allocates a String just to convert it to bytes. sign.rs takes the opposite approach: Vec\u003cu8\u003e with extend_from_slice. The two patterns are inconsistent within the same crate. Suggested rewrite: either both use Vec\u003cu8\u003e + extend_from_slice (no intermediate String allocation) or both use format!(). The inconsistency makes a contributor unsure which pattern to copy.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:51:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:26Z",
+  "closed_at": "2026-05-02T08:06:26Z",
+  "close_reason": "P3 opinion/style: no correctness issue, deferred.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.11",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:51:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

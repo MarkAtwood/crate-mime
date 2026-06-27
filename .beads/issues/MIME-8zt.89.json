@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.89",
+  "title": "mime-tree/walk.rs: compute_body_structure should be pub(crate), not pub inside private module",
+  "description": "Why this exists: mime_tree/src/walk.rs is a private module (mod walk in lib.rs, not pub mod walk). The function compute_body_structure inside it is declared pub, which makes it pub(crate) in practice — but the intent is not explicit. The Rust coding standard prefers explicit pub(crate) over relying on the private-module rule to limit visibility.\\n\\nWhat goes wrong: if walk.rs were ever made pub (e.g. during refactoring), compute_body_structure would accidentally become part of the public API. The explicit pub(crate) annotation documents the intended scope and would cause a compile error if accidentally widened. The BodyStructure type in the same module is already correctly annotated pub(crate).\\n\\nLocation: mime-tree/src/walk.rs, fn compute_body_structure.\\n\\nFix: change pub fn compute_body_structure to pub(crate) fn compute_body_structure.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:26Z",
+  "closed_at": "2026-06-16T00:22:26Z",
+  "close_reason": "compute_body_structure is pub inside a private module — it's effectively pub(crate). Adding the explicit qualifier is cosmetic.",
+  "labels": [
+    "naming",
+    "review",
+    "rust-standards"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.89",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

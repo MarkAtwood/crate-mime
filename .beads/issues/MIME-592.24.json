@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.24",
+  "title": "Missing test coverage for =CR/=LF split-escape edge case",
+  "description": "There is no test that asserts correct behavior when '=' appears immediately before CR, LF, or CRLF in a data line. The existing no_panic test at tests/no_panic.rs:56 has a line ending with '*=\\n' but only checks 'must not panic' -- it does not assert the decoded result. The SizeMismatch error fires incidentally, masking the underlying corrupt-byte production.\n\nRequired tests (after fixing MIME-592.19): decode_line_eq_before_crlf_is_lone_escape asserting decode_line(b'*=\\r\\n') gives [0], and a full-decode test with a crafted article where an escape pair straddles a line boundary to confirm the fix handles real-world split-escape articles from non-Rust encoders.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:31Z",
+  "closed_at": "2026-05-04T22:55:31Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.24",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:33Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

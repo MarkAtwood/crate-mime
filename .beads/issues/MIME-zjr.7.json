@@ -1,0 +1,41 @@
+{
+  "id": "MIME-zjr.7",
+  "title": "Documentation: module docs, security note, doc-tests",
+  "description": "Write complete public documentation for the uuencoding-multi crate.\n\nDeliverables:\n\n1. src/lib.rs crate-level doc comment:\n   - What multi-part UUencoding is and its Usenet/email history\n   - What this crate does: subject parsing, part collection, TOC detection, reassembly\n   - What this crate does NOT do: MIME parsing, message fetching/storing, yEnc\n   - Dependency note: callers use mime-tree for MIME parsing, then feed body bytes here\n   - Security note: decoded output may be compressed; caller must apply size limits before decompression\n   - A brief end-to-end usage example (doc-test that compiles and passes)\n\n2. Each public type and function: /// doc comments explaining:\n   - Purpose and invariants\n   - Panic conditions (should be: none — document that)\n   - Error conditions\n   - Any format assumptions (e.g., body_bytes must be UTF-8 or can be arbitrary bytes)\n\n3. At least one runnable doc-test per public function (compile + run in cargo test).\n\n4. RUSTDOCFLAGS='--cfg docsrs -D warnings' cargo +nightly doc must pass with no warnings.\n\nQuality gate:\n  cargo fmt\n  cargo clippy -p uuencoding-multi -- -D warnings\n  cargo test -p uuencoding-multi (all doc-tests pass)\n  RUSTDOCFLAGS='--cfg docsrs -D warnings' cargo +nightly doc --no-deps --all-features -p uuencoding-multi\n\nPARENT: MIME-zjr",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:17:39Z",
+  "closed_at": "2026-05-04T18:17:39Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.7",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.7",
+      "depends_on_id": "MIME-zjr.6",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.7",
+      "depends_on_id": "MIME-zjr.5",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

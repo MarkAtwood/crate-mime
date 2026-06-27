@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.50",
+  "title": "EncodePartOptions\u003c'a\u003e has a lifetime parameter in the public API",
+  "description": "EncodePartOptions in yencoding/src/lib.rs carries a lifetime parameter `\u003c'a\u003e` because it holds a `filename: Option\u003c\u0026'a str\u003e`. This lifetime leaks into the public API: callers must name the lifetime in their own code, and the struct cannot be stored in a struct without the struct also carrying a lifetime. What goes wrong: if the crate later wants to switch filename to an owned String (e.g. to allow construction from computed names), that is a breaking change — the lifetime disappears from the signature. Using `filename: Option\u003cString\u003e` with a `with_filename(\u0026str)` builder method would be lifetime-free and equally efficient at the call site. File: yencoding/src/lib.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:44Z",
+  "closed_at": "2026-06-16T00:18:44Z",
+  "close_reason": "EncodePartOptions\u003c'a\u003e lifetime is intentional — it borrows filename from the caller, avoiding an allocation. Changing to owned String would be an API regression for the common case. Opinion.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.50",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

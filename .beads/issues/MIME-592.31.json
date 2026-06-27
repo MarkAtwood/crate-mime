@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.31",
+  "title": "scan/decode inconsistency: double blank before end",
+  "description": "The consecutive-terminator fix in scan.rs (MIME-592 pass 2) introduced a new inconsistency with decode.rs.\n\n**Input:** `begin 644 f\\n#0V%T\\n\\n\\nend\\n` (two bare newlines between terminator and `end`)\n\n**decode.rs behavior:** Returns `Ok`, `is_truncated=false`. The look-ahead after seeing the first zero-length line (lines 151-158 of decode.rs) skips subsequent empty (`b\"\"`) lines before finding `end`.\n\n**scan.rs behavior (after fix):** When `saw_terminator=true` and a second `Ok(0)` from `decode_line` is seen, scan.rs sets `end_offset = ls; break` → `is_truncated=true`. This is WRONG.\n\n**Root cause:** The fix checks `if saw_terminator { break }` on any second `Ok(0)` line, but decode.rs's look-ahead skips empty lines (those that produce `b\"\"` after the split). A bare `\\n` produces `b\"\"` in decode.rs's lines array and is skipped by the `is_empty()` check, but produces `Ok(0)` from `decode_line` in scan.rs because `decode_line` treats empty input as a zero-length terminator.\n\n**Fix direction:** scan.rs should distinguish between a truly-empty line (bare `\\n` → empty bytes) and a UU terminator character line (`` or ``). Alternatively, match decode.rs's look-ahead: after seeing the first zero-length line, scan forward looking for `end`, skipping empty lines as decode.rs does.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:10:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:13:06Z",
+  "closed_at": "2026-05-04T23:13:06Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.31",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:10:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.46",
+  "title": "verify(): is_verified() 'any signer' semantics easy to misuse",
+  "description": "smime-tree/src/error.rs + verify.rs: VerificationResult::is_verified() returns true if ANY one signer passed chain validation, even if other signers failed. This is correct per RFC 5652 (a SignedData with multiple signers is valid if at least one passes), and it is documented. However, the method name is_verified() is a single bool with no context. A caller doing 'if result.is_verified() { trust the content }' has implicitly accepted any signer in the bag, including one whose cert chain they may not recognize. The API makes the safe path (checking all signers or checking which signer passed) require more work than the convenient-but-possibly-wrong path. A more defensive API would be: is_any_verified(), plus a verified_signers() -\u003e impl Iterator\u003cItem=\u0026SignerResult\u003e convenience that callers can inspect. The current API is not wrong but makes it easy to trust content without knowing which identity actually verified it.",
+  "notes": "opinion — whether this is worth the API churn before 1.0 is a judgment call",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:16:29Z",
+  "closed_at": "2026-06-16T00:16:29Z",
+  "close_reason": "Duplicate of MIME-8zt.59 (same is_verified semantics issue). MIME-8zt.59 is being fixed by adding all_verified() and verified_signers().",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.46",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

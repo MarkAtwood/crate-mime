@@ -1,0 +1,19 @@
+{
+  "id": "MIME-68n",
+  "title": "Review: entire project — mime-tree + smime-tree",
+  "notes": "Maintainer risk: MEDIUM — P0 bugs are doc/stale-comment correctness issues. Real correctness bug: P-384 key produces wrong OID in sign(). Dead public API variant (EcdhEs) and non-exhaustive enums are the main pre-1.0 API design risks.\nIdiom rating: ACCEPTABLE — Core logic is solid idiomatic Rust. Main idiom issues: error variants that lose source chain (CertChain/Other wrap String), dead extension-point trait methods, and the dead EcdhEs variant. No unsafe code. No gratuitous clones in hot paths. Iterator usage is clean.\nConfidence: 15% chance of missed bug. Least confident flags: KARI decrypt path has no integration test with real ECDH fixtures (could have an encoding bug in EccCmsSharedInfo or SharedInfo DER that only manifests with a real ECDH impl). KeyUsage check in is_ca_cert — could be over-strict for real-world chains that omit it. Uncertainty driven by: KARI is new code with no end-to-end test. Would raise confidence if: an ECDH integration test (openssl or python cryptography) passing through encrypt+decrypt for a P-256/P-384 key pair was added.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:42:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:53:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

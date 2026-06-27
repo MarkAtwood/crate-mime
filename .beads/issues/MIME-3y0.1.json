@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3y0.1",
+  "title": "uuencoding: decode_limited complexity caveat missing from public API doc",
+  "description": "The internal comment in decode.rs:44 warns that the entire input is split into lines before any limit applies (O(input) time/space regardless of max_bytes). This caveat is not in the public decode_limited doc in lib.rs. Add it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:29:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:35:17Z",
+  "closed_at": "2026-05-05T03:35:17Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3y0.1",
+      "depends_on_id": "MIME-3y0",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:29:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

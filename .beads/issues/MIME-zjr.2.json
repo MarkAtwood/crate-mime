@@ -1,0 +1,33 @@
+{
+  "id": "MIME-zjr.2",
+  "title": "Scaffold uuencoding-multi crate (Cargo.toml, lib.rs, error.rs)",
+  "description": "Create the crate skeleton for the uuencoding-multi crate.\n\n- New directory: uuencoding-multi/ in the MIME workspace root (add to workspace Cargo.toml members)\n- Cargo.toml: name='uuencoding-multi', version='0.1.0', edition='2021', license='MIT OR Apache-2.0', rust-version='1.75'\n- Dependencies: uuencoding (path dep on ../uuencoding), serde (optional, feature-gated)\n- No mime-tree dependency (see workspace invariant: callers extract subject/body bytes themselves)\n- src/error.rs: MultiUuError enum with variants:\n    MissingParts { expected: u32, present: Vec\u003cu32\u003e }  -- gaps detected in part set\n    EmptyCollection  -- reassemble called on zero-part collection\n    DecodeError(uuencoding::UuError)  -- inner decode failure\n    DuplicatePart { part_number: u32 }  -- two parts with same number added\n  All variants: Debug, Display, std::error::Error. Non-exhaustive.\n- src/lib.rs: crate-level doc explaining multi-part UUencoding history, the sequencing protocol, and what this crate does/does not do. Re-exports: MultiUuError, PartEntry, PartCollection, TocEntry, SubjectParts, parse_subject, reassemble\n- Quality gate must pass: cargo fmt, cargo clippy -p uuencoding-multi -- -D warnings, cargo test -p uuencoding-multi",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:24:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:06:50Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.2",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:24:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.2",
+      "depends_on_id": "MIME-zjr.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

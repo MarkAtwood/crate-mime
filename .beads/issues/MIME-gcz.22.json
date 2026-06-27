@@ -1,0 +1,28 @@
+{
+  "id": "MIME-gcz.22",
+  "title": "Null-byte regression test comment is factually wrong",
+  "description": "mime-tree/src/decode.rs test_uuencode_null_byte_in_encoded_payload_no_panic says: 'wrapping_sub(32) \u0026 0x3F treats 0x00 as value 0 (same as 0x60/backtick or 0x20/space)'. This is wrong. In uuencoding/src/decode_line(), data bytes go through decode_byte() which rejects anything not in 0x20..=0x5F or 0x60. A 0x00 byte in data position returns Err(InvalidChar), not value 0. wrapping_sub(32) is used only for the length byte (line[0]). The test still passes because 'no panic' is the actual invariant — the invalid char triggers Err which causes is_truncated=true, not a panic. The comment just misexplains the mechanism. Fix: rewrite comment to say 0x00 in the data payload triggers InvalidChar from decode_byte(), causing is_truncated=true with empty data — the key invariant being no panic regardless of the error path taken.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:47:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:51:54Z",
+  "closed_at": "2026-05-04T18:51:54Z",
+  "close_reason": "Fixed: rewrote comment to correctly describe the 0x00 → Err(InvalidChar) → is_truncated=true path; removed the incorrect wrapping_sub reference.",
+  "labels": [
+    "readability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.22",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:47:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

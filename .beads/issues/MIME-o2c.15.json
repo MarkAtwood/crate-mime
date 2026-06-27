@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.15",
+  "title": "HeaderDateTime::to_rfc3339 doc describes implementation, not caller-facing output format",
+  "description": "header_typed.rs:82-89 — current doc:\n\n    /// Render as an RFC 3339 / ISO 8601 timestamp string.\n    ///\n    /// Delegates to mail-parser's formatter. Returns the canonical\n    /// `YYYY-MM-DDTHH:MM:SS±HH:MM` form.\n\nTwo problems:\n\n1. \"Delegates to mail-parser's formatter\" — this is implementation detail leaked into the public doc. A caller reading the doc to know what the function does should not need to know mail-parser exists. The fact that it delegates is irrelevant to the contract; the relevant fact is the output shape.\n\n2. \"the canonical YYYY-MM-DDTHH:MM:SS±HH:MM form\" is good but doesn't specify edge cases the caller will hit:\n   - UTC: is it `Z` or `+00:00`? RFC 3339 §4.2 permits both. Which does mail-parser emit?\n   - Negative timezones with zero minutes: `-06:00` or `-0600`?\n   - Single-digit components (month 3, day 5): zero-padded? Required by RFC 3339, but is it actually emitted?\n   - Subsecond fractions: not in the struct, but the format string in the doc doesn't say they are excluded.\n\nCaller-facing consequence: callers doing string comparison or pattern matching on the output (e.g., a JMAP server building DB indexes keyed on the RFC 3339 form) cannot predict the exact string without testing every edge case empirically. A future mail-parser patch that switches `Z` ↔ `+00:00` silently invalidates those indexes.\n\nFix: rewrite the doc to specify the canonical output, with explicit choices for UTC representation and timezone offset format. The doctest at lines 197-199 of header_typed_tests.rs already pins `\"1997-11-21T09:55:06-06:00\"` — extract that promise into the doc.\n\nSuggested doc:\n\n    /// Render as an RFC 3339 §5.6 date-time string.\n    ///\n    /// Output format: `YYYY-MM-DDTHH:MM:SS±HH:MM`, with each component\n    /// zero-padded to the documented width. UTC is rendered as `+00:00`\n    /// (not `Z`). The seconds-fraction extension is not emitted.\n    ///\n    /// Example: `1997-11-21T09:55:06-06:00`.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:26:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:52:35Z",
+  "closed_at": "2026-05-14T15:52:35Z",
+  "close_reason": "HeaderDateTime cleanup batch: (.31) tz_before_gmt bool replaced with TzSign enum (East/West); (.9) field invariants documented per field, plus type-level statement that out-of-range values yield unspecified output; (.10) wire-format dependency on mail-parser made explicit with a doc section; (.15) to_rfc3339 doc specifies exact output (Zulu Z for UTC, ±HH:MM otherwise) with examples and out-of-range escape hatch; (.16) to_timestamp doc specifies pre-epoch / out-of-range behaviour. Struct gains #[non_exhaustive]. New test pins Zulu-form output for UTC.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.15",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:26:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.19",
+  "title": "VerificationResult / SignerResult: missing PartialEq (duplicate of .11, merge)",
+  "description": "Per idiom review: PartialEq/Eq should be derived for types used in test assertions. VerificationResult and SignerResult are the primary output types of the library and will commonly appear in test assert_eq!. Neither derives PartialEq. This is already tracked in MIME-b5x.11; filing here as an idiomatic-rust finding for completeness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:07:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:07:48Z",
+  "closed_at": "2026-05-02T07:07:48Z",
+  "close_reason": "duplicate of MIME-b5x.11",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.19",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:07:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

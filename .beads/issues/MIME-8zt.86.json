@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.86",
+  "title": "Good: decode.rs QP false-truncation guard with independent oracle tests",
+  "description": "mime-tree/src/decode.rs: the QP decode_limited path guards against false truncation where a multi-byte UTF-8 sequence or a soft line break causes the limited output to be shorter than the decoded limit even though more output was available. The guard (compare decoded.len() \u003c= n when input was limited) is correct and backed by tests with Python's quopri module as the oracle. The test coverage of the exact-boundary and off-by-one cases is thorough. This is a real subtlety in QP decoding that most MIME parsers get wrong. Worth defending against any 'simplification' that removes the guard or changes the comparison to strict \u003c.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:42:01Z",
+  "closed_at": "2026-06-16T00:42:01Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.86",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

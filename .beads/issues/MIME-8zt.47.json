@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.47",
+  "title": "mime-tree: InlineUUBlock and InlineYEncBlock missing Hash derive",
+  "description": "Why this exists: mime_tree/src/uuencode.rs defines InlineUUBlock and mime_tree/src/yenc.rs defines InlineYEncBlock. Both derive PartialEq and Eq but not Hash.\\n\\nWhat goes wrong: a type that implements Eq but not Hash cannot be used as a HashMap/HashSet key (the standard library's HashMap requires K: Eq + Hash). Because inline UU/yEnc blocks are identified by their content (begin offset, filename, etc.), deduplication or caching by block identity requires Hash. Without it, callers who try to deduplicate blocks via HashSet\u003cInlineUUBlock\u003e will get a compile error. The standard approach is to derive all three together: PartialEq, Eq, Hash.\\n\\nFix: add Hash to the derive lists for InlineUUBlock and InlineYEncBlock.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:33Z",
+  "closed_at": "2026-06-16T00:08:33Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.47",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:22Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

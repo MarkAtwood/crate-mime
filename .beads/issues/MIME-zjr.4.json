@@ -1,0 +1,33 @@
+{
+  "id": "MIME-zjr.4",
+  "title": "Implement PartCollection and PartEntry — ordered part set with gap detection",
+  "description": "Implement the core data structures in src/collection.rs.\n\nPublic types:\n\n  pub struct PartEntry {\n      pub part_number: u32,         // 1-based; 0 = TOC\n      pub body_bytes: Vec\u003cu8\u003e,      // raw bytes of this part's UU body (caller extracted from MIME)\n      pub subject: Option\u003cString\u003e,  // original Subject header value, stored for diagnostics\n  }\n\n  pub struct PartCollection {\n      parts: BTreeMap\u003cu32, PartEntry\u003e,  // private; keyed by part_number\n      total: Option\u003cu32\u003e,               // declared total, if known\n  }\n\n  impl PartCollection {\n      pub fn new() -\u003e Self\n      pub fn with_total(total: u32) -\u003e Self\n      pub fn add(\u0026mut self, entry: PartEntry) -\u003e Result\u003c(), MultiUuError\u003e\n          // Returns DuplicatePart if part_number already present\n          // Updates self.total if entry.part_number \u003e current total estimate\n      pub fn total(\u0026self) -\u003e Option\u003cu32\u003e\n          // Returns declared total or inferred max part number seen\n      pub fn present_parts(\u0026self) -\u003e impl Iterator\u003cItem = u32\u003e + '_\n      pub fn missing_parts(\u0026self) -\u003e Vec\u003cu32\u003e\n          // Returns sorted list of 1..=total that are absent\n          // Returns empty vec if total is None (cannot determine)\n      pub fn is_complete(\u0026self) -\u003e bool\n          // true iff total is known and missing_parts() is empty\n      pub fn toc_part(\u0026self) -\u003e Option\u003c\u0026PartEntry\u003e\n          // Returns entry with part_number == 0, if present\n      pub fn len(\u0026self) -\u003e usize\n      pub fn is_empty(\u0026self) -\u003e bool\n  }\n\nAll public types: Debug, Clone, Serialize (feature-gated), Deserialize (feature-gated).\n\nTests:\n  - Add parts out of order; verify present_parts() is sorted\n  - Detect gap: add parts 1,2,4 with total=4 -\u003e missing=[3]\n  - Duplicate part returns DuplicatePart error\n  - is_complete() true when all parts present\n  - is_complete() false when total unknown\n  - toc_part() returns part 0 if present\n  - with_total() constrains missing_parts() correctly",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:08:58Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.4",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.4",
+      "depends_on_id": "MIME-zjr.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

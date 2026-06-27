@@ -1,0 +1,25 @@
+{
+  "id": "MIME-583.3",
+  "title": "sign(): unconditional CRLF after content_mime doubles CRLF",
+  "description": "smime-tree/src/sign.rs appends unconditional \\r\\n after content_mime. RFC 2046 §5.1.1: CRLF before boundary belongs to boundary delimiter, not part body. When content_mime already ends with \\r\\n (as all well-formed MIME parts do), output has double \\r\\n\\r\\n before second boundary. OpenSSL tolerates this but it is non-standard. Fix: only append \\r\\n if content_mime does not already end with it.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T01:17:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T01:21:11Z",
+  "closed_at": "2026-05-05T01:21:11Z",
+  "close_reason": "Empirically verified as non-issue: the unconditional CRLF is RFC-conformant. RFC 2046 §5.1.1 explicitly requires two CRLFs before the boundary when content ends with CRLF — one from the body, one from the boundary delimiter. Tests confirm.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-583.3",
+      "depends_on_id": "MIME-583",
+      "type": "parent-child",
+      "created_at": "2026-05-04T18:17:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

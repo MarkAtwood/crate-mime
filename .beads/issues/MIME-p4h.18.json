@@ -1,0 +1,28 @@
+{
+  "id": "MIME-p4h.18",
+  "title": "decode.rs base64 preview pre-truncation to multiple-of-4 is correct — prevents spurious decode errors",
+  "description": "decode_body_value() computes max_b64_chars = max_bytes.saturating_mul(4).div_ceil(3).next_multiple_of(4) before stripping CRLF from the base64 input. A contributor might suggest simplifying this calculation. The next_multiple_of(4) rounding is load-bearing: the STANDARD (padded) base64 engine rejects inputs whose length is not a multiple of 4, so a naive truncation would cause spurious decode errors. The rounding ensures the truncated input is always a complete base64 group. Tests test_base64_max_bytes_non_multiple_of_4 and test_base64_is_truncated_multiple_of_3 verify this.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:15:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:33:53Z",
+  "closed_at": "2026-05-02T14:33:53Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.18",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:15:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

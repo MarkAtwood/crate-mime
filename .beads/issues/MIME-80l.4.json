@@ -1,0 +1,25 @@
+{
+  "id": "MIME-80l.4",
+  "title": "Implement scan_inline_uuencode() utility function",
+  "description": "Inline uuencode: UU blocks embedded in text/plain bodies with no CTE header. Decision: option 3 — separate opt-in utility function. parse() is unchanged.\n\nNew public function in a new src/uuencode.rs module:\n\npub struct InlineUUBlock {\n    /// Byte offset of the 'begin NNN filename' line within the raw message bytes (from part.body_range.0).\n    pub begin_offset: u32,\n    /// Byte length from the 'begin' line through the 'end' line (inclusive) within the raw message bytes.\n    pub begin_length: u32,\n    /// The file permission mode from the begin line (e.g. 644).\n    pub mode: u32,\n    /// The filename from the begin line, raw (not decoded).\n    pub filename: String,\n    /// Decoded binary content. Empty if malformed.\n    pub data: Vec\u003cu8\u003e,\n    /// True if any decode error was encountered (malformed line, truncated block, missing end).\n    pub is_encoding_problem: bool,\n}\n\npub fn scan_inline_uuencode(raw: \u0026[u8], part: \u0026ParsedPart) -\u003e Vec\u003cInlineUUBlock\u003e\n\nBehavior:\n- Slices raw using part.body_range to get the body bytes\n- Scans for 'begin NNN filename\\n' lines (NNN is octal mode, 3 digits)\n- For each begin line found, decodes until 'end\\n' or a backtick-only line followed by 'end\\n' (the zero-length terminator line is a single backtick)\n- Multiple UU blocks in one body are all returned\n- Content outside begin/end blocks is ignored (caller already has the full text via decode_body_value)\n- Offsets in InlineUUBlock are relative to the start of raw (absolute, same coordinate space as body_range)\n- max_bytes: no limit parameter — caller controls what to do with data\n- If body_range is out of bounds of raw, returns empty Vec (same defensive pattern as decode_body_value)\n- Does NOT call decode_body_value internally; works directly on raw bytes\n\nDocumentation requirements (these are MANDATORY — this is the 'document it well' requirement):\n- Module-level doc comment explaining what inline uuencode is, why it predates MIME, when it appears in practice, and that this is an opt-in utility distinct from parse()\n- Function-level doc comment with: what it does, parameters, return value, example showing a real begin/end block and the call pattern, note that parse() is NOT called and the part tree is NOT modified\n- InlineUUBlock doc comments on every field\n- A doc-test showing the call pattern (can use a minimal synthetic raw message)\n\nTest oracle: Python uu module. Example:\n  import uu, io\n  uu.decode(io.BytesIO(b'begin 644 hello.txt\\n-2\u00265L;\u0026\\n \\nend\\n'), io.BytesIO())\nOr the UNIX uuencode utility. Do NOT derive expected decoded bytes from this crate.\n\nAcceptance criteria:\n- scan_inline_uuencode finds all UU blocks in a body with one block\n- scan_inline_uuencode finds all UU blocks in a body with two blocks\n- Correct begin_offset and begin_length for each block (verified by slicing raw)\n- Correct mode and filename parsed from begin line\n- data matches Python uu module output exactly\n- Missing 'end' line sets is_encoding_problem=true\n- Body with no UU blocks returns empty Vec\n- Out-of-bounds body_range returns empty Vec\n- Doc-test compiles and passes",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T15:48:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:45:45Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-80l.4",
+      "depends_on_id": "MIME-80l",
+      "type": "parent-child",
+      "created_at": "2026-05-04T08:48:49Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

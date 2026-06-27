@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3bt.2",
+  "title": "MultiUuError::MissingParts declared but never constructed",
+  "description": "uuencoding-multi/src/error.rs:20 declares MissingParts { expected, present } with a Display impl. But reassemble() never returns this variant — it returns Ok(ReassembledFile { is_truncated: true, missing_parts: vec![...] }) when parts are absent. The variant is dead. Fix: same options as MIME-3bt.1. Recommended: add doc comment noting this is reserved / not currently returned, and file a separate issue to decide the long-term API direction.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:13:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:14:21Z",
+  "closed_at": "2026-05-04T19:14:21Z",
+  "close_reason": "Fixed: doc comment now accurately states variant is reserved and not currently returned.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3bt.2",
+      "depends_on_id": "MIME-3bt",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:13:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

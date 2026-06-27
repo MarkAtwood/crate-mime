@@ -1,0 +1,32 @@
+{
+  "id": "MIME-inm.2",
+  "title": "Implement header parser (=ybegin, =ypart, =yend)",
+  "description": "Implement src/header.rs: parse the three yEnc header/trailer lines.\n\nAll three lines have the same key=value structure. The parser must:\n- Split on ASCII whitespace to find key=value tokens\n- For =ybegin: name= MUST be last (its value is the remainder of the line after the key); all other fields are whitespace-delimited\n- Accept fields in any order\n- Skip unknown fields (do not Err on unrecognized keys)\n- Accept both LF and CRLF line endings (strip \\r before parsing)\n- Field names are always lowercase; do not bother with case-insensitive matching\n\nInternal types (not public, used by decode/encode):\n  struct BeginHeader { line_length: u8, size: u64, name: String, part: Option\u003cu32\u003e, total: Option\u003cu32\u003e }\n  struct PartHeader { begin: u64, end: u64 }  -- 1-based offsets\n  struct EndHeader { size: u64, part: Option\u003cu32\u003e, pcrc32: Option\u003cu32\u003e, crc32: Option\u003cu32\u003e }\n\nParse functions (private):\n  fn parse_begin(line: \u0026[u8]) -\u003e Result\u003cBeginHeader, YencError\u003e\n  fn parse_part(line: \u0026[u8]) -\u003e Result\u003cPartHeader, YencError\u003e\n  fn parse_end(line: \u0026[u8]) -\u003e Result\u003cEndHeader, YencError\u003e\n\nParsing =ybegin name= field: find the b'n','a','m','e','=' sequence, then take everything after it to the end of the line (after stripping \\r\\n). This handles filenames with spaces correctly.\n\nRequired fields for each line:\n- =ybegin: line=, size=, name= are required; missing any -\u003e InvalidHeader\n- =ypart: begin= and end= are required\n- =yend: size= is required; crc/part fields are optional\n\nTests (all oracles are hand-computed or from the yEnc spec, NOT from this parser):\n- =ybegin line=128 size=189463 name=CatOnKeyboard.jpg -\u003e correct struct\n- =ybegin part=1 total=3 line=128 size=500000 name=My File With Spaces.rar -\u003e filename='My File With Spaces.rar'\n- =ybegin with unknown field (e.g. foo=bar) -\u003e Ok, unknown field ignored\n- =ybegin missing size= -\u003e Err(InvalidHeader)\n- =ypart begin=1 end=26624 -\u003e correct struct (1-based)\n- =yend size=26624 part=1 pcrc32=ae052b48 crc32=ff00ff00 -\u003e correct struct, hex parsed correctly\n- CRLF line ending on all three line types",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:11:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:13:40Z",
+  "close_reason": "Implemented in header.rs: parse_ybegin, parse_ypart, parse_yend. Handles all required fields, unknown fields silently skipped, field order independent. 10 tests.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.2",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:11:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.2",
+      "depends_on_id": "MIME-inm.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:13:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

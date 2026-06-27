@@ -1,0 +1,30 @@
+{
+  "id": "MIME-677.9",
+  "title": "validate_chain: terse error messages, no guidance on trust_anchors population",
+  "description": "validate_chain() returns terse SmimeError::CertChain strings like 'certificate validity period check failed' and 'no issuer found in bag or trust anchors'. Neither message identifies which certificate failed or its subject DN. The verify() doc says trust_anchors 'chain validation fails if this slice is empty' but gives no guidance on what certs to put there (e.g. must they be self-signed roots? can they be intermediates? must they be current?). check_validity() uses now = SystemTime::now() (not caller-supplied time), so testing with historical certs is impossible. Maintenance consequence: operators debugging chain failures get no actionable information; the now-hardcoded clock makes testing with fixed-time cert chains impossible without mocking the system clock.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:54:55Z",
+  "closed_at": "2026-05-02T05:54:55Z",
+  "close_reason": "error messages improved; SystemTime parameter deferred to future version",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.9",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

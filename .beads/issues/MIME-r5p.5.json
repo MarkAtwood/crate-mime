@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.5",
+  "title": "default charset applied when Content-Type present but no charset param",
+  "description": "parse.rs build_part: the no_content_type flag triggers only when content_type() is None. RFC 2045 §5.2 specifies charset=us-ascii only when Content-Type is entirely absent. If Content-Type is present without a charset attribute (e.g. 'text/plain' with no params), no_content_type=false, so charset is None. The decode_body_value fall-through then uses 'utf-8' as the default in decode.rs line 130. This diverges from RFC 2045 §5.2 which says the default charset for text/* is us-ascii, not utf-8, when content-type is present but charset is omitted.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:17Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:17:09Z",
+  "closed_at": "2026-05-02T18:17:09Z",
+  "close_reason": "Intentional deviation from RFC 2045 §5.2 (us-ascii default) documented at the unwrap_or line; UTF-8 default avoids false is_encoding_problem flags on modern charsetless text.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.5",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

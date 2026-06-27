@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.5",
+  "title": "encrypt: RSA PKCS#1v15 key transport used without opt-out gate",
+  "description": "encrypt.rs wraps the CEK using RSA PKCS#1v15 (Pkcs1v15Encrypt) for all RSA recipient certificates. RFC 8017 §7.2 deprecates RSAES-PKCS1-v1_5 for key transport and recommends RSAES-OAEP. The code doc mentions the deprecation but provides no way for callers to enforce OAEP-only.\n\nWhat goes wrong: if the caller is deploying a new S/MIME system, they have no API mechanism to prohibit PKCS#1v15 and require OAEP. A caller that relies on this crate for new deployments inherits the Bleichenbacher vulnerability (adaptive chosen-ciphertext attack on the RSA decryption oracle) unless their DecryptionKey implementation applies constant-time PKCS#1v15 unpadding — which the trait does not require or document.\n\nAffected code: encrypt.rs build_rsa_recipient() (uses Pkcs1v15Encrypt unconditionally); lib.rs Known Limitations section (mentions PKCS#1v15 without flagging that callers must use constant-time unpadding in decrypt_cek).\n\nPartial fix: add a doc note to DecryptionKey::decrypt_cek() that RSA PKCS#1v15 unpadding MUST use constant-time code (e.g. rsa::Pkcs1v15Decrypt with the rsa crate's blinding). Longer-term: implement OAEP support in encrypt() and make PKCS#1v15 opt-in.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:50Z",
+  "closed_at": "2026-06-16T00:19:50Z",
+  "close_reason": "RSA PKCS#1v15 key transport is the only RSA mechanism supported by the cms crate. OAEP support requires upstream cms crate changes. The risk is already documented in the crate-level Known Limitations section.",
+  "labels": [
+    "algorithm",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.5",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

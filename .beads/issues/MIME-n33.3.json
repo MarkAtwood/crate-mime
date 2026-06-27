@@ -1,0 +1,24 @@
+{
+  "id": "MIME-n33.3",
+  "title": "mime-tree yenc: silent consume-all when find_yend_end returns None on success path",
+  "description": "P0: decode_one_block uses unwrap_or(slice.len()) for consumed length. If yencoding::decode succeeds but find_yend_end fails, all remaining body is consumed silently. Fix: treat None as truncation error instead.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:43:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:47:27Z",
+  "closed_at": "2026-05-04T23:47:27Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-n33.3",
+      "depends_on_id": "MIME-n33",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:43:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

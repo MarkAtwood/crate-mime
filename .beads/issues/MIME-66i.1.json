@@ -1,0 +1,25 @@
+{
+  "id": "MIME-66i.1",
+  "title": "sign(): change signature to accept \u0026[\u0026dyn SigningKey]",
+  "description": "Change pub fn sign(content_mime, key: \u0026dyn SigningKey, now) to sign(content_mime, keys: \u0026[\u0026dyn SigningKey], now). Return SmimeError::MalformedInput if keys is empty. Update lib.rs re-export, doc comments, quick-start example, and AGENTS.md. Update the single test call site (test_sign_output_accepted_by_openssl and test_sign_verify_roundtrip) to pass \u0026[\u0026key].",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:21:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-05T04:31:28Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-66i.1",
+      "depends_on_id": "MIME-66i",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:21:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

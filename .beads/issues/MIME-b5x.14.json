@@ -1,0 +1,28 @@
+{
+  "id": "MIME-b5x.14",
+  "title": "decode.rs base64 pre-truncation to avoid full-body decode for previews",
+  "description": "decode.rs base64 path computes max_b64_chars = ceil(max_bytes*4/3) rounded to next multiple of 4, then filters the raw bytes to that count before calling decode(). This avoids allocating a full decode buffer for large bodies when only a preview is needed. A future contributor might simplify by just decoding everything and truncating afterwards — this is the wrong direction for large base64 bodies (e.g., a 10 MB PDF attachment). The rounding to next_multiple_of_4 is also non-obvious but prevents spurious padding errors. Defend: the pre-truncation is a deliberate efficiency optimization.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:05:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:21:34Z",
+  "closed_at": "2026-05-02T07:21:34Z",
+  "close_reason": "The pre-truncation logic and its rationale are already documented with inline comments in decode.rs lines 48-54 and 56-65. The new QP pre-truncation (MIME-b5x.9) adds similar documentation for the QP path.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.14",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:05:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

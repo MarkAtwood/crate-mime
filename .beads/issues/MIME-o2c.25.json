@@ -1,0 +1,34 @@
+{
+  "id": "MIME-o2c.25",
+  "title": "Derived PartialEq/Eq on EmailAddress is byte-exact; RFC 5321 §2.4 domain part is case-insensitive",
+  "description": "header_typed.rs:40-46 derives `PartialEq, Eq` on EmailAddress. The derive compares `name` and `address` as byte-exact `Option\u003cString\u003e` values.\n\nFor the `address` field — an RFC 5322 addr-spec — RFC 5321 §2.4 specifies the *domain* portion as case-insensitive. `JAMES@example.com` and `james@example.com` refer to the same mailbox at the SMTP/RFC level. Most JMAP server code that compares addresses needs case-folding on the domain.\n\nCaller-facing consequence: a caller using EmailAddress as a HashMap key (once Hash is derived — currently absent), as a HashSet member, or with `==` will get two-or-more representations of the same address as distinct entries:\n\n    EmailAddress { name: None, address: Some(\"james@example.com\".into()) } !=\n    EmailAddress { name: None, address: Some(\"james@EXAMPLE.COM\".into()) }\n\nThis is silent. The derive looks innocuous; the bug surfaces only when a caller compares parsed addresses from different sources.\n\nThis is structurally similar to MIME-o2c.24 (HeaderDateTime instant-vs-field equality) but for EmailAddress's domain folding. Filing separately because the fix differs: HeaderDateTime needs offset normalisation, EmailAddress needs domain-case-fold on the address portion (and possibly on display-name unicode normalisation, though that is fuzzier).\n\nFix options:\n- Document that PartialEq is byte-exact on `address` and direct callers to `address_eq()` / `domain_eq()` helpers (not currently provided).\n- Provide `EmailAddress::canonical_address(\u0026self) -\u003e Option\u003cString\u003e` that lowercases the domain part, and document the canonical form.\n- Drop the derive and write a hand-rolled PartialEq.\n\nThis is opinion-leaning because the derive is \"standard Rust practice\" but the contract gap is real. Marking P3 — would-prefer-fixed but not block-merge.\n\nLine refs:\n- header_typed.rs:40 `#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]`\n- header_typed.rs:44-45 `address: Option\u003cString\u003e` — the field whose comparison semantics differ from RFC 5321.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:36:22Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:07:19Z",
+  "closed_at": "2026-05-14T16:07:19Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "opinion",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.25",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:36:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

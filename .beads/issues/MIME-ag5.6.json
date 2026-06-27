@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ag5.6",
+  "title": "smime-tree verify(): signedAttrs-absent path rejected silently — needs public doc note",
+  "description": "smime-tree/src/verify.rs:173 — When signedAttrs is absent, the code returns a failure. RFC 5652 §5.4 allows bare-content signatures (no signedAttrs). This is a documented limitation in AGENTS/CLAUDE.md but it is not documented in the public-facing verify() doc comment. Fix: add a note to the verify() doc comment that SignerInfo structs without signedAttrs are always rejected, and cross-reference RFC 5652 §5.4.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:32:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:34:17Z",
+  "closed_at": "2026-05-05T02:34:17Z",
+  "close_reason": "Already documented in verify() # Limitations section at lines 59-64",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ag5.6",
+      "depends_on_id": "MIME-ag5",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:32:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

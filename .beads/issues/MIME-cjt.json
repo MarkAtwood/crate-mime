@@ -1,0 +1,19 @@
+{
+  "id": "MIME-cjt",
+  "title": "Review: final convergence pass 11",
+  "notes": "Pass 11 findings: 1 P1 issue filed (MIME-cjt.2 — KEK not zeroized in ecdh_wrap_cek). All other checklist items clear.\nChecked: unwrap/expect in non-test code — all are invariant-provable (String fmt::Write, base64 utf8, fixed-size AES key/iv). Checked: encrypt_aes_cbc closure semantics correct, cek_buf properly zeroized via Zeroizing\u003cVec\u003cu8\u003e\u003e. Checked: CertChainError::Other issuer DER path propagates correctly through verify() via fail(). Checked: NoRecipients and RngFailure present in Display and source() correctly returns None (String wraps, not error wraps). Checked: encrypt/decrypt asymmetry is P3 at most (Other vs MalformedInput for CEK length). Checked: Zeroizing\u003cVec\u003cu8\u003e\u003e CEK pattern is correct.\nMaintainer risk: LOW — only one P1 found (KEK not zeroed), fixed immediately",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:48:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T15:09:21Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

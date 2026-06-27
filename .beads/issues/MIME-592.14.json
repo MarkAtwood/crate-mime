@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.14",
+  "title": "yenc.rs InlineYEncBlock::begin_length is wrong for error blocks",
+  "description": "In yenc.rs decode_one_block(), when yencoding::decode() returns Err, consumed = find_line_end(slice, 0), which is the length of just the =ybegin line. This value is stored as InlineYEncBlock::begin_length.\n\nThe documented invariant for begin_length states: 'from the start of =ybegin through the end of =yend (inclusive of its newline)'. For error blocks this invariant is violated — begin_length is only the =ybegin line length, so raw[begin_offset..begin_offset+begin_length] does NOT yield the complete block.\n\nThe doc comment on begin_length does not mention that is_encoding_problem=true invalidates the slicing invariant (unlike InlineUUBlock which explicitly warns 'Always check is_encoding_problem before using this field').\n\nFix: either (a) add the same caveat to InlineYEncBlock::begin_length doc as InlineUUBlock has, or (b) set begin_length=0 on error just as InlineUUBlock does for error items.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:59:28Z",
+  "closed_at": "2026-05-04T22:59:28Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.14",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

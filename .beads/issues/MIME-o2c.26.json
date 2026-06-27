@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.26",
+  "title": "HeaderForm derives Copy; locks future variant additions (parallel to .5 for HeaderDateTime)",
+  "description": "header_typed.rs:130 derives `Copy` on HeaderForm:\n\n    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]\n    #[non_exhaustive]\n    pub enum HeaderForm { ... }\n\n`Copy` requires every variant — including future variants gated by #[non_exhaustive] — to be Copy. Today all variants are payload-free unit variants, so Copy holds. The moment a future variant carries any non-Copy payload (e.g. an `AsCustom(String)` for a JMAP extension form, a parameterised parser config, an `AsAddresses { max_count: usize, allow_obs: bool }` configuration struct holding owned data), the Copy derive must be removed.\n\nRemoving a `Copy` derive is a *breaking change for callers*, even with #[non_exhaustive] on the enum. Calls like `let f: HeaderForm = some_form; do_a(f); do_b(f);` (no clone, relies on Copy) break in downstream code. `#[non_exhaustive]` does not help here — it gates *variant matching*, not trait implementations.\n\nThis is precisely the same problem MIME-o2c.5 flags on HeaderDateTime. Both types ship with Copy that the public surface does not need (HeaderForm is used in a single call site, no hot-path duplication) but that locks the maintainer in.\n\nCaller-facing consequence: every reasonable evolution of HeaderForm (parameterised parser options, custom JMAP extension forms) becomes a major version bump for the wrong reason.\n\nFix: drop Copy from the derive. Keep Clone. Callers who really need Copy semantics can `.clone()`. Audit `parse_header_typed`'s use of `HeaderForm`: it is passed by value once and matched once. No hot-path needs Copy.\n\nLine refs:\n- header_typed.rs:130 `#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]`",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:36:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:00:04Z",
+  "closed_at": "2026-05-14T16:00:04Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.26",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:36:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

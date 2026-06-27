@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.5",
+  "title": "yencoding-multi: asymmetric None on part_begin/part_end is silently mishandled",
+  "description": "assembler.rs:109-110: if part_begin=Some(x) and part_end=None (or vice versa), the assembler silently proceeds with inconsistent offset math. Should return MalformedPartRange error.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:04:49Z",
+  "closed_at": "2026-05-04T22:04:49Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.5",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

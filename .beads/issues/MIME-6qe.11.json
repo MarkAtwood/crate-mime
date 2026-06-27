@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.11",
+  "title": "uuencoding-multi: SubjectParts base_subject field doc parenthetical is misleading",
+  "description": "The field-level comment says 'base_subject is never empty when SubjectParts is returned (the only way to get an empty or no-marker subject back is if parse_subject returns Some with part_index = None).' The parenthetical is self-contradictory and confusing. Replace with: 'Never empty; parse_subject returns None rather than an empty base_subject.'",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:15:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:40Z",
+  "closed_at": "2026-05-05T03:18:40Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.11",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:15:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

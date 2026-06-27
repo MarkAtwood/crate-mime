@@ -1,0 +1,19 @@
+{
+  "id": "MIME-qlt",
+  "title": "Review: convergence check round 6",
+  "notes": "Maintainer risk: MEDIUM — two real correctness bugs (P1): sign/verify ECDSA-SHA512 asymmetry breaks P-521 key callers silently; trust anchor pathLen enforcement gap allows cert chains RFC 5280 would reject. Plus one dead error variant that will mislead future contributors.\nConfidence: 88% chance of no missed bugs. Least confident flags: (1) the pathLen intermediate-CA-in-bag check — logic is subtle and my trace-through might miss a case; (2) EccCmsSharedInfo entity_u_info handling — UKM is encoded as None in encrypt() which means UKM-aware senders cannot interoperate, but this is documented behavior not a bug. Uncertainty driven by: manual trace rather than test coverage for pathLen edge cases; no test exercising the P-521 / ECDSA-SHA512 path at all. Would raise confidence if: pathLen enforcement had a test with a constrained CA cert, and if the ECDSA-SHA512 path had even a synthetic test vector.\nIdiom rating: CLEAN — no unwrap/expect outside justified locations (base64 str conversion with clear comments), no borrow-checker clone escapes, no to_string() on literals, no bare return statements. Error handling is consistent. The only idiom issue is the dead SignatureVerification variant, filed as P1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:08:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T08:17:08Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

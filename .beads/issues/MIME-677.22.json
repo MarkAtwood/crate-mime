@@ -1,0 +1,29 @@
+{
+  "id": "MIME-677.22",
+  "title": "sign.rs: SignedData.version hardcoded V1 even when SignerInfo uses SubjectKeyIdentifier",
+  "description": "In sign(), SignedData.version is hardcoded as CmsVersion::V1 (line 115). RFC 5652 §5.1 requires version=3 when any SignerInfo.sid uses SubjectKeyIdentifier. The cms crate's SignerIdentifier::from(\u0026Certificate) prefers SubjectKeyIdentifier when the cert has the SKI extension (the common case with modern PKI certs). When that path is taken, SignerInfo.version is correctly set to V3 (lines 86-89), but SignedData.version remains V1 — a protocol violation. Strict receivers (or future validation in this crate) would reject such a SignedData. The fix is to derive SignedData.version from the signer identifiers, as is already done for SignerInfo.version.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:52:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:54:43Z",
+  "closed_at": "2026-05-02T05:54:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.22",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:52:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-9nu.5",
+  "title": "decode_limited has no direct unit tests in uuencoding/src/decode.rs",
+  "description": "decode_limited() is tested only indirectly (via mime-tree's test_uuencode_max_bytes_truncation). There are no tests for it in uuencoding/src/decode.rs alongside the decode() tests. Missing cases: (1) max_bytes exactly equals block size on a complete block — would catch the is_truncated=true P0 bug; (2) max_bytes=0; (3) max_bytes \u003e block size (should behave identical to None/decode()); (4) max_bytes splits mid-line across a group boundary. Without these, contributors who modify decode_limited() have no fast feedback loop. The test for #1 would have caught the P0 bug found in this review.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:57:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:01:54Z",
+  "closed_at": "2026-05-04T19:01:54Z",
+  "close_reason": "Tests already added in MIME-9nu.1: decode_limited_exact_limit, zero_limit, none_limit, large_limit, over_limit. All 5 cases from the issue description are covered.",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.5",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:57:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

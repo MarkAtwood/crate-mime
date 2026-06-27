@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.35",
+  "title": "verify_sig() uses let e = |msg| SmimeError::Other(msg) idiom instead of direct inline closure",
+  "description": "verify.rs line 328: let e = |msg: String| SmimeError::Other(msg); and then passes e by value to each sig_verify call. The variable e is used 6 times. This is fine but the pattern is inconsistent: cert.rs previously used |msg| SmimeError::CertChain(msg) inline without naming it. With a named closure, the move semantics are non-obvious (e is FnMut not Copy). Rewrite suggestion: inline the closure at each call site, or define it as a const fn.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:19Z",
+  "closed_at": "2026-05-02T18:49:19Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.35",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

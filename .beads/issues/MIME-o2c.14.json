@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.14",
+  "title": "EmailAddress.address: Option\u003cString\u003e forces every caller to defend against None for malformed entries that should be filtered out",
+  "description": "header_typed.rs:40-46 — EmailAddress has `pub address: Option\u003cString\u003e`. The doc says \"Both are populated best-effort; either may be `None` if the original header is malformed.\"\n\nIn practice, an EmailAddress with `address: None` is unusable:\n- A caller wanting to send mail cannot do anything with it.\n- A caller wanting to compare addresses (e.g., dedup by addr-spec) cannot key the comparison.\n- A caller surfacing it in UI shows only the display name, which may also be None.\n\nEvery caller therefore writes:\n\n    for e in addresses {\n        let Some(addr) = e.address else { continue; };\n        // ... real work ...\n    }\n\nThe defensive boilerplate is the contract: an EmailAddress with no address is filler. Either the type should reflect that (address: String, required) and parse_header_typed should filter address-less entries, or the doc should explain a real use case for keeping them.\n\nCaller-facing consequence: every consumer writes the same is_some check or filter_map. For JMAP, RFC 8621 §4.1.2.3 says the EmailAddress object has both `name: String|null` and `email: String|null` to mirror raw mailbox structure faithfully — but JMAP servers always filter or coalesce in practice.\n\nInspection of convert_addr (header_typed.rs:281-302) shows address is None only when mail-parser's parse_address produces an Addr with no `address` field. This happens for severely malformed input.\n\nFix options:\n\na) Change `address: Option\u003cString\u003e` → `address: String`. Drop entries where mail-parser produced no address in parse_header_typed's Addresses/GroupedAddresses arms.\n\nb) Keep Option but document a concrete use case (\"display-name-only mailboxes from non-spec-conformant mail like Outlook drafts are preserved as address: None\") and add a method `EmailAddress::is_addressable(\u0026self) -\u003e bool` that callers can use without manual destructuring.\n\nEither is a contract improvement. Status quo is defensive-code-forcing.\n\nNote: same concern applies to EmailAddress.name (Option), but a name-less mailbox IS legitimate and useful (the bare addr-spec), so name's Optional-ness is justified. address's is not.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:25:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:18:30Z",
+  "closed_at": "2026-05-14T16:18:30Z",
+  "close_reason": "Final API additions: (.14) Added EmailAddress::is_addressable() helper; keeps the Option\u003cString\u003e address field but eliminates the defensive is_some() boilerplate at every call site. Doctest demonstrates the filter pattern. (.28) Added HeaderForm::Text and HeaderValueTyped::Text(String) implementing RFC 8621 §4.1.2.2 — whitespace unfold, RFC 2047 decode (via mail-parser's parse_unstructured), NFC normalisation (via new unicode-normalization dep). parse_text helper, asText accepted by FromStr and emitted by Display. Module-level table now lists all 7 RFC 8621 forms. Tests cover RFC 2047 decode and NFD-\u003eNFC normalisation. (.29) Fixed misleading module doc that directed callers at ParsedPart::header_range slicing; the natural path is header.value.as_bytes(). Added parse_header_typed_from(\u0026ParsedHeader, HeaderForm) convenience helper that wraps that pattern.",
+  "labels": [
+    "api-contract",
+    "defensive",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.14",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:25:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

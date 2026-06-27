@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.28",
+  "title": "HeaderForm missing asText variant (RFC 8621 §4.1.2.2); only 6 of 7 RFC 8621 forms exposed",
+  "description": "header_typed.rs:130-149 defines HeaderForm with six variants: Raw, Addresses, GroupedAddresses, MessageIds, Date, URLs.\n\nRFC 8621 §4.1.2 defines *seven* parsed forms:\n\n    §4.1.2.1   Raw\n    §4.1.2.2   Text     ← NOT exposed by HeaderForm\n    §4.1.2.3   Addresses\n    §4.1.2.4   GroupedAddresses\n    §4.1.2.5   MessageIds\n    §4.1.2.6   Date\n    §4.1.2.7   URLs\n\nThe `Text` form (§4.1.2.2) is the form RFC 8621 itself uses for Subject, Comments, Keywords, List-Id (cited in §4.1.2.2 lines 1488-1499). It is also the form §4.1.5 \"Subject\" and \"comments\" use. Quoting RFC 8621 §4.1.2.2:\n\n    \"The header field value with:\n     1. White space unfolded\n     2. The terminating CRLF at the end of the value removed\n     3. Any SP characters at the beginning of the value removed\n     4. Any syntactically correct encoded sections [RFC2047] with a known\n        character set decoded ...\n     5. The resulting unicode converted to Normalization Form C (NFC) form.\"\n\nThis is *substantially* different from `Raw` (which is just whitespace-trimmed bytes) and is the form most commonly used by JMAP clients fetching human-readable header fields like Subject.\n\nThe module-level docstring (header_typed.rs:3-13) lists six forms in a table, omitting `Text`. The omission appears intentional (or accidental), but either way the public contract claims to be \"the RFC 8621 As* forms\" and *does not provide* one of them.\n\nCaller-facing consequence: a JMAP server using mime-tree cannot serve `header:Subject:asText` correctly without reimplementing RFC 2047 decode + Unicode NFC normalisation outside the crate. The crate's value proposition (uniform RFC 8621 form parsing) is broken for the most common JMAP fetch.\n\nFix options:\n- Add `HeaderForm::Text` and a corresponding `HeaderValueTyped::Text(String)` variant. (Both enums are #[non_exhaustive], so addition is non-breaking.)\n- If `Text` is intentionally out of scope, the module docs MUST say so explicitly and direct callers to do RFC 2047 + NFC themselves.\n\nThis is P2 not P1 because both enums are #[non_exhaustive] — `Text` can be added later without a breaking change. But shipping the 0.3.0 crate with `Text` missing means every downstream JMAP server today has to build their own asText path; once they do, they may not migrate when Text is added.\n\nLine refs:\n- header_typed.rs:130-149 — HeaderForm enum.\n- header_typed.rs:3-13 — module-level table of forms (6 rows; missing Text).\n- header_typed.rs:152-170 — HeaderValueTyped enum (also missing Text variant).\n- RFC 8621 §4.1.2.2 — Text form definition.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:37:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:18:36Z",
+  "closed_at": "2026-05-14T16:18:36Z",
+  "close_reason": "Final API additions: (.14) Added EmailAddress::is_addressable() helper; keeps the Option\u003cString\u003e address field but eliminates the defensive is_some() boilerplate at every call site. Doctest demonstrates the filter pattern. (.28) Added HeaderForm::Text and HeaderValueTyped::Text(String) implementing RFC 8621 §4.1.2.2 — whitespace unfold, RFC 2047 decode (via mail-parser's parse_unstructured), NFC normalisation (via new unicode-normalization dep). parse_text helper, asText accepted by FromStr and emitted by Display. Module-level table now lists all 7 RFC 8621 forms. Tests cover RFC 2047 decode and NFD-\u003eNFC normalisation. (.29) Fixed misleading module doc that directed callers at ParsedPart::header_range slicing; the natural path is header.value.as_bytes(). Added parse_header_typed_from(\u0026ParsedHeader, HeaderForm) convenience helper that wraps that pattern.",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.28",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:37:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

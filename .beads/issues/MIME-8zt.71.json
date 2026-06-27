@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.71",
+  "title": "Assembler::add_part() in yencoding-multi: overlapping ranges return Err but gap behavior undocumented",
+  "description": "yencoding-multi::Assembler::add_part() returns AssemblyError::OverlappingPart when two parts cover the same byte range. The error includes existing and new Range\u003cu64\u003e. However, the behavior for gaps is not documented: if parts 1 and 3 are added but part 2 is missing, what does finish() return? Does it return Err, return Ok with zeroed bytes in the gap, or panic? What goes wrong: a caller collecting multipart yEnc posts that receives 2 of 3 parts and calls finish() (perhaps after a timeout) will get an undocumented result. The contract must specify: either finish() errors if any byte range is unwritten, or it specifies what fill value is used, or it panics (which then needs to become an Err per the no-panic rule). File: yencoding-multi/src/assembler.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:23:16Z",
+  "closed_at": "2026-06-16T00:23:16Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.71",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

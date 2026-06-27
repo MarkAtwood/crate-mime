@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.19",
+  "title": "Missing Display on AddressGroup",
+  "description": "mime-tree/src/header_typed.rs:55-61 — AddressGroup is part of the GroupedAddresses public surface (RFC 8621 §4.1.2.4) and will be rendered to humans whenever a JMAP-shaped response or a debug log surfaces grouped address lists. RFC 5322 §3.4 defines the group syntax (display-name: mailbox-list ;) which is the obvious Display. Without it callers must hand-roll the formatter and inevitably diverge from the canonical form. Pair with the EmailAddress Display finding.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:30:34Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:59:52Z",
+  "closed_at": "2026-05-14T15:59:52Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.19",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:30:34Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

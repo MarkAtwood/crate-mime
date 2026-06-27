@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.25",
+  "title": "sign() vs encrypt() inconsistent MIME-Version / message-vs-bodypart framing",
+  "description": "encrypt() doc explicitly states 'This is the encrypted body part, not a complete RFC 5322 message. The caller must add message-level headers.' sign() has no equivalent disclaimer, yet it also produces headers (MIME-Version + Content-Type) but no From/To/Subject. Users will ask whether sign() output is a ready-to-send message. The asymmetry will generate issues. Fix: add the same disclaimer to sign() doc, or make both functions consistent in what they return.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:26:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:34:48Z",
+  "closed_at": "2026-05-02T07:34:48Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.25",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:26:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

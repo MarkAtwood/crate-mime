@@ -1,0 +1,41 @@
+{
+  "id": "MIME-j5n.4",
+  "title": "Implement add_part() and finish() using DecodedPart from yencoding",
+  "description": "Wire Assembler to the real yencoding::DecodedPart type. Integration layer between yencoding and the range/assembly logic.\n\nDepends on: MIME-j5n.2 (scaffold), MIME-j5n.3 (range-gap), MIME-inm (yencoding crate complete)\n\nWhat to do:\n- add_part(\u0026mut self, part: DecodedPart) -\u003e Result\u003c(), AssemblyError\u003e:\n  - Compute 0-based range: (part.begin.unwrap_or(1)-1)..(part.end.unwrap_or(part.data.len() as u64))\n  - Err(OutOfRange) if range exceeds 0..total_size\n  - Run overlap check (from MIME-j5n.3)\n  - If data.len() != range.len(): store the part but return Err(TruncatedPart)\n  - Capture whole-file crc32 from part when present\n- finish(self) -\u003e Result\u003cVec\u003cu8\u003e, AssemblyError\u003e:\n  - Err(Incomplete) if !is_complete()\n  - Allocate Vec\u003cu8\u003e(total_size), copy_from_slice each part at its offset\n  - Verify crc32 if captured; Err(CrcMismatch) on mismatch\n  - Return Ok(assembled_bytes)\n- Acceptance: cargo test -p yencoding-multi passes",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:21:18Z",
+  "close_reason": "Assembler::add_part() uses DecodedPart part_begin/part_end. finish() returns Vec\u003cu8\u003e.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.4",
+      "depends_on_id": "MIME-j5n.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.4",
+      "depends_on_id": "MIME-inm.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.4",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

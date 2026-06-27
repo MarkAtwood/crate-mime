@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3y0.3",
+  "title": "yencoding: add tests for tab-separated name= field and line= clamping to 255",
+  "description": "Two header-parsing gaps: (1) find_name_param only matches space before name=, not tab; add a test confirming tab-separated headers parse correctly (or document the known limitation); (2) add test that line=300 in =ybegin produces line_length=255 in decoded YencMetadata.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:29:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:35:25Z",
+  "closed_at": "2026-05-05T03:35:25Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3y0.3",
+      "depends_on_id": "MIME-3y0",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:29:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

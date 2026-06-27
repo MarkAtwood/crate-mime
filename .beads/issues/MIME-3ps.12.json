@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.12",
+  "title": "yencoding: error.rs UnexpectedEof doc references nonexistent partial-result path",
+  "description": "error.rs:36-37: doc says 'data in the returned DecodedPart (when available via a partial-result path)' but no partial-result path exists. Remove the parenthetical.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:58:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:07:15Z",
+  "closed_at": "2026-05-04T22:07:15Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.12",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:58:04Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

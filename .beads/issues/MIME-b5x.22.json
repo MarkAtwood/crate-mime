@@ -1,0 +1,29 @@
+{
+  "id": "MIME-b5x.22",
+  "title": "smime README example accesses nonexistent signer.certificate field",
+  "description": "smime-tree/README.md line 103: 'signer.certificate.tbs_certificate().subject()' — SignerResult has no 'certificate' field; it only has 'verified: bool', 'subject: Option\u003cString\u003e', 'error: Option\u003cString\u003e'. Any user copying this example gets a compile error. Fix: change example to use 'signer.subject' instead.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:26:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:34:33Z",
+  "closed_at": "2026-05-02T07:34:33Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.22",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:26:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

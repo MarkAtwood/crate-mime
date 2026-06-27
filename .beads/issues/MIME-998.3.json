@@ -1,0 +1,29 @@
+{
+  "id": "MIME-998.3",
+  "title": "verify.rs: duplicate '# Errors' section in doc comment",
+  "description": "verify.rs lines 58 and 68 both contain '# Errors' headings in the same doc comment for the verify() function. The first one (line 58) is empty — it has no content before the next heading at line 61. This creates a malformed rustdoc comment with a stray empty section header. The rendered documentation will show an empty 'Errors' section above a second 'Errors' section. Remove or merge the duplicate heading.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:38:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:44:28Z",
+  "closed_at": "2026-05-02T07:44:28Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-998.3",
+      "depends_on_id": "MIME-998",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:38:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

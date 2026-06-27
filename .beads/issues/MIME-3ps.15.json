@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.15",
+  "title": "mime-tree: yenc error sentinel uses \u003cinvalid:field\u003e filename format, undocumented",
+  "description": "yenc.rs:281-299: make_error_sentinel sets filename to '\u003cinvalid: field\u003e' format string. This is not documented in InlineYEncBlock::filename. Use String::new() instead, consistent with the uuencode error pattern.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:58:07Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:07:22Z",
+  "closed_at": "2026-05-04T22:07:22Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.15",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:58:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

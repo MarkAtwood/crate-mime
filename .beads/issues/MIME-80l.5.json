@@ -1,0 +1,57 @@
+{
+  "id": "MIME-80l.5",
+  "title": "Quality gate: run cargo fmt/clippy/test for MIME-80l",
+  "description": "After all four child issues close, run the workspace quality gate to confirm the epic is clean.\n\nSteps:\n1. cargo fmt --all (no diff)\n2. cargo clippy --workspace -- -D warnings (zero warnings)\n3. cargo test --workspace (all tests pass)\n\nThis bead is the merge point for the epic. No code changes are expected here — this is a verification step only. If any gate fails, file a bug under the appropriate child issue and re-open it.\n\nAcceptance criteria:\n- cargo fmt --all produces no diff\n- cargo clippy --workspace -- -D warnings exits 0\n- cargo test --workspace exits 0 with all tests passing",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T17:48:49Z",
+  "closed_at": "2026-05-04T17:48:49Z",
+  "close_reason": "Quality gate already passing: 58 tests pass, fmt and clippy clean across workspace",
+  "dependencies": [
+    {
+      "issue_id": "MIME-80l.5",
+      "depends_on_id": "MIME-80l.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:25:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-80l.5",
+      "depends_on_id": "MIME-80l",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-80l.5",
+      "depends_on_id": "MIME-80l.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:25:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-80l.5",
+      "depends_on_id": "MIME-80l.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:25:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-80l.5",
+      "depends_on_id": "MIME-80l.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:25:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

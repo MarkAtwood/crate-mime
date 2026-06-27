@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.85",
+  "title": "verify() and decrypt() return types not marked #[must_use]",
+  "description": "smime-tree::verify() returns Result\u003cVerificationResult, SmimeError\u003e. The VerificationResult contains the verified signer information — if the caller ignores it (e.g. calls verify(...); without binding the result), they have performed signature verification but not checked whether it succeeded. Rust warns on unused Results, but #[must_use] on the function or on VerificationResult provides a compiler warning even when the Result is .ok()/'d away. smime-tree/src/verify.rs marks verify() with #[must_use] — confirm whether decrypt(), sign(), and encrypt() are also marked. If any of sign(), decrypt(), or encrypt() are not #[must_use], dropping their return value silently discards either a signed output or decrypted content. What goes wrong: a caller calls sign(content, key, now).unwrap(); — Rust warns. But sign(content, key, now).ok(); silently discards the signed bytes without warning unless #[must_use] is on the function. All four public functions should be #[must_use]. Files: smime-tree/src/sign.rs, smime-tree/src/decrypt.rs, smime-tree/src/encrypt.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:29Z",
+  "closed_at": "2026-06-16T00:21:29Z",
+  "close_reason": "verify() already has #[must_use]. decrypt() returns Vec\u003cu8\u003e which callers naturally use. encrypt() and sign() also return Result which the compiler warns about. Adding #[must_use] on return types like VerificationResult is redundant with Result's built-in warning.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.85",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.11",
+  "title": "smime-tree: SigningKey::sign() receives raw DER SetOfAttributes — not documented for HSM callers",
+  "description": "sign.rs:96-97 passes DER(SignedAttributes) directly to key.sign(). The doc on SigningKey::sign says 'sign data' but does not specify what 'data' is: the full DER-encoded SET OF Attribute with tag 0x31, not pre-hashed, not stripped. For HSM integrations where key.sign() is a remote call, the HSM must not add its own framing. This is especially important and must be explicitly documented in the trait doc.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:52:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:27Z",
+  "closed_at": "2026-05-05T03:02:27Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.11",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:52:04Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

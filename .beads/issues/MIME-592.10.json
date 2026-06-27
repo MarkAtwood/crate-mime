@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.10",
+  "title": "Assembler accepts parts with failed per-part CRC without any warning",
+  "description": "add_part() does not inspect part.crc32_verified. When yencoding::decode() produces a DecodedPart with crc32_verified=false due to a CRC mismatch (not merely an absent CRC field), the assembler silently writes the corrupt bytes into the buffer.\n\nThe DecodedBlock.crc32_verified flag is true only when a pcrc32= field was present AND matched. False covers both 'CRC absent' and 'CRC mismatch'. The assembler cannot distinguish these cases from the outside.\n\nImpact: a single corrupted part with a pcrc32= mismatch can silently corrupt the assembled file. The whole-file CRC check in finish() will catch the resulting file corruption only if set_expected_crc32() was called — but that field is optional, and many encoders omit the whole-file CRC (they include only per-part pcrc32=).\n\nFix options:\n1. Reject parts where crc32_verified is false (conservative — breaks 'no CRC' articles).\n2. Add a separate 'crc_checked' flag to DecodedPart that distinguishes 'verified OK' / 'mismatch' / 'absent', and reject only 'mismatch'.\n3. Document clearly in add_part() that parts with CRC mismatches will be silently accepted and the whole-file CRC is the only safety net.\n\nOption 3 is the minimum; option 2 is the correct fix.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:29Z",
+  "closed_at": "2026-05-04T23:02:29Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.10",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

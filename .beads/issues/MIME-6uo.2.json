@@ -1,0 +1,29 @@
+{
+  "id": "MIME-6uo.2",
+  "title": "pathLen constraint check is off-by-one in validate_chain",
+  "description": "cert.rs validate_chain lines 128-136: chain_depth tracks 'CA certs accumulated below p'. When the parent p has pathLen=0, that means p may issue end-entity certificates but no further CAs. The check 'chain_depth \u003e path_len as usize' allows chain_depth == path_len, meaning it accepts one extra intermediate CA. RFC 5280 §4.2.1.9: pathLen is the maximum number of non-self-issued intermediate certificates in the chain, not counting the trust anchor or the end-entity. A pathLen=0 CA should only sign end-entities; if chain_depth \u003e= 1 at that point there is already an intermediate CA between p and the end-entity. The guard should be 'chain_depth \u003e= path_len as usize' (i.e. \u003e=, not \u003e). Trigger: any chain with 2+ intermediate CAs where the first intermediate has pathLen=0.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:50:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:04:06Z",
+  "closed_at": "2026-05-02T08:04:06Z",
+  "close_reason": "False positive: \u003e is correct per RFC 5280 §4.2.1.9. chain_depth==pathLen is valid (pathLen=N allows N intermediates). Changing to \u003e= would reject valid chains.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.2",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:50:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

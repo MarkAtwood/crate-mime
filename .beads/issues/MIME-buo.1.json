@@ -1,0 +1,25 @@
+{
+  "id": "MIME-buo.1",
+  "title": "Bump versions + finalize changelogs for release wave",
+  "description": "Single commit containing:\n- mime-tree/Cargo.toml: 0.2.2 → 0.3.0\n- mime-tree/CHANGELOG.md: move [Unreleased] section to [0.3.0] - 2026-05-11\n- uuencoding-multi/Cargo.toml: 0.2.0 → 0.2.1\n- smime-tree/Cargo.toml: 0.2.0 → 0.3.0; mime-tree dep 0.2.0 → 0.3.0\n- smime-tree/CHANGELOG.md: move [Unreleased] section to [0.3.0] - 2026-05-11\n- uuencoding: no changes needed (already at 0.3.0 from commit d8b22fd)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-11T02:37:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-11T02:38:55Z",
+  "closed_at": "2026-05-11T02:38:55Z",
+  "close_reason": "Versions bumped, changelogs finalized, cargo check clean, committed as c4097c8",
+  "dependencies": [
+    {
+      "issue_id": "MIME-buo.1",
+      "depends_on_id": "MIME-buo",
+      "type": "parent-child",
+      "created_at": "2026-05-10T19:37:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

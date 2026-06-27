@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3y0.7",
+  "title": "uuencoding: fix scan.rs internal docstring (incorrectly says scan() wraps in into_iter())",
+  "description": "scan.rs:9 says 'scan() in lib.rs wraps this in .into_iter()' but lib.rs returns the Vec directly. Fix the comment.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:30:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:35:37Z",
+  "closed_at": "2026-05-05T03:35:37Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3y0.7",
+      "depends_on_id": "MIME-3y0",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:30:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.12",
+  "title": "No integration test for overlapping (non-duplicate) byte ranges",
+  "description": "The tests cover exact duplicates (same begin/end) and partial-overlap is tested at the unit level in assembler.rs. However, integration.rs has no test for a genuinely overlapping case where begin/end differ but ranges overlap — e.g. part A covers bytes 1..60 and part B covers bytes 50..100 (overlapping in the middle). This is a realistic Usenet corruption scenario. The existing duplicate_part_rejected test only tests exact duplicates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:35Z",
+  "closed_at": "2026-05-04T23:02:35Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.12",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

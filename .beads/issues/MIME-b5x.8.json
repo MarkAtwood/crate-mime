@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.8",
+  "title": "boundary_from_content: 'collision impossibility by construction' comment is wrong",
+  "description": "sign.rs boundary_from_content has a comment claiming 'Collision impossibility by construction: the boundary string cannot appear as a substring of the content it was derived from.' This is false. A content C can contain the string '----=_Part_' + hex(SHA256(C)[0..16]) — there is no cryptographic impossibility. The Err path at lines 346-353 IS the real guard. A future maintainer who trusts the comment and removes or loosens the collision check introduces a real RFC 2046 violation. Fix: remove the false security rationale and replace with an accurate comment stating 'the collision check at the end is the authoritative guard.'",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:04:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:43Z",
+  "closed_at": "2026-05-02T07:17:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.8",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:04:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

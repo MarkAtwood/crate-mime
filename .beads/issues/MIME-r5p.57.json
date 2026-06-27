@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.57",
+  "title": "Test K comment cites wrong UnsupportedAlgorithm string",
+  "description": "The comment at line 926 of smime_tests.rs says the expected error message is 'KARI (ECDH key agreement) not supported by this key', but the StubKariKey::agree_ecdh at line 975 returns 'KARI not supported by this key'. The assert only checks msg.contains(\"KARI\") so the test passes, but the comment is misleading. Introduced by the fix that updated the comment without updating the stub string.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T18:23:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:26:04Z",
+  "closed_at": "2026-05-02T18:26:04Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.57",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T11:23:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

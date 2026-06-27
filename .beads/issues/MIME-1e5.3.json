@@ -1,0 +1,25 @@
+{
+  "id": "MIME-1e5.3",
+  "title": "subject.rs: ? inside pattern loop exits function on parse failure",
+  "description": "Lines 167-168: parse().ok()? inside the for loop exits parse_subject entirely if a capture group fails to parse as u32, rather than continuing to try the next pattern. Masked by 6-digit regex limit (999999 \u003c u32::MAX), so no practical bug today. Fix: replace ? with .ok() followed by continue, or add a comment explaining the invariant that makes this safe.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:18:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:19:45Z",
+  "closed_at": "2026-05-04T19:19:45Z",
+  "close_reason": "Fixed: ? replaced with explicit match+continue so a failed parse on one pattern tries subsequent patterns.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-1e5.3",
+      "depends_on_id": "MIME-1e5",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:18:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

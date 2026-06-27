@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.14",
+  "title": "smime-tree: NoRevocationCheck needs prominent security warning in doc",
+  "description": "NoRevocationCheck is a production-visible type with a benign name. Callers who use it without reading docs silently disable all revocation checking. The current doc says 'use when... during testing' without urgency. Add a # Security section to its doc comment: 'This disables all OCSP and CRL checks. Never use in production without explicit out-of-band revocation handling.'",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:52:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:43Z",
+  "closed_at": "2026-05-05T03:02:43Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.14",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:52:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

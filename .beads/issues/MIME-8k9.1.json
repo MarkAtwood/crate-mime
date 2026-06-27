@@ -1,0 +1,23 @@
+{
+  "id": "MIME-8k9.1",
+  "title": "x",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:26:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:26:35Z",
+  "closed_at": "2026-05-04T19:26:35Z",
+  "close_reason": "placeholder, removing",
+  "dependencies": [
+    {
+      "issue_id": "MIME-8k9.1",
+      "depends_on_id": "MIME-8k9",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:26:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.16",
+  "title": "uuencoding/src/decode.rs 'end' detection does case-insensitive compare but scan.rs is_end_line() also does — comment says 'lowercase' vs reality",
+  "description": "In uuencoding/src/decode.rs lines 116-121, the 'end' line check allocates a lowercased vec and compares to b'end'. In scan.rs, is_end_line() uses eq_ignore_ascii_case (line 97). The decode.rs approach is correct but opaque — why allocate for a 3-byte comparison? A reader has to reason through whether the lowercasing is necessary (it is, for correctness with 'END' or 'End') but could use eq_ignore_ascii_case directly. No cross-crate doc explains why the two paths use different idioms for the same check.",
+  "acceptance_criteria": "Replace the lowercase-Vec + == b\"end\" pattern in decode.rs with .eq_ignore_ascii_case(b\"end\"), consistent with scan.rs.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:28:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:38:12Z",
+  "closed_at": "2026-05-04T18:38:12Z",
+  "close_reason": "Replaced lowercase-Vec + == b'end' with .eq_ignore_ascii_case(b'end') in uuencoding/src/decode.rs (done as part of MIME-gcz.9)",
+  "labels": [
+    "readability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.16",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:28:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "MIME-8zt.26",
+  "title": "yenc.rs: duplicate find_yend_end scan after successful decode",
+  "description": "mime-tree/src/yenc.rs calls yencoding::decode() to obtain the decoded data, then calls find_yend_end() to scan the same input slice a second time to determine how many bytes were consumed. This means every yEnc block is scanned twice. find_yend_end is a linear scan for the =yend line in bytes the decoder already processed. The fix is for yencoding::decode() to return the consumed byte count alongside the decoded data, eliminating the rescan. As-is, decoding a large yEnc binary attachment touches the encoded bytes twice.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:57Z",
+  "closed_at": "2026-06-16T00:21:57Z",
+  "close_reason": "P2 efficiency: the duplicate find_yend_end scan is a few microseconds on typical Usenet article bodies (\u003c 1 MB). Not a hot path.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.26",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

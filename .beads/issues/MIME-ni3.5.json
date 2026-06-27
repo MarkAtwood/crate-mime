@@ -1,0 +1,24 @@
+{
+  "id": "MIME-ni3.5",
+  "title": "yencoding-multi: add_part silently skips whole_file_crc32 — caller must call set_expected_crc32 manually",
+  "description": "add_part() does not auto-extract whole_file_crc32 from the DecodedPart. The doc comment tells callers to call set_expected_crc32(part.whole_file_crc32.unwrap()) separately. If they forget, finish() silently succeeds without any CRC check even when the CRC was present in every part. Consider auto-extracting on first non-None whole_file_crc32 seen. At minimum, add a loud warning in both the add_part and finish doc comments about the silent skip.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:32Z",
+  "closed_at": "2026-05-05T02:58:32Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.5",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:24Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

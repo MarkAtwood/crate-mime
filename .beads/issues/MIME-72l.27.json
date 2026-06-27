@@ -1,0 +1,30 @@
+{
+  "id": "MIME-72l.27",
+  "title": "byte ranges (usize,usize) not serialization-stable across 32/64-bit platforms",
+  "description": "ParsedPart.header_range and body_range are (usize, usize). usize is 4 bytes on 32-bit targets and 8 bytes on 64-bit targets. ParsedPart implements Serialize+Deserialize, which callers use to persist or transmit part metadata. A ParsedPart serialized on a 64-bit system and deserialized on a 32-bit system will silently produce wrong offsets. On 32-bit, messages larger than 4 GB cause overflow. The design doc says callers store ParsedMessage however they like; the serialization hazard is entirely implicit and undocumented.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:45:46Z",
+  "closed_at": "2026-05-02T05:45:46Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.27",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

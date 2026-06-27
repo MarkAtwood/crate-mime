@@ -1,0 +1,28 @@
+{
+  "id": "MIME-12u.4",
+  "title": "decode() delegation to decode_limited(None) is the right design and should be defended",
+  "description": "A future contributor might suggest 'inlining decode() for clarity' or 'keeping decode() independent for testability'. Both suggestions should be rejected: (1) The single-source-of-truth principle means any future fix to decode_limited() applies to decode() for free. (2) All decode() behavioral tests remain valid as-is — they test through the delegation and cover the full logic path. (3) The delegation is a 1-liner with a doc comment that makes the relationship explicit. Keep the delegation.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:07:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T21:05:15Z",
+  "closed_at": "2026-05-04T21:05:15Z",
+  "close_reason": "Design decision stands: decode() delegation to decode_limited(None) is correct single-source-of-truth.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-12u.4",
+      "depends_on_id": "MIME-12u",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:07:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

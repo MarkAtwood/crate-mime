@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.25",
+  "title": "from_hex() in tests panics on odd-length input with silent index OOB",
+  "description": "smime_tests.rs from_hex(): iterates step_by(2) over s.len(); if a hex constant has an odd number of chars (e.g. from copy-paste truncation), the last .step_by(2) step accesses s[i..i+2] where i+2 \u003e s.len() and panics with a byte-index out-of-bounds. The panic message is unhelpful. The function should assert\\!(s.len() % 2 == 0, 'hex string must have even length') at entry so the failure points at the malformed constant.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:16:50Z",
+  "closed_at": "2026-05-02T18:16:50Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.25",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

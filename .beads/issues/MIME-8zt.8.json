@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.8",
+  "title": "Method-shape: free fn reassemble() (uu-multi) vs method finish() (yenc-multi)",
+  "description": "## Finding\n\nThe terminal reassembly operation uses a different calling convention across the two multi-part crates:\n\n- uuencoding-multi: pub fn reassemble(collection: \u0026PartCollection) -\u003e Result\u003cReassembledFile, MultiUuError\u003e\n  - Free function; takes a shared reference; PartCollection remains usable after.\n- yencoding-multi: pub fn finish(self) -\u003e Result\u003cVec\u003cu8\u003e, AssemblyError\u003e\n  - Consuming method; Assembler is destroyed; no inspection after finish().\n\n## Impact\n\nA caller writing generic code over both formats (e.g. a trait or macro) cannot unify the call pattern. The consuming-vs-borrowing difference has semantic consequences: with uuencoding-multi the caller can inspect the PartCollection after reassembly (e.g. to check missing_parts); with yencoding-multi the Assembler is gone after finish(). This asymmetry is not required by the protocols — the yEncoding assembler could equally return a struct containing the buffer and expose missing_ranges() before consumption.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:45Z",
+  "closed_at": "2026-06-16T00:19:45Z",
+  "close_reason": "reassemble() (free fn) vs finish() (method) reflects different design patterns appropriate to each crate. uuencoding-multi assembles in one shot from a complete collection; yencoding-multi streams parts incrementally. Harmonizing would mean changing one crate's API to match a pattern that doesn't fit its use case.",
+  "labels": [
+    "method-shape",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.8",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

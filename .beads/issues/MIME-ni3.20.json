@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.20",
+  "title": "uuencoding-multi: reassemble() .expect() should be unreachable! or proper error",
+  "description": "reassemble.rs:150 uses .expect() for a branch documented as unreachable by construction (BTreeMap consistency guarantee). The doc says 'Never panics' but .expect() is a visible panic path for static analysis tools. Replace with unreachable!() with a comment, or restructure to return a proper error variant.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:53:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:59:04Z",
+  "closed_at": "2026-05-05T02:59:04Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.20",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:53:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

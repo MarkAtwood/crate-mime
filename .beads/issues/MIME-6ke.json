@@ -1,0 +1,19 @@
+{
+  "id": "MIME-6ke",
+  "title": "Review pass 3: pkix-chain cert validation",
+  "notes": "Confidence: 2% chance of missed bug. No new P0/P1/P2 findings. Convergence reached.\nIdiom rating: CLEAN.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:34:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:34:18Z",
+  "closed_at": "2026-05-02T17:34:18Z",
+  "close_reason": "Both passes produce only opinions at P3+. Loop converged.",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

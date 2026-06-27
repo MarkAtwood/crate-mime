@@ -1,0 +1,19 @@
+{
+  "id": "MIME-998",
+  "title": "Review round 3: mime-tree + smime-tree convergence check",
+  "notes": "Maintainer risk: LOW — No security bugs found. Two misclassified error variants (Other instead of MalformedInput/SignatureVerification) are correctness issues in error classification but do not affect functional behavior or security. One dead public API variant (EcdhEs) is a maintenance liability. The core crypto paths (sign, verify, encrypt, decrypt) all pass their OpenSSL oracle tests.\nIdiom rating: CLEAN — No unsafe code, no gratuitous clones, no unwrap in production paths, correct use of ? operator, all public enums have non_exhaustive, error types have Display. Only finding is missing PartialEq on mime-tree public structs (filed as MIME-998.9).\nConfidence: 8% chance of missed bug.   Least confident flags: MIME-998.4 (dead EcdhEs variant — behavioral risk is low since docs explain it);   MIME-998.9 (missing PartialEq — usability issue not correctness bug).   Uncertainty driven by: (1) b64_input_was_limited logic in decode.rs is complex and deferred;   (2) KARI decryption path has limited integration test coverage (only RSA tested against oracle);   (3) RFC 8621 body structure algorithm correctness against edge cases with deeply nested multipart/related.   Would raise confidence if: KARI encrypt/decrypt round-trip test with OpenSSL oracle.\nRust idiom confidence: 5% chance of missed issue.   Least confident flags: none of the filed issues are taste-only.   Uncertainty driven by: complex lifetime annotation in walk.rs parse_structure —   technically sound but non-obvious; the 'a lifetime is necessary and correct.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:37:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T07:44:41Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

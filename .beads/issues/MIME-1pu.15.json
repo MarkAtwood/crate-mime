@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.15",
+  "title": "sign.rs: per-byte format!('{b:02x}') allocation in boundary_from_content",
+  "description": "sign.rs:352 collects the hex string via .map(|b| format!(\"{b:02x}\")).collect(). Each format! call allocates a 2-char String. Idiomatic alternative: use write!(\u0026mut hex, \"{b:02x}\") into a pre-allocated String::with_capacity(32), or use the hex crate (already available via der's transitive deps). The code is not on a hot path, but the pattern is the kind a contributor will copy into performance-sensitive code.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:34:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:51:20Z",
+  "closed_at": "2026-05-02T13:51:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.15",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:34:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

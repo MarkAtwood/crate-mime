@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.68",
+  "title": "smime-tree AllSignersFailed Display shows only first error, silently drops the rest",
+  "description": "smime-tree/src/error.rs: SmimeError::AllSignersFailed(Vec\u003cSmimeError\u003e) Display implementation writes only the first error from the vector. If N signers all failed for different reasons, a caller logging only the Display output of the error sees only one reason and may incorrectly conclude the others failed for the same cause. The full list is accessible via the Vec, so this is a diagnostic quality issue rather than a correctness bug, but it can mislead debugging. The Display should list all errors (e.g. 'N signers failed: [err1]; [err2]; ...') or at least mention the total count when multiple errors exist.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:48Z",
+  "closed_at": "2026-06-16T00:52:48Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.68",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

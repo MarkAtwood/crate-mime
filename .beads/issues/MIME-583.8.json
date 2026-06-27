@@ -1,0 +1,25 @@
+{
+  "id": "MIME-583.8",
+  "title": "encrypt() doc: panic path from RSA encrypt not clearly documented",
+  "description": "smime-tree/src/encrypt.rs: RNG preflight converts getrandom error to SmimeError::RngFailure. But rsa_pub.encrypt() can still panic if the OS RNG fails at that point. Function doc says 'Panics if the OS RNG fails while encrypting for RSA recipient' but doesn't clarify that SmimeError::RngFailure covers only the preflight, not the encrypt call. Callers may be confused about the two separate failure modes.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T01:18:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T01:22:29Z",
+  "closed_at": "2026-05-05T01:22:29Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-583.8",
+      "depends_on_id": "MIME-583",
+      "type": "parent-child",
+      "created_at": "2026-05-04T18:18:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

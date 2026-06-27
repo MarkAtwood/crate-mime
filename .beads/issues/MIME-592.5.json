@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.5",
+  "title": "collection.rs test name 'is_complete_false_when_total_unknown' is wrong: test actually verifies gap detection",
+  "description": "collection.rs:413-426: The test is named is_complete_false_when_total_unknown but its comment says 'The test intent from the bead: false when total unknown — but with our auto-bump logic total becomes known'. The test actually creates a gap scenario (adds parts 1 and 3, skips 2) to get is_complete()=false. There is no test that verifies the pre-auto-bump behaviour of PartCollection::new(). The test name should be is_complete_false_with_gap, and a separate test should cover the new()-without-add case (where total is truly None and is_complete() must return false).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:49:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:42Z",
+  "closed_at": "2026-05-04T23:03:42Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.5",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:49:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

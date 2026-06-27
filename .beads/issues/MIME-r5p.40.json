@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.40",
+  "title": "walk.rs parse_structure 'part_index parameter' in doc comment names wrong thing",
+  "description": "walk.rs line 56: doc comment says 'The part_index parameter (i in the RFC) is the 0-based position...'. However the function signature has no parameter named part_index — i is the implicit loop variable from 'for (i, part) in parts.iter().enumerate()'. The doc comment should say 'The loop variable i (used implicitly via enumerate())' or remove the misleading parameter name.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:11:43Z",
+  "closed_at": "2026-05-02T18:11:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.40",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:41Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

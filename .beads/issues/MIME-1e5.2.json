@@ -1,0 +1,25 @@
+{
+  "id": "MIME-1e5.2",
+  "title": "is_complete() false-positive with auto-totalled single part",
+  "description": "PartCollection::new() doc does not warn that adding part 1 auto-bumps total to 1, making is_complete() return true immediately. Callers who use new() without a known total and then call is_complete() will get a false true. Add a warning to the PartCollection::new() and is_complete() doc comments.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:18:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:19:43Z",
+  "closed_at": "2026-05-04T19:19:43Z",
+  "close_reason": "Fixed: added is_complete() and new() doc warnings about auto-inferred total causing false-positive is_complete.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-1e5.2",
+      "depends_on_id": "MIME-1e5",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:18:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

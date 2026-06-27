@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.17",
+  "title": "walk.rs: in_alternative nullification fires for inline media types too",
+  "description": "walk.rs lines 129-134: when in_alternative=true and the current multipart is not 'alternative', text/plain sets html_body=None and text/html sets text_body=None. RFC 8621 §4.1.4 specifies the JS 'if (textBody) { htmlBody = null; }' fires for *any* isInline part in this context (not just text/plain and text/html). Inline media types (image/*, audio/*, video/*) go through the is_inline=true path and reach the push-to-both block, but they do not trigger the nullification. Per RFC 8621 §4.1.4 the nullification should happen for all is_inline parts encountered inside a non-alternative multipart within an alternative, not only for text/plain and text/html specifically.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:52:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:14:43Z",
+  "closed_at": "2026-05-02T18:14:43Z",
+  "close_reason": "RFC 8621 §4.1.4 pseudocode (line 2217-2224) only nullifies for text/plain and text/html — inline media types don't trigger nullification. Code is correct.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.17",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:52:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.20",
+  "title": "check_message_digest: convoluted OctetString round-trip via DER",
+  "description": "verify.rs check_message_digest uses: .and_then(|v| OctetString::from_der(v.to_der().ok()?.as_slice()).ok()) to extract OctetString from an AttributeValue. The double .ok()? chain converts two distinct failures into None. This works but is hard to read — a reader cannot tell at a glance whether .ok()? is swallowing a legitimate error or handling an expected None. Rewrite as: let v = md_attr.values.iter().next().ok_or_else(|| SmimeError::Other(\"empty messageDigest\"))?; let der = v.to_der()?; let os = OctetString::from_der(\u0026der)?; This surfaces errors explicitly rather than silently converting to None.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:07:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:54Z",
+  "closed_at": "2026-05-02T07:17:54Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.20",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:07:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

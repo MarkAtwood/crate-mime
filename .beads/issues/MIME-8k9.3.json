@@ -1,0 +1,24 @@
+{
+  "id": "MIME-8k9.3",
+  "title": "collection.rs: with_total(0) doc missing edge-case warning",
+  "description": "with_total(0) makes is_complete() immediately return true (range 1..=0 is empty). The new() doc had a warning for its analogous case but with_total did not. Fixed: added a 'Note: total = 0' section to with_total's doc.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:26:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:26:42Z",
+  "closed_at": "2026-05-04T19:26:42Z",
+  "close_reason": "Fixed: with_total doc now has Note: total=0 edge case warning.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-8k9.3",
+      "depends_on_id": "MIME-8k9",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:26:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

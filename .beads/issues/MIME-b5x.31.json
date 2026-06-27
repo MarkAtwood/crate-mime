@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.31",
+  "title": "sign() uses SystemTime::now() internally — undocumented, not injectable",
+  "description": "sign.rs line 217: make_signing_time_attribute() calls x509_cert::time::Time::now() for the signing-time signed attribute. This is not documented in the sign() public API. Callers who need reproducible output (e.g. for testing determinism or timestamp overriding) have no way to inject a time. The boundary is already deterministic (from content hash); adding a 'now' parameter to sign() (defaulting to SystemTime::now()) would be consistent with verify()'s explicit 'now' parameter design.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:27:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T16:10:43Z",
+  "closed_at": "2026-05-02T16:10:43Z",
+  "close_reason": "Closed",
+  "defer_until": "2026-06-01T00:00:00Z",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.31",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:27:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

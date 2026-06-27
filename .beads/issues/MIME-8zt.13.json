@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.13",
+  "title": "Serde feature: optional in yencoding, unconditional in all other workspace crates",
+  "description": "## Finding\n\nyencoding/Cargo.toml gates serde behind an optional feature:\n  [features]\n  default = []\n  serde = [\"dep:serde\"]\n\n  Public types YencMetadata and DecodedPart only derive Serialize/Deserialize when the feature is enabled.\n\nAll other crates include serde as a hard dependency with unconditional derives:\n- uuencoding: no serde at all (BlockMetadata, DecodedBlock, ScannedBlock have no derives)\n- uuencoding-multi: no serde (PartEntry, PartCollection, ReassembledFile, SubjectParts, TocEntry have no derives)\n- yencoding-multi: no serde (AssemblyError has no serde)\n- mime-tree/Cargo.toml: serde unconditionally as hard dep; ParsedPart, ParsedMessage etc. all derive Serialize/Deserialize\n- smime-tree/Cargo.toml: serde unconditionally as hard dep; VerificationResult, SignerResult, RecipientIdentifier etc. all derive Serialize/Deserialize\n\n## Impact\n\nThe workspace has no consistent policy on serde. mime-tree mandates it (workspace invariant: 'all public structs implement Serialize + Deserialize'). uuencoding and uuencoding-multi implement zero serde (their public types have neither serde deps nor derives). yencoding is partial (optional feature). yencoding-multi has no serde. A caller that wants to serialize multi-part reassembly state hits a wall with the UU crates. The workspace invariant documented in CLAUDE.md ('Both crates: owned, lifetime-free public types. All public structs implement Serialize + Deserialize') applies only to mime-tree and smime-tree, but the encoding crates are inconsistent with each other.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:14Z",
+  "closed_at": "2026-06-16T00:19:14Z",
+  "close_reason": "Serde is unconditional in mime-tree and smime-tree because both crates' public types require Serialize+Deserialize per the workspace invariant. yencoding's optional serde feature is correct for that crate since it's usable without serde. Different crates, different requirements — not an inconsistency.",
+  "labels": [
+    "features",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.13",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:02Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

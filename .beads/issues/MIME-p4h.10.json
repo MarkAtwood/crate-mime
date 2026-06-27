@@ -1,0 +1,30 @@
+{
+  "id": "MIME-p4h.10",
+  "title": "smime-tree sign.rs: boundary_from_content is a stale name — boundary is now randomly generated",
+  "description": "sign.rs: the function is named boundary_from_content but the boundary is generated from 16 random bytes, not derived from content (an earlier design used SHA-256 of content). The name misleads: a reader expects the function to do something content-dependent. Suggested rewrite: rename to random_boundary(content: \u0026[u8]) or generate_boundary(content: \u0026[u8]); the content parameter is still needed for the collision check but should not appear in the name.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:15:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:21:54Z",
+  "closed_at": "2026-05-02T14:21:54Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.10",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:15:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

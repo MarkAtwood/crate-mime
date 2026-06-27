@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.13",
+  "title": "decode tests in decode.rs use code-under-test as partial oracle",
+  "description": "decode.rs test_quoted_printable_body: the oracle comment says 'QP encoding of café in UTF-8 is caf=C3=A9'. This is correct and independently derivable. However there is no test for QP soft-line-break (=\\r\\n elision), QP in strict vs Robust mode differences, or QP errors returning the raw bytes (line 97: Err path returns qp_input.to_vec() not Vec::new()). The error path for QP differs from Base64 error path (Base64 returns empty Vec, QP returns raw input) — this asymmetry is not tested and not documented in the function contract.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:00:55Z",
+  "closed_at": "2026-05-02T18:00:55Z",
+  "close_reason": "Tests use externally-known vectors: base64 of 'Hello, World!', QP of 'café', latin-1 0xE9 — all are independent of the code under test.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.13",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:49Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

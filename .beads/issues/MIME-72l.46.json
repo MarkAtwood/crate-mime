@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.46",
+  "title": "caller handles recursion between smime-tree and mime-tree; neither crate recurses into the other",
+  "description": "smime-tree.decrypt() returns raw inner MIME bytes. If those bytes are themselves S/MIME, the caller calls smime-tree.decrypt() again. Neither crate auto-recurses. A future contributor might suggest adding auto-unwrap logic inside decrypt() or parse() to 'handle the common case'. That would be wrong for two reasons: (1) it creates unbounded recursion depth with no caller-controlled limit, which is a DoS surface; (2) it couples the two crates in a way that violates the stated dependency direction (mime-tree must not depend on smime-tree). The caller-loop model gives the caller full control over recursion depth, logging, and error handling at each layer.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:41Z",
+  "closed_at": "2026-05-02T06:24:41Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.46",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

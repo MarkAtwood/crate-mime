@@ -1,0 +1,30 @@
+{
+  "id": "MIME-e7k.11",
+  "title": "sign.rs: wrap_base64 and encrypt.rs: build_mime fold loop are duplicated with expect",
+  "description": "Both sign.rs (wrap_base64) and encrypt.rs (build_mime) implement the same base64-fold-at-76-chars logic with from_utf8().expect(). The pattern appears twice with the same comment 'b64 is a String/str — from_utf8 always succeeds'. This is minor duplication but if one is ever changed the other may lag. wrap_base64 could be moved to a shared utility module and reused by build_mime.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:39:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:46:47Z",
+  "closed_at": "2026-05-02T17:46:47Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "opinion",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.11",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:39:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

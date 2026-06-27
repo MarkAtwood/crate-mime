@@ -1,0 +1,30 @@
+{
+  "id": "MIME-mgi.7",
+  "title": "lib.rs doc: SHA-512 is RSA-only; ECDSA SHA-512 (P-521) is unsupported",
+  "description": "smime-tree/src/lib.rs line 42: '//\\!   Sign/verify: RSA PKCS#1 v1.5 (SHA-256/384/512), ECDSA P-256 (SHA-256), P-384 (SHA-384).' The SHA-512 entry applies only to RSA (sha512WithRSAEncryption), but the comma placement makes it look like it applies to ECDSA too. P-521/SHA-512 is explicitly rejected by signature_algorithm_oid() with UnsupportedAlgorithm. A reader skimming the docs could attempt to use a P-521 cert with SHA-512 expecting it to work. Suggested rewrite: 'RSA PKCS#1 v1.5 with SHA-256/384/512, ECDSA P-256 (SHA-256 only), P-384 (SHA-384 only). P-521 is not supported.'",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:08:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:16:28Z",
+  "closed_at": "2026-05-02T15:16:28Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.7",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:08:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

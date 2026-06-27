@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.60",
+  "title": "cert chain validation has MAX_CHAIN_DEPTH=10 depth limit",
+  "description": "cert.rs validate_chain() loops for at most MAX_CHAIN_DEPTH=10 iterations, returning SmimeError::CertChain('chain too long') if the limit is hit. A future contributor might suggest removing or raising the limit since 'real chains are never that long'. That would be wrong: without a depth bound, a malicious or malformed certificate bag containing a cycle (cert A issued by cert B issued by cert A) would loop forever. The 10-level limit is conservative — real PKIs have 2-4 levels — and ensures that even pathological input terminates with a clear error rather than an infinite loop or stack overflow.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:42Z",
+  "closed_at": "2026-05-02T06:24:42Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.60",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:27:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "MIME-o0a",
+  "title": "mime-tree: delegate inline scanner to uuencoding::scan()",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:42:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T19:51:21Z",
+  "close_reason": "Both issues complete. uuencoding: was_limit_hit field added. mime-tree inline scanner now delegates to uuencoding::scan()."
+}

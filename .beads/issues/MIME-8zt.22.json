@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.22",
+  "title": "Missing #[non_exhaustive] on InlineUUBlock and InlineYEncBlock in mime-tree",
+  "description": "InlineUUBlock (mime-tree/src/uuencode.rs) and InlineYEncBlock (mime-tree/src/yenc.rs) are all-pub-field structs with no #[non_exhaustive] attribute. Both are scan output types returned by scan_inline_uuencode() and scan_inline_yencode(). Callers can construct them with struct literals. What goes wrong: adding a field to either struct (e.g. to surface new metadata from the inline scan) is a breaking change without #[non_exhaustive]. Also, PartEntry in uuencoding-multi/src/collection.rs has the same issue — it is a public all-pub-field struct with no #[non_exhaustive]. All three need the attribute.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:32Z",
+  "closed_at": "2026-06-16T00:08:32Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.22",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

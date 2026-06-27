@@ -1,0 +1,30 @@
+{
+  "id": "MIME-gcz.8",
+  "title": "uuencoding::UuError is missing PartialEq — makes testing and matching harder for downstream",
+  "description": "uuencoding/src/error.rs: UuError derives only Debug, not PartialEq or Eq. Downstream code that wants to assert_eq!(err, UuError::BeginBase64) or use UuError as a map key cannot. The test code in this crate itself uses matches!() instead of == precisely because PartialEq is absent. MultiUuError (which wraps UuError via DecodeError) similarly cannot derive PartialEq as a consequence. This generates a class of user frustration: 'why can't I compare UuError values?' The fix is trivial since all variants contain only String, usize, and u8.",
+  "acceptance_criteria": "Derive PartialEq (and Eq) on UuError and MultiUuError. Update any test that uses matches!() for equality to use assert_eq! where appropriate.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:34:19Z",
+  "closed_at": "2026-05-04T18:34:19Z",
+  "close_reason": "Derived PartialEq+Eq on UuError and MultiUuError; updated simple matches!() to assert_eq!() where possible",
+  "labels": [
+    "maintainer-burden",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.8",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

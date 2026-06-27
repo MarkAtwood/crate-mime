@@ -1,0 +1,25 @@
+{
+  "id": "MIME-o0a.1",
+  "title": "Replace uuencode.rs decode logic with uuencoding::scan()",
+  "description": "scan_body / decode_uu_block / encoded_val / parse_begin_line are ~200 lines of duplicated UU decode. They have divergences from the reviewed uuencoding crate (case-sensitive begin, rejects empty filename, strips tabs from data lines). Replace with a call to uuencoding::scan(), mapping ScannedBlock to InlineUUBlock. begin_offset/begin_length stay u32 (absolute). is_encoding_problem = block.is_truncated. A begin-base64 UuError maps to is_encoding_problem=true with empty data.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T19:42:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:51:20Z",
+  "closed_at": "2026-05-04T19:51:20Z",
+  "close_reason": "Replaced ~200-line custom UU decode in uuencode.rs with uuencoding::scan() delegation. Added begin-base64 test. Updated 6 test fixtures to use oracle-correct UU blocks (with terminator line).",
+  "dependencies": [
+    {
+      "issue_id": "MIME-o0a.1",
+      "depends_on_id": "MIME-o0a",
+      "type": "parent-child",
+      "created_at": "2026-05-04T12:42:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

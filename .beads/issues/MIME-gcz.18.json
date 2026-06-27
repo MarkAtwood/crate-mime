@@ -1,0 +1,28 @@
+{
+  "id": "MIME-gcz.18",
+  "title": "All test vectors cite independent oracle (Python uu/binascii) — test discipline is correct",
+  "description": "Every decode and encode test in uuencoding/src/decode.rs, encode.rs, and reassemble.rs cites Python 3.11/3.12 uu or binascii module as the oracle with the exact command used. The roundtrip tests in uuencoding/tests/roundtrip.rs correctly use encode()+decode() as a roundtrip property test, not as a self-oracle. This is exactly the correct test discipline per the AGENTS.md rules. A contributor might suggest removing the oracle comments to 'clean up'; they should not be removed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:28:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:38:19Z",
+  "closed_at": "2026-05-04T18:38:19Z",
+  "close_reason": "Test discipline confirmed correct: all test vectors cite independent Python oracle. No code change.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.18",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:28:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

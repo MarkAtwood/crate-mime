@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.12",
+  "title": "smime-tree: malformed bag cert silently skipped, can bypass cycle detection",
+  "description": "cert.rs:140-141 builds bag_by_subject with filter_map(...ok()...) — a cert whose subject DER encoding fails is silently dropped. The cycle-detection visited set is built only from certs that make it into the map. A malformed cert with a duplicate parseable subject could bypass cycle detection. Correct behavior: treat a DER-malformed cert as unusable-but-present (return an error or include a poison entry in the map), not silently absent.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:52:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:33Z",
+  "closed_at": "2026-05-05T03:02:33Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.12",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:52:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

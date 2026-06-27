@@ -1,0 +1,149 @@
+{
+  "id": "MIME-677.8",
+  "title": "decrypt.rs: UnsupportedAlgorithm used for 'not EnvelopedData' — wrong error variant",
+  "description": "In decrypt.rs line 31, when the ContentInfo content_type is not EnvelopedData, the error returned is SmimeError::UnsupportedAlgorithm(\"not EnvelopedData\"). This is semantically wrong: the content type is not an algorithm. A reader diagnosing an error from the field will be confused by an UnsupportedAlgorithm message containing the string 'not EnvelopedData'. Should use SmimeError::Io or a more specific variant.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T06:35:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.13",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.1",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.52",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.45",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.14",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.44",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.41",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.49",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.12",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.56",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:24:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.29",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.10",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.4",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-677.3",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-677.8",
+      "depends_on_id": "MIME-72l.37",
+      "type": "blocks",
+      "created_at": "2026-05-01T23:28:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

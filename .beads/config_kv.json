@@ -1,0 +1,15 @@
+{
+  "auto_compact_enabled": "false",
+  "compact_batch_size": "50",
+  "compact_parallel_workers": "5",
+  "compact_tier1_days": "30",
+  "compact_tier1_dep_levels": "2",
+  "compact_tier2_commits": "100",
+  "compact_tier2_days": "90",
+  "compact_tier2_dep_levels": "5",
+  "compaction_enabled": "false",
+  "issue_prefix": "MIME",
+  "kv.memory.list": "list",
+  "kv.memory.smime-tree-test-oracles-openssl-openssl-smime-sign": "smime-tree test oracles: OpenSSL (openssl smime -sign/-verify/-encrypt/-decrypt) AND Python pyca/cryptography (from cryptography.hazmat.primitives.serialization.pkcs7 import ...). Both are valid independent oracles for S/MIME fixtures. Python cryptography is especially useful for generating test vectors programmatically.",
+  "schema_version": "11"
+}

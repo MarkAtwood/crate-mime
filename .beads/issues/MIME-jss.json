@@ -1,0 +1,15 @@
+{
+  "id": "MIME-jss",
+  "title": "[mime-tree] Add Serialize/Deserialize to UnknownHeaderForm",
+  "description": "Skoll LOW-16: UnknownHeaderForm is a public struct exported from the crate root but does not derive Serialize + Deserialize, violating the crate invariant that all public structs implement both. Add the derives for consistency.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:06:43Z",
+  "closed_at": "2026-06-04T22:06:43Z",
+  "close_reason": "Added Serialize/Deserialize derives to UnknownHeaderForm for consistency with crate invariant."
+}

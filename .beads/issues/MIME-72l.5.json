@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.5",
+  "title": "sign: boundary_from_content not checked against content bytes",
+  "description": "RFC 2046 §5.1.1 requires the boundary string to not appear in the body of any encapsulated part. sign.rs uses SHA-256(content_mime)[..16] hex as the boundary. If content_mime happens to contain that exact hex string (e.g. a message forwarding another S/MIME message whose boundary is derived the same way), the multipart structure becomes unparseable. The fix is to verify the boundary does not appear in content_mime and either add a suffix or use a random boundary.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:43:34Z",
+  "closed_at": "2026-05-02T05:43:34Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.5",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.19",
+  "title": "decode_line: =CR and =LF produce garbage bytes",
+  "description": "## Bug\n\nIn `decode_line` (decode.rs), when the escape character `=` is immediately followed by `\\r` (0x0D) or `\\n` (0x0A), the escape branch fires and decodes the newline byte as a data byte instead of treating `=` as a lone/split escape.\n\n## Root cause\n\n`decode_line` receives the raw line bytes INCLUDING the trailing `\\r\\n` from `LineIter`. The escape branch (line 224) checks `i + 1 \u003c len` and, if true, reads the next byte unconditionally — including `\\r` or `\\n`. The lone-`=` branch (line 231) only fires when `=` is the absolute last byte of the slice, which does not cover `=\\r` or `=\\n`.\n\n## Impact\n\nInput line `b\"*=\\r\\n\"` produces decoded bytes `[0, 163]` instead of `[0]`. Input `b\"*=\\n\"` produces `[0, 160]` instead of `[0]`.\n\nThis affects any encoder that naively wraps the encoded byte stream at a fixed column width without ensuring escape pairs are not split — the `=` lands at column 127 (the last data column before CRLF) and the escaped byte lands at the start of the next line. The current decoder would silently produce a garbage byte (163 or 160) and consume the CRLF as part of the escape, emitting one wrong decoded byte per such occurrence.\n\nThe Python fixture generator (`gen_fixtures.py`) uses this split-unsafe wrapping strategy (`yenc_line_wrap` slices encoded bytes at `line_len` with no escape-pair awareness). No existing fixture triggers this because the test payload `bytes(range(64))` happens to have its only escape pair well inside the 128-byte line. A payload with an escape pair straddling position 127/128 would produce a corrupt decode.\n\n## Minimal repro (Rust)\n\n```rust\nlet mut out = Vec::new();\n// '*' = byte 0; then '=' should be lone escape before \\r\\n\nyencoding::decode(b\"=ybegin line=128 size=1 name=f\\n*=\\r\\n=yend size=2\\n\");\n// decode_line on b\"*=\\r\\n\" gives [0, 163], not [0]\n```\n\n## Fix\n\nIn the `=` escape branch of `decode_line`, skip past any leading `\\r`/`\\n`/`\\0` bytes when seeking the escape target, or check that the next byte is not a framing byte before consuming it:\n\n```rust\nb'=' if i + 1 \u003c len =\u003e {\n    let next = line[i + 1];\n    if matches!(next, b'\\r' | b'\\n' | b'\\0') {\n        // Lone '=' before line-end framing — discard the '=' and let\n        // the framing bytes be handled normally on the next iteration.\n        i += 1;\n    } else {\n        out.push(next.wrapping_sub(106));\n        i += 2;\n    }\n}\n```\n\n## Test to add\n\n```rust\n#[test]\nfn decode_line_eq_before_crlf_is_lone_escape() {\n    // '=' immediately before \\r\\n must NOT consume the \\r as an escape target.\n    let mut out = Vec::new();\n    decode_line(b\"*=\\r\\n\", \u0026mut out);\n    assert_eq!(out, \u0026[0]); // only '*' decoded; lone '=' discarded\n}\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:51:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:07Z",
+  "closed_at": "2026-05-04T22:55:07Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.19",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:51:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

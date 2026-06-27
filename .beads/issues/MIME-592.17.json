@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.17",
+  "title": "uuencode.rs: Err items from scan() emit begin_offset=0 regardless of actual block position",
+  "description": "In scan_inline_uuencode(), when uuencoding::scan() yields an Err(UuError::BeginBase64) item, the handler emits InlineUUBlock { begin_offset: 0, begin_length: 0, is_encoding_problem: true }.\n\nThe ScannedBlock inside the Err path does carry position information (the UuError does not, but the iterator position is known). Setting begin_offset=0 means that for a message where the begin-base64 block appears at byte 500, the returned item falsely claims offset 0 — which may point into header content or another block entirely.\n\nThe doc says 'Always check is_encoding_problem before using this field' but callers doing range-based deduplication or UI highlighting will see a spurious offset=0 entry.\n\nFix: uuencoding::scan() should yield Result\u003cScannedBlock, (UuError, begin_offset)\u003e — or yield Ok(ScannedBlock { is_truncated: true, ... }) with the correct offsets for all error cases including begin-base64. Alternatively the Err arm in scan_inline_uuencode() should omit begin_offset from the public struct (set to a sentinel like u32::MAX) and document that begin_offset is meaningless when is_encoding_problem=true.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:51:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:59:36Z",
+  "closed_at": "2026-05-04T22:59:36Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.17",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:51:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

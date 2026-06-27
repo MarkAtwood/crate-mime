@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.3",
+  "title": "build_chain anchor-match by DN only; pkix-chain re-validates anchors it did not build the chain with",
+  "description": "build_chain() stops walking when current-cert's issuer DN matches ANY trust anchor subject. Then all trust anchors are passed to pkix_chain::verify_chain_default. If the bag contains a cert whose issuer matches anchor A but whose signature was made by anchor B (e.g. cross-certificates, same-DN re-issuance), build_chain correctly terminates, but pkix-chain receives the full anchor set and may validate against a different anchor than expected. The chain passed to pkix-chain is always leaf+intermediates (no anchor), so pkix-chain independently picks the anchor. This is correct behavior but the gap is: build_chain's termination condition and pkix-chain's anchor selection can diverge on a DN collision. Risk is low but the invariant is undocumented.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:01:06Z",
+  "closed_at": "2026-05-02T18:01:06Z",
+  "close_reason": "pkix-chain validates the full chain cryptographically regardless of how build_chain terminates; DN-collision at anchor level cannot bypass signature check.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.3",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

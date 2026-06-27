@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.55",
+  "title": "uuencode.rs: InlineUUBlock begin_length=0 sentinel is implicit contract",
+  "description": "mime-tree/src/uuencode.rs: when is_encoding_problem is true, begin_length is set to 0 as a sentinel meaning 'the begin line could not be fully parsed, do not use this value'. This contract is documented in a comment, but begin_length is a public field (u32) with no type-level guarantee that it is non-zero when is_encoding_problem is false. A caller who reads begin_length without first checking is_encoding_problem will silently process a 0 as if it were a real value. The fix is either to make begin_length an Option\u003cu32\u003e (None when is_encoding_problem is true) or to add a method that returns the begin_length only when not an error. The sentinel-zero pattern is an implicit contract that will cause subtle bugs if a caller forgets the check.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:44Z",
+  "closed_at": "2026-06-16T00:52:44Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.55",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

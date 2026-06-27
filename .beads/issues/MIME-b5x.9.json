@@ -1,0 +1,29 @@
+{
+  "id": "MIME-b5x.9",
+  "title": "QP decode with max_bytes: entire body decoded before truncation",
+  "description": "decode.rs: for TransferEncoding::QuotedPrintable, the entire body_bytes is decoded before max_bytes truncation is applied. For a 10 MB QP-encoded body with max_bytes=256 (preview), this decodes 10 MB to produce 256 bytes. Contrast with the Base64 path which pre-truncates to max_b64_chars before decoding. Impact: O(N) allocation and CPU where N is the full encoded body length, even for small previews. Acceptable if QP bodies are always small; a real cost for large QP attachments.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:05:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:21:26Z",
+  "closed_at": "2026-05-02T07:21:26Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.9",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:05:04Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

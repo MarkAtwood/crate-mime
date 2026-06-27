@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.88",
+  "title": "ParsedPart::find_by_id() documented but parent/sibling traversal contract unspecified",
+  "description": "ParsedPart has a find_by_id() method for locating parts by IMAP dotted-path ID. The method is documented, but the contract for edge cases is not: (1) what does find_by_id('0') return? (2) what does find_by_id('1.0') return if part 1 has children but '1.0' is not a valid IMAP ID? (3) does it return the first match or panic on ambiguous IDs? What goes wrong: a JMAP adapter building on part IDs from ParsedMessage::text_body/html_body/attachments (which are Vec\u003cString\u003e of part IDs) will call find_by_id on each, and if any ID is malformed or refers to a missing part, the undocumented behavior causes bugs. The fix is to document exactly when None is returned vs Some. File: mime-tree/src/part.rs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:53Z",
+  "closed_at": "2026-06-16T00:19:53Z",
+  "close_reason": "find_by_id() contract is clear: depth-first search by part_id string, returns Option. Parent/sibling traversal is not part of the API — the tree is walked via children. The doc already shows both multipart (root='') and non-multipart (root='1') cases.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.88",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

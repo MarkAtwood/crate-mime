@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.21",
+  "title": "Missing #[non_exhaustive] on YencMetadata and DecodedPart in yencoding",
+  "description": "YencMetadata and DecodedPart in yencoding/src/lib.rs are all-pub-field structs with no #[non_exhaustive] attribute. Callers can construct them via struct literals. Both are decode output types — callers have no reason to construct them. EncodePartOptions also has all pub fields and no #[non_exhaustive]; it is an input/builder type, so the concern is different — adding an optional field is not a breaking change if #[non_exhaustive] is present, but callers currently rely on exhaustive struct update syntax (.., ..Default::default()) to fill in future fields; without #[non_exhaustive] adding fields IS breaking. What goes wrong: any field addition to any of these three structs requires a major version bump. All three in yencoding/src/lib.rs need #[non_exhaustive].",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:36Z",
+  "closed_at": "2026-06-16T00:08:36Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.21",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

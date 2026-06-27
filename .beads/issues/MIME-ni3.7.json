@@ -1,0 +1,24 @@
+{
+  "id": "MIME-ni3.7",
+  "title": "mime-tree: walk.rs tests 7 and 8 use code-under-test as oracle, not RFC",
+  "description": "Tests 1-6 in walk.rs cite RFC 8621 §4.1.4 as oracle. Tests 7 (alternative_mixed_image_gif_goes_to_both_body_lists) and 8 (alternative_mixed_subtree_nullifies_html_body) both cite 'code-path analysis of walk.rs' as their oracle — the code under test. This violates the test integrity rule: tests must have an independent oracle. The behavior being pinned (image/gif appearing in both text_body and html_body) is not explicitly specified by RFC 8621. Cross-validate against Cyrus/Dovecot JMAP implementation or apply the RFC §4.1.4 pseudocode manually.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:43Z",
+  "closed_at": "2026-05-05T02:58:43Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.7",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

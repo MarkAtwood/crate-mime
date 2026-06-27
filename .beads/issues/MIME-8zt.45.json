@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.45",
+  "title": "parse_header_typed_from: non-text headers round-trip through lossy UTF-8, silently corrupting non-ASCII bytes",
+  "description": "## Problem\n\nIn `mime-tree/src/header_typed.rs`, `parse_header_typed_from(header, form)` calls `header.value.as_bytes()` and feeds those bytes to `parse_header_typed`.\n\nHowever, `header.value` for non-text headers was built via `String::from_utf8_lossy(raw_bytes)` in `extract_headers()` (`parse.rs`). Any non-ASCII bytes in the original raw header become U+FFFD (three UTF-8 bytes per replacement), so `header.value.as_bytes()` is not the original wire bytes — it is the lossy-converted bytes.\n\nCallers who parse Addresses, MessageIds, or Date forms via the `ParsedHeader` convenience wrapper get silently different results from callers who call `parse_header_typed(form, raw_bytes)` directly with the original raw bytes.\n\n## Concrete impact\n\nA From: header containing ISO-8859-1 encoded display names (legal in RFC 5322 but not UTF-8) will have every high-byte replaced with U+FFFD. A name like `Fr\\xe9d\\xe9ric` becomes `Fr\\xEF\\xBF\\xBDd\\xEF\\xBF\\xBDric`. The address parser may then fail to parse the name at all or produce the replacement-character string.\n\n## Files\n\n- `mime-tree/src/parse.rs` — `extract_headers` constructs `header.value` with lossy conversion\n- `mime-tree/src/header_typed.rs` — `parse_header_typed_from` uses `header.value.as_bytes()`\n\n## What goes wrong if left as-is\n\nSilent data loss for any non-UTF-8 From:/To:/Cc: headers. The callers of the JMAP adapter (crate-jmap-mime) that use the ParsedHeader-based convenience path will see garbled display names while direct callers using `parse_header_typed` with raw bytes see the correct original bytes. Callers have no way to know they are getting lossy results.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-15T23:57:43Z",
+  "closed_at": "2026-06-15T23:57:43Z",
+  "close_reason": "Added raw_value to ParsedHeader, parse_header_typed_from now uses raw bytes. Two regression tests added.",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.45",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

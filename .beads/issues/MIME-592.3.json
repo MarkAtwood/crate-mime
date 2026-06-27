@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.3",
+  "title": "reassemble() partial result: data from missing-part collection has undefined byte layout",
+  "description": "When parts are missing, reassemble() returns Ok with is_truncated=true and data containing the concatenation of only the *present* parts decoded in ascending order. The returned data has no documented relationship to the byte offsets of the original file — it is not a sparse buffer, it is not a per-part Vec\u003cOption\u003c...\u003e\u003e, it is a compact concatenation of whatever happened to be present. A caller cannot use this data to reconstruct the file even if they later obtain the missing part because they don't know where to splice it in. The API surface (ReassembledFile::data as Vec\u003cu8\u003e) makes this look like valid file data. The is_truncated flag and missing_parts list warn the caller the data is corrupt, but the data field itself is misleadingly typed. Consider: (a) returning data as Option\u003cVec\u003cu8\u003e\u003e (None when truncated), or (b) returning Vec\u003cOption\u003cVec\u003cu8\u003e\u003e\u003e per-part, or (c) documenting explicitly that partial data is only useful for diagnostics and must never be written to disk as a complete file.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:49:34Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:11Z",
+  "closed_at": "2026-05-04T23:03:11Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.3",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:49:34Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

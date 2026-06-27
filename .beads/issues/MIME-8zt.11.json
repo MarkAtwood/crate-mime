@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.11",
+  "title": "MSRV inconsistency: 1.85 (mime-tree, smime-tree) vs 1.75 (uuencoding, yencoding, *-multi)",
+  "description": "## Finding\n\nrust-version is set to different values across the workspace:\n\n- mime-tree/Cargo.toml: rust-version = \"1.85\"\n- smime-tree/Cargo.toml: rust-version = \"1.85\"\n- uuencoding/Cargo.toml: rust-version = \"1.75\"\n- uuencoding-multi/Cargo.toml: rust-version = \"1.75\"\n- yencoding/Cargo.toml: rust-version = \"1.75\"\n- yencoding-multi/Cargo.toml: rust-version = \"1.75\"\n\n## Impact\n\nmime-tree depends on uuencoding and yencoding (path deps). If mime-tree requires Rust 1.85, then uuencoding and yencoding effectively require 1.85 too when used via mime-tree. Their 1.75 advertised MSRV is therefore misleading to users of those standalone crates who may rely on the Cargo.toml rust-version as an authoritative floor. Additionally, any feature that exploits 1.76–1.84 Rust stabilizations cannot be used in the encoding crates without breaking the advertised MSRV, yet nothing enforces this in CI.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:22Z",
+  "closed_at": "2026-06-16T00:22:22Z",
+  "close_reason": "MSRV 1.75 in encoding crates is correct — they have no features requiring 1.85. mime-tree's 1.85 MSRV doesn't propagate down since Cargo resolves per-crate MSRV.",
+  "labels": [
+    "features",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.11",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:49Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

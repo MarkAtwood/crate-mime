@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.27",
+  "title": "MultiUuError::DecodeError wraps uuencoding::UuError directly in public surface",
+  "description": "MultiUuError in uuencoding-multi/src/error.rs has a DecodeError(uuencoding::UuError) variant that wraps the dependency's error type directly. This means callers of uuencoding-multi who match on MultiUuError::DecodeError must also depend on uuencoding and know its UuError type. What goes wrong: if uuencoding ever changes UuError (adds variants, renames variants), uuencoding-multi callers break even if uuencoding-multi's own behavior hasn't changed. The fix is to map uuencoding::UuError to local variants in From\u003cUuError\u003e — e.g. MultiUuError::PartDecodeError { part: usize, detail: String } — and drop the raw wrapping variant. This gives uuencoding-multi freedom to change its dependency version independently. File: uuencoding-multi/src/error.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:15Z",
+  "closed_at": "2026-06-16T00:19:15Z",
+  "close_reason": "MultiUuError::DecodeError(UuError) wrapping is the standard Rust error composition pattern. UuError is a public type from a sibling workspace crate with the same owner — not a third-party dep. Callers can match on the inner error. Adding an indirection layer would lose information.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.27",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

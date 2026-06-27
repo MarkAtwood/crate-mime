@@ -1,0 +1,30 @@
+{
+  "id": "MIME-gcz.6",
+  "title": "PartCollection and PartEntry lack Clone — forces callers to move or borrow awkwardly",
+  "description": "PartEntry (uuencoding-multi/src/collection.rs) and PartCollection do not derive Clone. PartEntry holds Vec\u003cu8\u003e and Option\u003cString\u003e — both Clone. PartCollection holds BTreeMap\u003cu32, PartEntry\u003e — also Clone if PartEntry is. Real callers who collect parts from an NNTP reader or mailbox and want to reassemble while retaining their own copy of the collection will be forced into workarounds (Arc, reconstruction). The omission will generate user issues and workarounds the moment anyone tries to use this in a concurrent or pipeline context. Missing Clone is API surface that cannot be added later without a breaking change if downstream uses the struct in a non-Clone context (e.g. puts it in a non-Clone wrapper).",
+  "acceptance_criteria": "Derive Clone on PartEntry and PartCollection.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:34:12Z",
+  "closed_at": "2026-05-04T18:34:12Z",
+  "close_reason": "Derived Clone on PartEntry and PartCollection in uuencoding-multi/src/collection.rs",
+  "labels": [
+    "maintainer-burden",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.6",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

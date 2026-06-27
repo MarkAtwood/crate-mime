@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3ps.8",
+  "title": "mime-tree: pub mod uuencode/yenc exposes redundant module paths",
+  "description": "lib.rs:41,43: pub mod uuencode and pub mod yenc create double-path access inconsistent with all other mime-tree modules (which are private). Change to mod uuencode / mod yenc; the re-exports on lines 49-50 already make all types public.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T21:57:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:04:57Z",
+  "closed_at": "2026-05-04T22:04:57Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3ps.8",
+      "depends_on_id": "MIME-3ps",
+      "type": "parent-child",
+      "created_at": "2026-05-04T14:57:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

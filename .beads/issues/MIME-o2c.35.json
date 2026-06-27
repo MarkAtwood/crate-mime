@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.35",
+  "title": "Missing Hash derive on EmailAddress, AddressGroup, HeaderDateTime",
+  "description": "header_typed.rs:40, 55, 67 — derive list is `Debug, Clone, [Copy,] PartialEq, Eq, Serialize, Deserialize` but not `Hash`. RFC 5322 mailboxes (EmailAddress) are routinely used in deduplication sets (e.g. uniqueing a recipient list across To/Cc/Bcc), HeaderDateTime values key time-series buckets, and AddressGroup values appear in 'group by group name' aggregations. All three types are composed entirely of `Hash`-able fields (`Option\u003cString\u003e`, `Vec\u003cEmailAddress\u003e` once EmailAddress has Hash, integer primitives, bool). The missing derives force callers to wrap the type in a newtype just to put it in a `HashSet`, which is the friction the derive system exists to remove. Prerequisite for adding `Hash` to HeaderValueTyped.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:42:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:00:23Z",
+  "closed_at": "2026-05-14T16:00:23Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.35",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:42:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

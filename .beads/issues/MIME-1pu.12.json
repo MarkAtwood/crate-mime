@@ -1,0 +1,28 @@
+{
+  "id": "MIME-1pu.12",
+  "title": "Trait-based key abstraction in smime-tree avoids key material in crate",
+  "description": "DecryptionKey and SigningKey are traits rather than concrete types. This means smime-tree never holds or manipulates private key material — it only calls trait methods. A future contributor suggesting 'add an in-memory RsaPrivateKey key type to the crate' should be shown that the test fixtures already demonstrate how to do that in user code, and that centralising key management in this crate would entangle it with memory protection, zeroization, and key storage concerns that are deliberately out of scope.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:32:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:52:01Z",
+  "closed_at": "2026-05-02T13:52:01Z",
+  "close_reason": "Design decision documented; no code change needed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.12",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:32:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

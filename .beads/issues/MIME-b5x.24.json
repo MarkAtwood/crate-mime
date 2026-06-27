@@ -1,0 +1,29 @@
+{
+  "id": "MIME-b5x.24",
+  "title": "find_cert silently maps SID DER failure to cert-not-found",
+  "description": "verify.rs find_cert(): 'let sid_issuer_der = ias.issuer.to_der().ok()' — if DER encoding fails, sid_issuer_der is None, every zip() returns None, no cert matches, and the caller gets 'signer cert not found' rather than a DER error. The actual failure (malformed SignerInfo.sid.issuer) is swallowed. Fix: propagate the DER error instead of .ok()-ing it.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:26:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:34:43Z",
+  "closed_at": "2026-05-02T07:34:43Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.24",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:26:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

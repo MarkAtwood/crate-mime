@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.19",
+  "title": "Missing #[non_exhaustive] on public result structs in mime-tree",
+  "description": "ParsedPart, ParsedMessage, DecodedBodyValue, and ParsedHeader are all-pub-field structs with no #[non_exhaustive] attribute. Callers can currently write struct literal expressions to construct them directly (e.g. ParsedPart { part_id: ..., children: vec![], ... }). Once any caller does this, adding a field is a breaking API change. These are output/result types — callers have no legitimate reason to construct them. What goes wrong: the next time a field is added to any of these structs (e.g. to expose a new parsed property), semver requires a major version bump even though the field is purely additive. All four structs in mime-tree/src/part.rs and mime-tree/src/message.rs need #[non_exhaustive].",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:34Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:31Z",
+  "closed_at": "2026-06-16T00:08:31Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.19",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:34Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

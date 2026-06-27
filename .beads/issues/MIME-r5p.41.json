@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.41",
+  "title": "build_mime() in encrypt.rs has no trailing newline after folded base64 body",
+  "description": "build_mime() in encrypt.rs produces a MIME body part. The folded base64 loop appends CRLF after every chunk including the last. The final output ends with '...base64data\\r\\n' (from the loop) but no final blank line. This is fine per RFC 2045 (the body part does not need a trailing blank line when used as a standalone attachment), but the asymmetry with sign.rs output (which ends with '--boundary--\\r\\n') is worth a comment explaining why the trailing CRLF is intentional.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:11:55Z",
+  "closed_at": "2026-05-02T18:11:55Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.41",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-68n.17",
+  "title": "SigningKey::preferred_digest_algorithm / DecryptionKey::supported_key_enc_algorithm never consulted",
+  "description": "Both trait methods are documented as 'extension points for callers', but the crate never calls them. A library that exports a trait method as a hint but ignores the hint is a footgun: implementors will override preferred_digest_algorithm() expecting sign() to respect it, but sign() hardcodes SHA-256. Either consult the hint internally or remove the method and let callers handle selection before calling sign().",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T06:46:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:52:36Z",
+  "closed_at": "2026-05-02T06:52:36Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-68n.17",
+      "depends_on_id": "MIME-68n",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:46:22Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

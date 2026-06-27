@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.25",
+  "title": "RevocationChecker and SigningKey traits bind implementors to pre-release x509-cert rc type",
+  "description": "RevocationChecker::check() takes \u0026x509_cert::Certificate and SigningKey::certificate() returns \u0026x509_cert::Certificate, where x509_cert is pinned at `=0.3.0-rc.4` — a pre-release crate. Any caller implementing either trait must add the same pinned pre-release dependency to their Cargo.toml. This is an implementation detail (the CMS crate required this rc version) leaking through the public trait interface. What goes wrong: implementors cannot use the stable x509-cert 0.2 API alongside this crate; they are forced into the rc ecosystem until rc stabilizes. The encrypt() function also takes `recipients: \u0026[Certificate]` directly for the same reason. One mitigation is DER-byteslice trait methods (pass \u0026[u8] and let the crate re-parse internally); a more complete fix waits for the rc to stabilize. At minimum, document in every affected public item that the type comes from x509-cert 0.3.0-rc.4 and will change when the rc stabilizes. Affected: smime-tree/src/key.rs (RevocationChecker, SigningKey), smime-tree/src/encrypt.rs (encrypt signature).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:15Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:13Z",
+  "closed_at": "2026-06-16T00:19:13Z",
+  "close_reason": "x509-cert RC type in trait bounds is inherent to the pre-release RustCrypto stack (same root cause as MIME-8zt.79). Cannot abstract away without losing type-level compatibility with the cms crate. Will resolve when x509-cert stabilizes.",
+  "labels": [
+    "api-contract",
+    "leakage",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.25",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

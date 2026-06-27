@@ -1,0 +1,15 @@
+{
+  "id": "MIME-j59",
+  "title": "Add LICENSE-MIT and LICENSE-APACHE files",
+  "description": "No license text files exist at the workspace root. The license = \"MIT OR Apache-2.0\" SPDX expression satisfies crates.io but it is conventional and legally cleaner to ship the actual license texts.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-16T01:38:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T01:41:45Z",
+  "closed_at": "2026-06-16T01:41:45Z",
+  "close_reason": "Closed"
+}

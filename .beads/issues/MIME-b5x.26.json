@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.26",
+  "title": "verify() rejects unsigned SignerInfo (no signed_attrs) silently as per-signer failure",
+  "description": "verify.rs line 161: when signed_attrs is absent, verify_one returns fail(..., 'no signed attributes present'). RFC 5652 §5.4 permits absent signed_attrs for direct signature over content. The crate silently rejects these; callers get AllSignersFailed with a non-obvious error. This is a documented limitation but callers will file issues when they encounter CMS blobs from older systems that use unsigned SignerInfos. Fix: document this limitation explicitly in the verify() public doc.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:26:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:34:53Z",
+  "closed_at": "2026-05-02T07:34:53Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.26",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:26:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

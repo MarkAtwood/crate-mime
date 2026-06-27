@@ -1,0 +1,15 @@
+{
+  "id": "MIME-n8h",
+  "title": "[yencoding] Reject =ypart with begin \u003e end at parse time",
+  "description": "Skoll LOW-61: parse_ypart does not validate begin \u003c= end. A malformed header like =ypart begin=100 end=1 parses successfully. The assembler rejects it later, but if the assembler is not used, callers get invalid DecodedPart with part_begin \u003e part_end. Add validation in parse_ypart or the decode layer.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:13:58Z",
+  "closed_at": "2026-06-04T22:13:58Z",
+  "close_reason": "Added begin \u003c= end validation in parse_ypart. Returns InvalidHeader when begin \u003e end."
+}

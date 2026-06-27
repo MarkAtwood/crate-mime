@@ -1,0 +1,30 @@
+{
+  "id": "MIME-e7k.7",
+  "title": "verify.rs: check_message_digest re-encodes Any to DER to decode as OctetString",
+  "description": "check_message_digest() calls attr_value.to_der() then OctetString::from_der(\u0026attr_der). This is a two-step encode-then-decode roundtrip. The der crate's Any type should support decode_as::\u003cOctetString\u003e() directly (as done elsewhere in the codebase, e.g. extract_cbc_iv uses params.decode_as::\u003cOctetString\u003e()). Replace the to_der() + from_der() sequence with attr_value.decode_as::\u003cOctetString\u003e() to eliminate the intermediate allocation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:38:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:43:04Z",
+  "closed_at": "2026-05-02T17:43:04Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.7",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:38:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

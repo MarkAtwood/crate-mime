@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.77",
+  "title": "Good: uuencoding decode_line bound prevents reading past declared length",
+  "description": "uuencoding/src/decode.rs: decode_line() computes bound = payload.len().min(encoded_needed) before processing the payload bytes. This single .min() call prevents reading past the length declared in the line header even when the encoder produced more bytes than it declared, which is a common occurrence in truncated or malformed UU files. The pattern is correct and non-obvious — a naive implementation would trust the payload length or the header length independently, both of which fail on malformed input. Worth defending against 'simplifications' that remove the .min().",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:41:59Z",
+  "closed_at": "2026-06-16T00:41:59Z",
+  "close_reason": "Positive review finding — design decision worth defending. No change needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.77",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

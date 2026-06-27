@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.16",
+  "title": "No test for total_size mismatch after assembly (size= vs actual assembled bytes)",
+  "description": "The Assembler accepts a total_size from =ybegin size= and pre-allocates that many bytes. If the parts collectively provide exactly total_size bytes and is_complete() is true, finish() returns the buffer. There is no validation that the decoded data lengths are consistent with each other or with the sum of all part ranges equalling total_size.\n\nMore importantly, there is no test that checks what happens when is_complete() returns true but the assembled buffer does not match the declared size= field (e.g., because the caller passed a wrong total_size to Assembler::new). The size= field is caller-supplied and not re-validated inside finish().\n\nThis is partially covered by is_complete() checking that all bytes [0, total_size) are covered, but there is no test that supplies a wrong total_size and verifies the assembler rejects or correctly signals the mismatch.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:51:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:47Z",
+  "closed_at": "2026-05-04T23:02:47Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.16",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:51:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

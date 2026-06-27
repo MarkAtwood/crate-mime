@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.10",
+  "title": "decrypt: ECDH ephemeral public key not validated against declared curve before use",
+  "description": "In decrypt.rs try_decrypt_kari(), the ephemeral originator public key is extracted as raw bytes from the OriginatorPublicKey BitString and passed directly to DecryptionKey::agree_ecdh():\n\n  let ephemeral_bytes = match \u0026kari.originator {\n      OriginatorIdentifierOrKey::OriginatorKey(orig) =\u003e orig.public_key.raw_bytes().to_vec(),\n      ...\n  };\n  let cek = key.agree_ecdh(\u0026ephemeral_bytes, ukm, rek.enc_key.as_bytes(), \u0026kari_alg)?;\n\nThe OriginatorPublicKey also contains an AlgorithmIdentifier (algorithm.parameters = curve OID), but the curve OID in the originator key is NOT cross-checked against the KDF scheme OID (kari.key_enc_alg.oid). A crafted KARI entry could supply a P-384 ephemeral key in a KARI declaring dhSinglePass-stdDH-sha256kdf-scheme (P-256 KDF scheme), and the mismatch is silently passed to agree_ecdh.\n\nWhat goes wrong: if an implementor of agree_ecdh does not independently validate the curve of the ephemeral key, a small-subgroup or invalid-curve attack becomes possible — the attacker can cause the ECDH to produce a predictable shared secret Z, recovering the CEK with O(1) oracle queries (integrity break; potential full plaintext recovery). Even without a full attack, a curve mismatch produces a malformed DH output that may propagate as a wrong but structurally valid CEK.\n\nAffected code: decrypt.rs lines 231-245 (try_decrypt_kari, ephemeral extraction and agree_ecdh call). The kari_alg derived from map_kari_alg carries the correct KDF scheme but is not used to validate the originator public key bytes.\n\nFix: before calling agree_ecdh, verify that orig.algorithm.oid == ID_EC_PUBLIC_KEY and that orig.algorithm.parameters (the curve OID) matches the curve implied by kari_alg.key_agreement (P-256 for StdDhSha256Kdf, P-384 for StdDhSha384Kdf). Return MalformedInput if they disagree.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:47Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:11:16Z",
+  "closed_at": "2026-06-16T00:11:16Z",
+  "close_reason": "Added validate_originator_curve() check before agree_ecdh. Rejects mismatched curve OID with MalformedInput.",
+  "labels": [
+    "crypto-security",
+    "review",
+    "untrusted-input"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.10",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

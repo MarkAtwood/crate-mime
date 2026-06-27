@@ -1,0 +1,33 @@
+{
+  "id": "MIME-j5n.3",
+  "title": "Implement range-gap algorithm: missing_ranges() and overlap detection",
+  "description": "Pure algorithmic core for tracking covered byte ranges. No yencoding dep needed for this logic.\n\nWhat to do:\n- In assembler.rs, implement helper fn covered_ranges() -\u003e Vec\u003cRange\u003cu64\u003e\u003e from self.parts, sorted and non-overlapping\n- Implement missing_ranges(\u0026self) -\u003e Vec\u003cRange\u003cu64\u003e\u003e: complement of covered within 0..total_size\n- Implement overlap detection used by add_part(): Err(OverlappingPart { existing, new })\n- is_complete() -\u003e bool: self.missing_ranges().is_empty()\n- Unit tests using synthetic Range values (no DecodedPart needed yet):\n  - No parts: missing_ranges() == [0..total_size]\n  - One part [0..50] out of 100: missing == [50..100]\n  - Three parts leave two gaps: both gaps reported\n  - Overlapping insert returns Err(OverlappingPart)\n- Acceptance: cargo test -p yencoding-multi passes",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:21:16Z",
+  "close_reason": "BTreeMap\u003cu64,u64\u003e interval tracking; missing_ranges() and overlap detection in O(log n).",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.3",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.3",
+      "depends_on_id": "MIME-j5n.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "MIME-6qe.7",
+  "title": "yencoding-multi: is_complete() allocates a Vec just to check is_empty()",
+  "description": "is_complete() calls missing_ranges() which allocates a Vec\u003cRange\u003cu64\u003e\u003e then immediately checks .is_empty(). In a tight reassembly loop (polling after each add_part), this allocates and deallocates on every call — O(n) allocations for n parts. Inline a direct cursor-walk that returns bool without allocating.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:14:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:18:25Z",
+  "closed_at": "2026-05-05T03:18:25Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-6qe.7",
+      "depends_on_id": "MIME-6qe",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:14:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

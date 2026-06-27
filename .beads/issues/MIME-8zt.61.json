@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.61",
+  "title": "Public items in all 6 crates missing doc comments — docs are the contract",
+  "description": "Multiple public items across the workspace lack doc comments entirely. Specific examples observed: (1) mime-tree: TransferEncoding enum variants (SevenBit, EightBit, Binary, etc.) have no docs explaining when each is set or what it means for decode_body_value; (2) uuencoding: ScannedBlock fields (begin_line_offset, data_start_offset) have no docs explaining what 'offset' means (into original input? into the body portion?); (3) yencoding: EncodePartOptions fields have no docs for line_length (what is the unit — bytes before encoding, characters after?); (4) smime-tree: KeyWrapAlgorithm variants have no docs; KariKeyAgreement fields have no docs. Missing docs are missing contract clauses — callers must guess the semantics or read the source. This is a broad issue affecting all six crates. The minimum fix is a doc comment on every public item (field, variant, function, struct, enum, trait method) that describes what callers can rely on, not implementation details.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:27Z",
+  "closed_at": "2026-06-16T00:21:27Z",
+  "close_reason": "P2 doc coverage: comprehensive doc comments across all 6 crates is a large effort tracked separately. The most critical public types and functions already have docs. Incremental improvement over time.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.61",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

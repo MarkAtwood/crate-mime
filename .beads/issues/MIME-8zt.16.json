@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.16",
+  "title": "verify: SignedData signer_infos count not bounded — potential DoS",
+  "description": "In verify.rs, all SignerInfo entries in the SignedData are processed in a collect() without any limit:\n\n  let signers: Vec\u003cSignerResult\u003e = sd.signer_infos.0.iter()\n      .map(|si| verify_one(...))\n      .collect();\n\nEach verify_one() call performs: a SHA-2 digest over signed_content, a DER encode of signed_attrs, a cert lookup over the bag, and an RSA or ECDSA signature verification. RSA verification in particular is CPU-intensive.\n\nA crafted SignedData with 1,000 SignerInfo entries forces 1,000 full RSA verifications on the caller's thread.\n\nWhat goes wrong: a server calling verify() on untrusted input can be driven to 100% CPU for seconds per message, enabling DoS.\n\nAffected code: verify.rs lines 117-131.\n\nFix: cap the number of SignerInfo entries processed (e.g. reject if signer_infos.len() \u003e 10 or a caller-configurable limit). Return MalformedInput if the cap is exceeded.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:01:53Z",
+  "closed_at": "2026-06-16T00:01:53Z",
+  "close_reason": "Added MAX_BAG_CERTS (100) and MAX_SIGNER_INFOS (32) bounds.",
+  "labels": [
+    "crypto-security",
+    "review",
+    "untrusted-input"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.16",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

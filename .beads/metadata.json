@@ -1,8 +1,6 @@
 {
+  "backend": "flatfile",
   "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "MIME",
   "dolt_host": "127.0.0.1",
   "dolt_port": 3308,
   "dolt_user": "root",

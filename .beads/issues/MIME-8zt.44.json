@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.44",
+  "title": "HeaderDateTime fields: invariants documented but not enforced by constructor",
+  "description": "HeaderDateTime in mime-tree/src/header_typed.rs has public fields (hour, minute, second, day, month, year) with documented value ranges (e.g. hour 0-23, minute 0-59). The struct has no #[non_exhaustive] and the fields are pub, so callers can create HeaderDateTime { hour: 99, ... } without any validation. What goes wrong: downstream code that pattern-matches on or serializes a HeaderDateTime can receive out-of-range values it never expected, causing incorrect behavior (e.g. a UI displaying '99:61'). The struct is currently an output type from parse(), so callers should not be constructing it. Adding #[non_exhaustive] prevents construction by callers; if it must remain constructible, a new() constructor that validates ranges and returns Result\u003cSelf, _\u003e would enforce the invariants. File: mime-tree/src/header_typed.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:46Z",
+  "closed_at": "2026-06-16T00:18:46Z",
+  "close_reason": "HeaderDateTime field invariants are documented as parser-produced guarantees. Adding runtime validation to a public struct with pub fields would break callers who construct values directly. The #[non_exhaustive] attribute (added in this session) prevents external struct literal construction, which is the main risk vector.",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.44",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

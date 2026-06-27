@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.64",
+  "title": "smime-tree: base64 line-wrapping logic duplicated in sign.rs and encrypt.rs",
+  "description": "Why this exists: smime_tree/src/sign.rs contains a wrap_base64 helper that line-wraps base64 at 76 characters with CRLF terminators. smime_tree/src/encrypt.rs contains inline logic in build_mime that does the same thing independently.\\n\\nWhat goes wrong: two copies of the same logic diverge. If the line length or line terminator needs to change (e.g. to comply with a stricter RFC interpretation), both places must be changed in sync. A bug fix in one copy will not apply to the other. The correct fix is to use the wrap_base64 helper from sign.rs in encrypt.rs (or extract it to a shared internal module).\\n\\nLocations: smime-tree/src/sign.rs fn wrap_base64; smime-tree/src/encrypt.rs fn build_mime (inline base64-chunk loop).\\n\\nFix: make wrap_base64 pub(crate) in sign.rs (or move it to a new internal util.rs) and call it from encrypt.rs's build_mime.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:25Z",
+  "closed_at": "2026-06-16T00:21:25Z",
+  "close_reason": "P2 refactoring: base64 line-wrapping is 4 lines of code in each location. Extracting it to a shared helper adds a module boundary for minimal dedup. Low priority.",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.64",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

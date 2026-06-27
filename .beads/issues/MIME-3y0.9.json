@@ -1,0 +1,25 @@
+{
+  "id": "MIME-3y0.9",
+  "title": "yencoding: saturating_mul in encode capacity hint",
+  "description": "encode.rs:46 and encode_part: data.len() * 11 / 10 is an unchecked multiply. Change to data.len().saturating_mul(11) / 10.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T03:30:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:35:43Z",
+  "closed_at": "2026-05-05T03:35:43Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-3y0.9",
+      "depends_on_id": "MIME-3y0",
+      "type": "parent-child",
+      "created_at": "2026-05-04T20:30:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

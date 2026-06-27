@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.30",
+  "title": "decode.rs b64_input_was_limited detection is fragile and hard to follow",
+  "description": "decode.rs lines 65-72: b64_input_was_limited is set based on 'stripped.len() == max_b64_chars \u0026\u0026 max_b64_chars \u003c usize::MAX \u0026\u0026 body_bytes.iter().filter(...).nth(max_b64_chars).is_some()'. The nth() call rescans body_bytes from scratch (O(n) second scan) and the logic is hard to reason about. A comment explaining the intent (detect that base64 input was truncated before all content was consumed) would help. Also the is_truncated logic in step 2 (lines 112-125) has three arms that are non-obvious to read in sequence. A single function returning (decoded_bytes, is_truncated) would be clearer.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:27:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T16:10:38Z",
+  "closed_at": "2026-05-02T16:10:38Z",
+  "close_reason": "Closed",
+  "defer_until": "2026-06-01T00:00:00Z",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.30",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:27:14Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "MIME-596",
+  "title": "Review round 3: Build mime-tree and smime-tree workspace",
+  "notes": "Confidence: 92% chance of missed bug. Round 3 assessment: stopping condition not met — P0=0 P1=1 (MIME-596.1: cert.rs trust anchor loop tries only first valid-date anchor for signature verification). All 19 tests pass. The P1 is a real correctness gap in the CA renewal path that the code comment itself acknowledges but the implementation doesn't fully handle.\nConfidence: 90% chance of no missed bugs. Round 3 assessment: stopping condition met — P0=0 P1=0 P2=0 after trust anchor loop fully fixed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:56:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:58:24Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "review"
+  ]
+}

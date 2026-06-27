@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.52",
+  "title": "SmimeError::Der(der::Error) breaks Clone+PartialEq because der::Error may not be PartialEq",
+  "description": "SmimeError derives PartialEq and Clone. The Der(der::Error) variant holds a der::Error. If der::Error does not implement PartialEq (or if its PartialEq changes between versions), this derive will silently fail to compile or produce incorrect equality. The proper pattern is to either (a) not derive PartialEq on SmimeError, (b) use a newtype that implements PartialEq by comparing the Display string, or (c) convert der::Error to a String at the boundary. Currently this compiles, so der::Error is PartialEq, but the coupling to that impl is fragile.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:55:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:04:06Z",
+  "closed_at": "2026-05-02T18:04:06Z",
+  "close_reason": "der::Error derives Copy, Clone, Eq, PartialEq in der 0.8 — no issue.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.52",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:55:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-e7k.1",
+  "title": "cert.rs: pkix-chain index in map_pkix_error may not align with build_chain order",
+  "description": "map_pkix_error() uses PE::SignatureInvalid { index } and PE::NotCA { index } with subject_at(index), where index is into the chain slice passed to pkix_chain::verify_chain_default(). However, the chain slice comes from build_chain() which is leaf-first. pkix-chain may or may not use the same ordering. If pkix-chain indexes from the trust-anchor end (root-first), index 0 means the root, but subject_at(0) returns the leaf cert subject. This causes misleading error messages - wrong certificate subject is shown. The code works correctly for the validation itself; only the error attribution is wrong.",
+  "notes": "INVESTIGATED: pkix-chain docs confirm 'chain[0] is the subject cert' (leaf-first). The chain passed to verify_chain_default comes from build_chain() which is also leaf-first. So index 0 in pkix error = chain[0] = signer_cert. Indices align. NOT a bug. Downgrading to opinion/false-alarm.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:37:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:46:04Z",
+  "closed_at": "2026-05-02T17:46:04Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-e7k.1",
+      "depends_on_id": "MIME-e7k",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:37:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

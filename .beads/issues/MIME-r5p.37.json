@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.37",
+  "title": "cert.rs Algorithm support doc comment is stale — says P-384 planned for pkix-path v0.2 without tracking issue",
+  "description": "The validate_chain() doc comment states 'P-384 support is planned for pkix-path v0.2'. This is a vague forward-looking promise with no link to an issue or tracking state. Future readers cannot verify whether v0.2 shipped or whether this was ever actioned. Replace with a link to the upstream pkix-chain issue or remove the promise and just say 'P-384 CA certificates are not supported'.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:10:57Z",
+  "closed_at": "2026-05-02T18:10:57Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.37",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:25Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

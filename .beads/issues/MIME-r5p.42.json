@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.42",
+  "title": "Test K comment omits expected UnsupportedAlgorithm string for clarity",
+  "description": "smime_tests.rs Test K header comment says 'agree_ecdh returns UnsupportedAlgorithm' but does not document what string is expected. The assert checks msg.contains('KARI'). StubKariKey returns 'KARI not supported by this key'. Add the expected string to the comment so a reader knows the exact error text being asserted.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:53:56Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:12:06Z",
+  "closed_at": "2026-05-02T18:12:06Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.42",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:53:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

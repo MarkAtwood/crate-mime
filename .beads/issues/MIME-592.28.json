@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.28",
+  "title": "No test for scan() with CRLF line endings",
+  "description": "The README and lib.rs doc claim CRLF line endings are handled correctly. The decode.rs tests include a crlf_line_endings test. However, there is no corresponding test in scan.rs or the integration tests that exercises scan() with CRLF input.\n\nCRLF handling in scan.rs (lines 21-22) strips the trailing CR from each line before processing. This code path is untested.\n\nA regression in the CRLF stripping in scan.rs (e.g. an off-by-one in the line boundary calculation that leaves a \\r in the trimmed line) could silently cause:\n- begin-line detection failure (is_begin_line would not match 'begin\\r ...')\n- end-line detection failure (is_end_line would not match 'end\\r')\n- decode_line treating '\\r' as an extra encoded character\n\nMissing test: scan() on a full CRLF-encoded UU block should yield the same result as on a LF-encoded block.\n\nFix: Add a test in scan.rs::tests that exercises scan_impl() on a CRLF input (e.g. the HELLO_BLOCK with all \\n replaced by \\r\\n) and asserts the same result as for the LF version.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:53:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:03:27Z",
+  "closed_at": "2026-05-04T23:03:27Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.28",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:53:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

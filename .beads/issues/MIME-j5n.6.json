@@ -1,0 +1,33 @@
+{
+  "id": "MIME-j5n.6",
+  "title": "Documentation: module-level docs, doc-tests, security note, README stub",
+  "description": "Public API documentation for yencoding-multi.\n\nDepends on: MIME-j5n.4 (API stable)\n\nWhat to do:\n- lib.rs: top-of-file module doc explaining what yencoding-multi does, which problem it solves (multi-part yEnc reassembly), and a minimal end-to-end example in a doc-test showing Assembler::new + add_part + finish\n- assembler.rs: doc comment on Assembler struct, on each method (new, add_part, is_complete, missing_ranges, finish)\n- error.rs: doc comment on AssemblyError and each variant explaining when it fires\n- Security note in lib.rs: CRC32 is a data integrity check, not a cryptographic hash; do not use for security purposes\n- README.md at crate root: crate purpose, quick example, MSRV badge placeholder, license\n- Acceptance: RUSTDOCFLAGS='--cfg docsrs -D warnings' cargo +nightly doc --no-deps -p yencoding-multi produces no warnings; doc-tests pass",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T21:21:21Z",
+  "closed_at": "2026-05-04T21:21:21Z",
+  "close_reason": "lib.rs module docs, security note, quick-start no_run example. README.md. All public items documented.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.6",
+      "depends_on_id": "MIME-j5n.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.6",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:58Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

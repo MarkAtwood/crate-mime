@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.12",
+  "title": "Two independent UU decoders in the same workspace — mime-tree/src/decode.rs and mime-tree/src/uuencode.rs duplicate uuencoding crate logic",
+  "description": "mime-tree contains two separate UU decode implementations: decode_uuencode() in mime-tree/src/decode.rs (for CTE-declared x-uuencode parts) and decode_uu_block() in mime-tree/src/uuencode.rs (for inline scanning). Both implement UU group decoding from scratch, using slightly different approaches. The workspace also has the uuencoding crate which does the same thing with tests and edge cases handled. The decode.rs path does NOT use the uuencoding crate (unlike the uuencode.rs scan path which calls uuencoding::scan). This creates a maintenance burden: any UU edge case fix must be made in three places, and they have diverged already (the panicking subtraction bug in decode.rs doesn't exist in the uuencoding crate).",
+  "acceptance_criteria": "Replace decode_uuencode() in mime-tree/src/decode.rs with a call to uuencoding::decode(), matching how uuencode.rs uses the uuencoding crate. This eliminates the duplicate implementation and the subtraction underflow bug at the same time.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:37:59Z",
+  "closed_at": "2026-05-04T18:37:59Z",
+  "close_reason": "Replaced decode_uuencode() in mime-tree/src/decode.rs with call to uuencoding::decode(); added uuencoding path dep to mime-tree/Cargo.toml",
+  "labels": [
+    "elegance"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.12",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

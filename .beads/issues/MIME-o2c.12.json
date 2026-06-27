@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.12",
+  "title": "Serde default external-tagged encoding of HeaderValueTyped is now part of the public contract",
+  "description": "header_typed.rs:152-170 — HeaderValueTyped derives Serialize + Deserialize with no `#[serde(...)]` attributes. The default serde encoding of a Rust enum is externally-tagged:\n\n    HeaderValueTyped::Addresses(vec![...])  ⟶  {\"Addresses\": [...]}\n    HeaderValueTyped::DateTime(None)        ⟶  {\"DateTime\": null}\n    HeaderValueTyped::Raw(\"hi\".into())      ⟶  {\"Raw\": \"hi\"}\n\nThis JSON shape is now part of the public contract — callers who persist these types in databases, transmit them over JSON-RPC, or write them to message queues now depend on it. Changing the representation is breaking.\n\nPlausible future changes that would be breaking:\n\n- Internally tagged form: `#[serde(tag = \"form\")]` → `{\"form\": \"Addresses\", \"...\": ...}`. Matches JMAP wire format better.\n- Adjacent tagged form: `#[serde(tag = \"form\", content = \"value\")]`. Also closer to JMAP.\n- Snake_case or kebab-case variant names via `#[serde(rename_all = \"snake_case\")]`. JMAP uses camelCase (`asAddresses`, `asMessageIds`).\n- Renaming a variant (e.g., DateTime → Date) — already prevented by #[non_exhaustive], but Serialize/Deserialize derives doubly lock the wire tag.\n\nCaller-facing consequence: a JMAP server serializing these for transport over the wire is locked into the rustic serde default representation, not the JMAP §4.1.2 wire format. A future \"JMAP-native\" version is breaking for current callers.\n\nSame concern applies to HeaderForm (line 130): its serde encoding is the default `\"Raw\" | \"Addresses\" | ...` — capitalized Rust enum names, not the JMAP `asRaw | asAddresses | ...` strings.\n\nFix options:\n- Accept the current shape and document it (\"HeaderValueTyped serializes as externally-tagged JSON; for JMAP wire format, callers should map separately\").\n- Add `#[serde(rename = \"as...\")]` on each variant and re-evaluate the tag style now while pre-1.0.\n- Provide a dedicated JMAP-shaped serializer in a separate module.\n\nEither commit to the current shape in writing, or fix the shape now before downstream code calcifies on it.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:25:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:07:00Z",
+  "closed_at": "2026-05-14T16:07:00Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "versioning"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.12",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:25:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

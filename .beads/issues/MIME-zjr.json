@@ -1,0 +1,24 @@
+{
+  "id": "MIME-zjr",
+  "title": "New crate: uuencoding-multi (multi-part UUencode reassembly)",
+  "description": "Multi-part UUencode is a message sequencing protocol layered on top of UUencoding. Multiple email or Usenet messages each carry one part of a single encoded file; a reassembler collects them, orders them, and feeds the concatenated byte stream to the UUdecoder.\n\nThis is a SEPARATE concern from uuencoding (MIME-ksl), which handles single-message encode/decode. This crate depends on uuencoding; uuencoding does not depend on this crate.\n\nScope:\n- Parse 'part X of M' subject line conventions (many formats in the wild)\n- Represent a collection of parts as an ordered set\n- Detect missing parts\n- Detect and parse TOC parts (part 0 or part 1 listing filenames and sizes)\n- Reassemble the ordered byte stream\n- Feed reassembled bytes to uuencoding::decode()\n- No dependency on mime-tree (callers extract subject and body bytes themselves)\n\nDoes NOT handle:\n- MIME parsing (caller's job, use mime-tree)\n- Fetching or storing messages (caller's job)\n- yEnc multi-part (different encoding entirely)\n\nStatus: PLANNED. Do not start until MIME-ksl (uuencoding crate) is complete and published.\n\nBlocked by: MIME-ksl epic completion.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:00:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:17:08Z",
+  "close_reason": "all steps complete",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr",
+      "depends_on_id": "MIME-ksl",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:00:23Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

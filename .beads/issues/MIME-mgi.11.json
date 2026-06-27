@@ -1,0 +1,28 @@
+{
+  "id": "MIME-mgi.11",
+  "title": "Random MIME boundary with 8-retry loop — worth defending",
+  "description": "sign.rs random_boundary() uses 16 random bytes (hex-encoded) to produce a boundary, checking that the boundary string doesn't appear in content, retrying up to 8 times. A hash-derived boundary (previous design) could be predicted by an adversary who controls the content, allowing a crafted message to cause a deterministic signing failure. The random boundary eliminates this attack surface. P(collision across 8 attempts) \u003c 2^-448 for any fixed content. A contributor suggesting 'simplify to SHA-256(content)' should be told the hash-derived design was explicitly replaced for this reason.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:09:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:43:41Z",
+  "closed_at": "2026-05-02T15:43:41Z",
+  "close_reason": "Random boundary rationale in sign.rs:340 comment: prevents adversarial content from causing deterministic signing failure",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.11",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:09:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

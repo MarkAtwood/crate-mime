@@ -1,0 +1,34 @@
+{
+  "id": "MIME-adz.2.3",
+  "title": "smime-tree: certificate chain validation (cert.rs)",
+  "description": "verify() needs to validate a signer's cert chain against caller-provided trust anchors. No network (no OCSP, no CRL fetch). RFC 5280 at ~/PROJECT/MIME/standards/rfc5280.txt.\n\nDo NOT hand-roll certificate signature verification or chain building. Research first:\n- x509-cert 0.2.x has CertificatePathBuilder — evaluate if it performs full PKIX validation including signature checks up the chain\n- webpki / rustls-webpki as alternative if x509-cert path building is insufficient\n- Choose whichever crate provides actual cryptographic chain validation, not just structural chain building\n\nWhat must work: given a SignedData.certificates bag plus caller-supplied trust anchors, verify that the signer cert chains to a trust anchor with valid signatures and validity periods at each step.",
+  "acceptance_criteria": "validate_chain() accepts a known-good chain and rejects an untrusted cert; tested with OpenSSL-generated cert chains",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:01:39Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.2.3",
+      "depends_on_id": "MIME-adz.2.2",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.3",
+      "depends_on_id": "MIME-adz.2",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:28Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

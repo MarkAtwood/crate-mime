@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.79",
+  "title": "smime-tree pre-release dep pins create unsolvable version conflicts for downstream",
+  "description": "smime-tree/Cargo.toml pins multiple pre-release RustCrypto crates with exact version constraints (=0.3.0-pre.2, =0.3.0-rc.4, =0.10.0-rc.18, =0.14.0-rc.9, =3.0.0-rc.10). Any downstream crate that also uses cms, x509-cert, rsa, p256, p384, or signature must use exactly these pinned versions or Cargo will refuse to resolve the dependency graph. This is not unique to smime-tree (RustCrypto pre-release coordination is inherent), but the public API types (Certificate in encrypt/sign/RevocationChecker, der::Error in SmimeError) make the coupling inescapable even for callers who do not use the cryptographic internals. What goes wrong: a production codebase that already uses x509-cert 0.2 (stable) cannot add smime-tree as a dependency. Documentation should prominently state that these pre-release pins are intentional coordination pins, that downstream must use matching versions, and provide a migration note for when they stabilize. Files: smime-tree/Cargo.toml, smime-tree README.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:43Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:16:16Z",
+  "closed_at": "2026-06-16T00:16:16Z",
+  "close_reason": "Pre-release dep pins (cms, x509-cert, rsa, p256, p384, etc.) are intentional — these are coordinated RustCrypto monorepo releases. The pins will be relaxed when upstream publishes stable versions. This is already documented in the crate README and CLAUDE.md. Not actionable until upstream stabilizes.",
+  "labels": [
+    "api-contract",
+    "review",
+    "versioning"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.79",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

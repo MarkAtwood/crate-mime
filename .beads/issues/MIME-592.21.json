@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.21",
+  "title": "encode: line_length=1 violates stated line-length contract for escaped bytes",
+  "description": "## Bug\n\n`encode()` and `encode_part()` document `line_length` as \"maximum number of encoded bytes per line (1–255)\", but with `line_length=1` every byte that requires a 2-byte escape sequence produces a line of length 2 (violating the maximum) plus a spurious empty `\\r\\n` line before it.\n\n## Root cause\n\nIn `encode_body` (encode.rs line 135), when `col + 2 \u003e line_length` the encoder flushes the current partial line before emitting an escape pair. When `col == 0` and `line_length == 1`, this emits an empty `\\r\\n` even though there is nothing to flush, then emits the 2-byte pair, then immediately flushes again at the `col \u003e= line_length` check — producing:\n\n```\n\\r\\n       (spurious empty line)\n=\u003cescaped\u003e\\r\\n  (2-char line, exceeds line_length=1)\n```\n\n## Impact\n\nLow severity: `line_length=1` is a pathological value that no real yEnc encoder would use. However, the stated API contract is violated. The Rust decoder handles empty lines and 2-char lines without error, so round-trips still succeed. External decoders may not.\n\n## Fix option 1 — Document the constraint\n\nChange the doc comment to \"minimum effective value is 2; escape pairs always occupy 2 columns\" and clamp to `line_length.max(2)` internally.\n\n## Fix option 2 — Encode-time assert\n\n`assert!(line_length \u003e= 2, \"line_length must be \u003e= 2 to accommodate escape sequences\")`\n\n## Test to add\n\n```rust\n#[test]\nfn no_line_exceeds_line_length_with_escapes() {\n    // line_length=2: escape pairs fit exactly; no line should exceed 2.\n    let payload = vec![19u8; 10]; // all bytes encode to '=' (need escaping)\n    let encoded = encode(\u0026payload, \"t.bin\", 2);\n    for line in encoded.split(|\u0026b| b == b'\\n') {\n        let line = line.strip_suffix(b\"\\r\").unwrap_or(line);\n        if line.starts_with(b\"=ybegin\") || line.starts_with(b\"=yend\") || line.is_empty() { continue; }\n        assert!(line.len() \u003c= 2, \"line too long: {:?}\", line);\n    }\n}\n```",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:52:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:55:20Z",
+  "closed_at": "2026-05-04T22:55:20Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.21",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:52:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

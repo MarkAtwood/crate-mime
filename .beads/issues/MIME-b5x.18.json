@@ -1,0 +1,31 @@
+{
+  "id": "MIME-b5x.18",
+  "title": "AES unpad errors discarded with |_| in decrypt.rs",
+  "description": "decrypt.rs decrypt_aes128_cbc and decrypt_aes256_cbc use .map_err(|_| SmimeError::Other(\"AES-CBC unpad error\")) — the original unpad error (block-padding crate's UnpadError enum) is discarded. The unpad error only has one meaningful variant (InvalidLength) so the information loss is minimal, but a SAFETY comment or at least .map_err(|e| SmimeError::Other(format!(\"AES-CBC unpad: {e}\"))) would preserve the error type for debugging.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:07:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:17:52Z",
+  "closed_at": "2026-05-02T07:17:52Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.18",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:07:33Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

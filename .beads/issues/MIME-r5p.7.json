@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.7",
+  "title": "qp_input_was_limited can be set to false even when input is truncated",
+  "description": "decode.rs line 88-91: qp_input_was_limited is computed as 'limit \u003c body_bytes.len()'. When max_bytes * 4 == body_bytes.len() exactly, limit == body_bytes.len() so qp_input_was_limited=false even though the slice consumed the entire QP input. However the actual decoded output might be shorter than max_bytes (due to =XX sequences), meaning is_truncated will be false when it should be true. Repro: body = 'a' * n with all =XX encoding such that 4*max_bytes == encoded_len.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:25Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:00:44Z",
+  "closed_at": "2026-05-02T18:00:44Z",
+  "close_reason": "Step 2 of decode catches over-decode: when decoded.len() \u003e max_bytes, is_truncated=true. Edge case 4*n==len is handled correctly.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.7",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:24Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

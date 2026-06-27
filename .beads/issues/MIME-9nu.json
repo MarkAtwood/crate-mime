@@ -1,0 +1,19 @@
+{
+  "id": "MIME-9nu",
+  "title": "Review: MIME-gcz pass-3 (c080326)",
+  "notes": "Maintainer risk: MEDIUM — One P0 correctness bug: decode_limited returns is_truncated=true for a complete block when max_bytes equals the exact decoded size. Data is correct (no loss), but the misleading is_truncated flag causes callers doing incremental preview to make a redundant full re-fetch. One P1 maintenance hazard: decode() and decode_limited() are 110-line duplicates; any future fix to one must be manually applied to the other. The gcz.19 and gcz.20 fixes from pass-2 are correct and minimal. The decode_uuencode truncation classification logic is correct for all current cases.\nConfidence: 10% chance of missed bug. Least confident flags: (1) the is_truncated=true for exact-limit case — I am confident this is a bug but it is conservative (no data loss), so severity for end users is 'unnecessary re-fetch' not 'wrong data'; (2) the O(max_bytes) efficiency claim — I traced this carefully and the lines-splitting cost is definitely O(input), not O(max_bytes), but the allocation bound is correct. Uncertainty driven by: not having run the no_panic corpus under MIRI; not having a test that exercises max_bytes=exact-size on a complete block (confirming the P0 behavior). Would raise confidence if: added decode_limited unit test for exact-limit case and confirmed is_truncated=true; ran cargo-fuzz on decode_limited for 5 minutes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:52:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T19:02:07Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

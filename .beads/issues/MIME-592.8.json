@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.8",
+  "title": "CRC tests use self-referential oracle (crc32fast hashes both sides)",
+  "description": "In yencoding-multi/tests/integration.rs, all CRC tests that call set_expected_crc32() compute the expected value via crc32fast::hash() — the same crate that finish() uses internally. This means the CRC path only proves crc32fast::hash == crc32fast::hash, not that the assembled data has the correct CRC.\n\nAffected tests: three_parts_in_order, three_parts_out_of_order, missing_middle_part, duplicate_part_rejected, sweep_sizes_round_trip (via encode_and_assemble helper), and roundtrip_via_yencoding_encode_part in assembler.rs.\n\nThe crc_mismatch_on_finish test uses a hardcoded 0xdeadbeef which is a proper negative test, but no positive CRC test uses an independently-computed expected value.\n\nFix: replace at least one set_expected_crc32() call with a value computed externally, e.g.:\n  Python: binascii.crc32(bytes(range(90))) \u0026 0xFFFFFFFF\n  OpenSSL: echo -n ... | openssl dgst ...\nHardcode that value as a hex literal in the test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:02:24Z",
+  "closed_at": "2026-05-04T23:02:24Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.8",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:07Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

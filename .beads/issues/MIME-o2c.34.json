@@ -1,0 +1,33 @@
+{
+  "id": "MIME-o2c.34",
+  "title": "HeaderForm derives Hash but HeaderValueTyped does not — asymmetric, blocks valid use cases",
+  "description": "header_typed.rs:130 `HeaderForm` derives `Hash`. header_typed.rs:152 `HeaderValueTyped` does not. Every payload variant's type is `Hash`-able (`String`, `Vec\u003cEmailAddress\u003e`, `Vec\u003cAddressGroup\u003e`, `Vec\u003cString\u003e`, `Option\u003cHeaderDateTime\u003e`) provided the inner structs also derive `Hash` (see related missing-Hash issues on EmailAddress/AddressGroup/HeaderDateTime). A JMAP server caching by `(form, raw_bytes)` or deduping (form, result) pairs cannot use `HashSet\u003cHeaderValueTyped\u003e` or `HashMap\u003cHeaderValueTyped, T\u003e`. The asymmetry (selector hashable, result not) is the kind of API gap a serious Rust practitioner notices on first reading. Derive `Hash` on all the public payload types and on `HeaderValueTyped` itself.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T15:41:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:00:17Z",
+  "closed_at": "2026-05-14T16:00:17Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "run-bd-review-loop-20260514T153205Z-3910344",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.34",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T08:41:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

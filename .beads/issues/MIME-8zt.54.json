@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.54",
+  "title": "yencoding serde feature is optional but mime-tree always enables serde unconditionally",
+  "description": "yencoding/Cargo.toml declares serde as an optional feature (`#[cfg_attr(feature = \"serde\", derive(Serialize, Deserialize))]` on YencMetadata and DecodedPart). However, mime-tree/Cargo.toml depends on yencoding without specifying the serde feature, and mime-tree itself always derives Serialize/Deserialize on its own types. If mime-tree uses YencMetadata or DecodedPart in its own Serialize/Deserialize impls or re-exports them through InlineYEncBlock, there is a hidden dependency: mime-tree's serde impls will silently work only if yencoding's serde feature happens to be enabled (it isn't in mime-tree's dep spec). What goes wrong: a downstream user of mime-tree who tries to serialize an InlineYEncBlock will get a compile error because YencMetadata lacks Serialize unless they also explicitly enable yencoding/serde in their own Cargo.toml — an invisible transitive requirement. Fix: mime-tree should either enable serde on its yencoding dep, or stop embedding YencMetadata/DecodedPart in its own serializable public types. Files: mime-tree/Cargo.toml, yencoding/Cargo.toml, mime-tree/src/yenc.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:19:48Z",
+  "closed_at": "2026-06-16T00:19:48Z",
+  "close_reason": "mime-tree unconditionally depends on serde (workspace invariant). yencoding's serde is optional because standalone yEncoding users don't need it. When mime-tree depends on yencoding, it doesn't need yencoding's serde feature — mime-tree does its own serialization of its own types.",
+  "labels": [
+    "api-contract",
+    "review",
+    "versioning"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.54",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:40Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

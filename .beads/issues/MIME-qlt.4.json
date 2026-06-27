@@ -1,0 +1,29 @@
+{
+  "id": "MIME-qlt.4",
+  "title": "message digest mismatch uses SmimeError::Other instead of appropriate variant",
+  "description": "verify.rs line 303: a message-digest mismatch (content was tampered) returns SmimeError::Other('message digest mismatch'). This is a string-wrapped error that callers cannot programmatically distinguish from other Other(...) messages. It is semantically a signature verification failure and would be better expressed via SmimeError::SignatureVerification (if that variant is kept) or via the structured error path. Low impact since the error is captured inside SignerResult.error as a string anyway — it does not surface as a top-level Err return.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:12:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:17:06Z",
+  "closed_at": "2026-05-02T08:17:06Z",
+  "close_reason": "Opinion: SignatureVerification is now used for digest mismatch (MIME-qlt.3 fix). Variant name is correct for the failure semantics.",
+  "labels": [
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-qlt.4",
+      "depends_on_id": "MIME-qlt",
+      "type": "parent-child",
+      "created_at": "2026-05-02T01:12:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

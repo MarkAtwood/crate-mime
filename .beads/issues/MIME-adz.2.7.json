@@ -1,0 +1,34 @@
+{
+  "id": "MIME-adz.2.7",
+  "title": "smime-tree: implement encrypt()",
+  "description": "Encryption is a core S/MIME operation. Implement in encrypt.rs: generate random CEK and IV; encrypt content; wrap CEK per recipient; build EnvelopedData; encode as ContentInfo DER; wrap in application/pkcs7-mime MIME. RFC texts in ~/PROJECT/MIME/standards/.\n\nDo NOT hand-roll any of this:\n- Random generation: rand_core::OsRng (NOT the top-level rand crate — rand_core is the minimal CSPRNG interface; OsRng satisfies CryptoRngCore which all RustCrypto primitives accept)\n- Content encryption: aes+cbc for AES-CBC; aes-gcm for AES-GCM\n- RSA path (KeyTransRecipientInfo): rsa crate OAEP or PKCS1v15 key transport\n- ECDH path (KeyAgreeRecipientInfo, RFC 5753): p256/p384 ephemeral key pair; x963-kdf for KDF; aes-kw to wrap CEK\n- DER encoding of EnvelopedData: cms crate builder types + der crate encoding traits — do not hand-roll DER",
+  "acceptance_criteria": "encrypt() output is decrypted correctly by openssl smime -decrypt for both RSA and ECDH recipient certs",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T04:16:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:04:58Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-adz.2.7",
+      "depends_on_id": "MIME-adz.2",
+      "type": "parent-child",
+      "created_at": "2026-05-01T21:16:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-adz.2.7",
+      "depends_on_id": "MIME-adz.2.2",
+      "type": "blocks",
+      "created_at": "2026-05-01T21:16:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

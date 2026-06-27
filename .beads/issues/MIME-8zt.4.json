@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.4",
+  "title": "Naming: PartCollection/reassemble (uu-multi) vs Assembler/finish (yenc-multi) for same concept",
+  "description": "## Finding\n\nuuencoding-multi and yencoding-multi both implement multi-part binary reassembly, but use entirely different names for every public concept:\n\n| Concept | uuencoding-multi | yencoding-multi |\n|---|---|---|\n| Accumulator type | PartCollection | Assembler |\n| Terminal operation | reassemble(\u0026coll) | assembler.finish() |\n| Error type | MultiUuError | AssemblyError |\n| Result type | ReassembledFile | Vec\u003cu8\u003e |\n| Part input | PartEntry | DecodedPart |\n\n## Impact\n\nA caller that switches from UUencoding to yEnc, or handles both formats, must learn two completely parallel vocabularies for the same concept. A maintainer adding a third encoding format has no canonical naming pattern to extend. The divergence is not justified by any protocol difference — both formats accumulate decoded parts and assemble them into a complete file.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:23Z",
+  "closed_at": "2026-06-16T00:22:23Z",
+  "close_reason": "Naming reflects different domain patterns. Renaming would be breaking. Same root as MIME-8zt.8.",
+  "labels": [
+    "naming",
+    "review",
+    "workspace-api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.4",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

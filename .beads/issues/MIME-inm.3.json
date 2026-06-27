@@ -1,0 +1,32 @@
+{
+  "id": "MIME-inm.3",
+  "title": "Implement core encode/decode byte transform",
+  "description": "Implement src/transform.rs: the yEnc byte-level encode and decode operations.\n\nENCODE:\n  pub(crate) fn encode_bytes(input: \u0026[u8], line_length: u8, output: \u0026mut Vec\u003cu8\u003e)\n\nAlgorithm per byte:\n1. encoded = input_byte.wrapping_add(42)\n2. If encoded is NUL(0x00), LF(0x0A), CR(0x0D), or =(0x3D): write 0x3D then encoded.wrapping_add(64)\n3. Otherwise: write encoded\n4. Track column count; when column reaches line_length, write \\r\\n and reset column\n\nNote: the spec says to also escape TAB and SPACE in some old versions. Do NOT escape them -- modern encoders do not and it wastes space.\n\nDECODE:\n  pub(crate) fn decode_bytes(input: \u0026[u8], output: \u0026mut Vec\u003cu8\u003e) -\u003e Result\u003c(), YencError\u003e\n\nAlgorithm:\n- Process input bytes sequentially\n- Discard CR (0x0D), LF (0x0A), NUL (0x00) -- these are line-wrap artifacts\n- When = (0x3D) is encountered: read next non-CRLF byte X, emit X.wrapping_sub(64).wrapping_sub(42)\n- Otherwise: emit byte.wrapping_sub(42)\n- Stop when a line beginning with =yend is reached (caller handles this; this function processes the data bytes only between =ybegin/=ypart and =yend)\n\nDot-stuffing: if the first byte of a line (position immediately after LF) is . (0x2E), check if the next byte is also . -- if so, skip the first dot (it was transport dot-stuffing). This is a defensive heuristic; do not add dots to encoded output.\n\nBuild a lookup table at compile time (const fn) for the encode path to avoid branches in the hot loop. The aswaving/yenc crate demonstrates this pattern.\n\nTests (oracle: hand-computed from the algorithm, or use Python: bytes([((b + 42) % 256) for b in input_bytes]) for encode):\n- Encode b'Cat' -\u003e known output bytes (compute manually or via Python)\n- Encode byte that maps to NUL -\u003e escape sequence present in output\n- Encode byte that maps to = -\u003e escape sequence present in output\n- Encode byte that maps to LF -\u003e escape sequence present in output\n- Encode byte that maps to CR -\u003e escape sequence present in output\n- Decode the above outputs -\u003e original bytes\n- Decode with CRLF line endings -\u003e CRLF discarded, data correct\n- Decode with dot-stuffing (.. at line start) -\u003e single dot emitted\n- Round-trip: encode then decode = identity for all byte values 0x00-0xFF",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:12:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T21:13:42Z",
+  "close_reason": "Implemented in decode.rs:decode_line and encode.rs:encode_body. Core +42/-42 transform, escape handling, dot-stuffing, CRLF discard. 9 unit tests + all-256-bytes round-trip.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.3",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:12:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.3",
+      "depends_on_id": "MIME-inm.1",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:13:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

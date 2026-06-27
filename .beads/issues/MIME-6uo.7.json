@@ -1,0 +1,30 @@
+{
+  "id": "MIME-6uo.7",
+  "title": "matches_recipient test catch-all arm (_ =\u003e false) makes future variants silently fail",
+  "description": "smime_tests.rs lines 119-121: the test implementation of matches_recipient has '_ =\u003e false'. RecipientIdentifier is #[non_exhaustive], so this is required to compile. But because the trait is designed for user implementation, this establishes the pattern that 'add a catch-all false arm' is the right way to implement the method. A real implementation that silently fails to match a new variant (e.g. if a third variant is added later) would cause decrypt() to return NoMatchingRecipient with no indication of what went wrong. The doc comment example in key.rs (lines 116-137) correctly shows exhaustive matching. The test implementation contradicts the documented pattern. Either the example should show a #[non_exhaustive]-compatible pattern, or the test should mirror the documented example.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:51:16Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:06:02Z",
+  "closed_at": "2026-05-02T08:06:02Z",
+  "close_reason": "Fixed: doc comment for matches_recipient now shows the required catch-all arm with explanation of #[non_exhaustive]",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.7",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:51:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-cjt.2",
+  "title": "KEK not zeroized in ecdh_wrap_cek",
+  "description": "In smime-tree/src/encrypt.rs, ecdh_wrap_cek() derives a key-encryption key (KEK) into a plain Vec\u003cu8\u003e:\n\n    let mut kek = vec![0u8; kek_len];\n    ansi_x963_kdf::derive_key_into::\u003cD\u003e(shared_secret_bytes, \u0026shared_info_der, \u0026mut kek)?;\n    // kek used to wrap CEK, then dropped with no zeroization\n\nThe KEK is derived from the ECDH shared secret and used once to wrap the CEK. After use it is dropped as a plain Vec\u003cu8\u003e, leaving key material on the heap until the allocator reclaims the region.\n\nReview pass 6 correctly zeroized the CEK via Zeroizing\u003cVec\u003cu8\u003e\u003e in encrypt_aes_cbc(). The KEK in ecdh_wrap_cek() was not addressed in that pass.\n\nFix: declare kek as Zeroizing\u003cVec\u003cu8\u003e\u003e:\n\n    let mut kek = Zeroizing::new(vec![0u8; kek_len]);\n\nZeroizing implements DerefMut so the KDF call (needs \u0026mut [u8]) and the AES-KW slice (needs \u0026[u8; N]) continue to work unchanged. zeroize is already a dependency.\n\nAcceptance criteria:\n- kek declared as Zeroizing\u003cVec\u003cu8\u003e\u003e in ecdh_wrap_cek\n- cargo test -p smime-tree passes\n- cargo clippy -p smime-tree -- -D warnings passes",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:48:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:49:31Z",
+  "closed_at": "2026-05-02T14:49:31Z",
+  "close_reason": "Closed",
+  "labels": [
+    "memory-safety",
+    "my-oss",
+    "review",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-cjt.2",
+      "depends_on_id": "MIME-cjt",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:48:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

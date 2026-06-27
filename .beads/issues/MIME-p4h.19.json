@@ -1,0 +1,30 @@
+{
+  "id": "MIME-p4h.19",
+  "title": "smime-tree error.rs: SmimeError::Other(String) and ::MalformedInput(String) use stringly-typed messages",
+  "description": "SmimeError::Other(String) and SmimeError::MalformedInput(String) carry a free-form message string. Callers who want to distinguish sub-cases (e.g. 'CBC IV missing' vs 'no encrypted content') must parse the string. Stringly-typed error variants lose the values; structured variants keep them accessible. Idiomatic Rust: add sub-variants like MissingIv, NoEncryptedContent, AesCekWrongLength { got: usize, expected: usize }, etc. The Other variant can be retained for truly unclassifiable errors as a catch-all with #[non_exhaustive] already in place.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:16:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:40:27Z",
+  "closed_at": "2026-05-02T14:40:27Z",
+  "close_reason": "Closed",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.19",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:16:30Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

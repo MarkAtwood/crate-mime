@@ -1,0 +1,33 @@
+{
+  "id": "MIME-ksl.4",
+  "title": "Implement decode() — full block with begin/end framing",
+  "description": "Implement pub fn decode(input: \u0026[u8]) -\u003e Result\u003cDecodedBlock, UuError\u003e in src/decode.rs.\n\nDecodedBlock: { data: Vec\u003cu8\u003e, metadata: BlockMetadata, is_truncated: bool }\nBlockMetadata: { filename: String, mode: u32 }\n\nAlgorithm:\n1. Split input into lines on \\n. Strip \\r from each line end.\n2. Find the first line starting with 'begin' (case-insensitive). If none found: Err(UuError::InvalidBeginLine).\n3. If the begin line starts with 'begin-base64': Err(UuError::BeginBase64).\n4. Parse begin line by splitting on ASCII whitespace (handles tabs, multiple spaces): tokens[0]='begin', tokens[1]=mode (parse as octal u32, default 0 on failure), tokens[2..]=filename (rejoin with single space to handle filenames with spaces). Strip trailing \\r from filename.\n5. For each subsequent line, call decode_line(). If decode_line returns Ok(0): terminator found, look for 'end' line (case-insensitive, skip blank lines), set is_truncated=false, return Ok.\n6. If EOF before terminator or end: set is_truncated=true, return Ok with partial data (not Err — partial data is useful).\n7. If decode_line returns Err: set is_truncated=true, return Ok with data decoded so far. Rationale: returning partial data on corruption is more useful than returning nothing.\n\nStrict rule: no panics on any input whatsoever.\n\nTests (oracle: Python uu module or UNIX uuencode, NOT this crate):\n- Well-formed block: correct data, metadata, is_truncated=false\n- CRLF line endings throughout\n- Trailing spaces stripped from data lines (shorter than length implies)\n- begin-base64 -\u003e Err(BeginBase64)\n- Malformed begin line -\u003e Err(InvalidBeginLine)\n- Missing end (truncated) -\u003e Ok with is_truncated=true\n- Filename with spaces: 'begin 644 My File.doc' -\u003e filename='My File.doc'\n- Empty filename: 'begin 644 ' or 'begin 644' -\u003e filename='' \n- Tabs in begin line: 'begin\\t644\\tfile.txt'\n- mode with leading zero: 'begin 0644 file' -\u003e mode=0o644=420\n- Backtick and space both accepted as terminator\n- Blank line accepted as terminator (space stripped by mailer)\n- begin line NOT at start: input has leading garbage lines before begin",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:56:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:57:47Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.4",
+      "depends_on_id": "MIME-ksl.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:13Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.4",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:56:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.20",
+  "title": "Missing Display on HeaderDateTime",
+  "description": "mime-tree/src/header_typed.rs:67-79 — HeaderDateTime exposes to_rfc3339() and to_timestamp() inherent methods but has no Display impl. RFC 3339 is the obvious canonical text form (and is already implemented by to_rfc3339). Idiomatic Rust would have impl fmt::Display call into the rfc3339 renderer so that {dt} interpolation, log macros, and error chains work without callers remembering the method name. This is exactly the 'force callers to remember method names instead of using format strings' smell the prompt's traits section calls out. Separate from MIME-o2c.15 (which is about doc wording on to_rfc3339) and MIME-o2c.16 (doc wording on to_timestamp).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:30:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T15:59:58Z",
+  "closed_at": "2026-05-14T15:59:58Z",
+  "close_reason": "Type-definition cleanup batch on the typed header surface: (.4) added #[non_exhaustive] to EmailAddress and AddressGroup (HeaderDateTime was already done); (.5) dropped Copy from HeaderDateTime; (.26) dropped Copy from HeaderForm; (.18/.19/.20) added Display impls — RFC 5322 §3.4 mailbox/group form for EmailAddress/AddressGroup, RFC 3339 form for HeaderDateTime; (.34/.35) added Hash on EmailAddress/AddressGroup/HeaderDateTime/HeaderValueTyped; (.36) added Default on EmailAddress/AddressGroup; (.33) symmetric by-value internal signature on to_mail_parser/from_mail_parser. New public constructors EmailAddress::new and AddressGroup::new for callers blocked by #[non_exhaustive]. New tests cover Display, Hash, and TzSign.",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.20",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:30:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

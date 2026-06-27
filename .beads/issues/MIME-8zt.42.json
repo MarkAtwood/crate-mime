@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.42",
+  "title": "encrypt() panic documented in # Panics but function returns Result",
+  "description": "smime-tree/src/encrypt.rs has a # Panics section in its doc comment. Like sign(), the function already returns Result\u003cVec\u003cu8\u003e, SmimeError\u003e, so there is no reason for the documented panic to be a panic rather than an Err variant. What goes wrong: library callers cannot catch panics in normal Rust; a panic from inside encrypt() will unwind through their code. The fix is the same: replace every documented panic path with an Err return. This is distinct from the sign() issue because encrypt() panics on a different condition. File: smime-tree/src/encrypt.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:17:43Z",
+  "closed_at": "2026-06-16T00:17:43Z",
+  "close_reason": "The panic is in the rsa crate's encrypt() API which takes UnwrapErr(SysRng) — no try_encrypt variant exists. The preflight getrandom check (256 bytes) covers all practical failure scenarios. The residual TOCTOU gap is already documented in the # Panics section. Cannot fix without upstream rsa crate changes.",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.42",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:08Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

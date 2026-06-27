@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.2",
+  "title": "uuencoding: serde feature declared but never applied to any public type",
+  "description": "Cargo.toml declares a 'serde' feature that enables serde/derive. No public type (BlockMetadata, DecodedBlock, ScannedBlock, UuError) has cfg_attr(feature=serde, derive) guards. Enabling the feature compiles serde in but provides zero serialization capability. Either add derives to the four public types or remove the dead feature.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:51:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T02:58:18Z",
+  "closed_at": "2026-05-05T02:58:18Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.2",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:51:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

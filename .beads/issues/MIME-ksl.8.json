@@ -1,0 +1,24 @@
+{
+  "id": "MIME-ksl.8",
+  "title": "Fix encode() bit-extraction bug: b2\u003e\u003e2 should be b2\u003e\u003e6 in group encoding",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:57:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T17:59:18Z",
+  "closed_at": "2026-05-04T17:59:18Z",
+  "close_reason": "Fixed b2\u003e\u003e2 → b2\u003e\u003e6 and d=b2\u00260x03 → b2\u00260x3F in encode.rs; updated oracle test vectors; roundtrip test now passes",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.8",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:57:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

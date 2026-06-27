@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.28",
+  "title": "decode: base64 decode falls back to raw body bytes on error, not empty/error",
+  "description": "In decode.rs, when BASE64_STANDARD.decode() fails for a Base64-encoded part, the fallback is String::from_utf8_lossy(body_bytes).into_owned().into_bytes() — returning the raw (still base64-encoded) body bytes as if they were the decoded content, with is_encoding_problem=true. A caller that ignores is_encoding_problem will receive base64 gibberish as the decoded text value. RFC 2045 §6.8 does not specify a fallback for invalid base64 — returning the raw bytes as decoded text is misleading and will propagate corrupted data silently if the caller does not check is_encoding_problem.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:45:54Z",
+  "closed_at": "2026-05-02T05:45:54Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.28",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

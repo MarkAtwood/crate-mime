@@ -1,0 +1,25 @@
+{
+  "id": "MIME-592.13",
+  "title": "Assembler::new() allocates full buffer immediately — OOM risk on untrusted size=",
+  "description": "Assembler::new(total_size) calls vec![0u8; size] unconditionally. If the =ybegin size= field comes from an untrusted source (any article from an NNTP server), a crafted article with size=4294967295 will cause a 4 GiB allocation attempt on 64-bit targets, or an immediate OOM on 32-bit targets (caught by TotalSizeTooLarge).\n\nOn 64-bit Linux, a 16 EiB allocation will succeed in virtual address space (lazy allocation) but the actual mapped pages will grow as parts are written. However an adversary can set size= to any value up to usize::MAX and the assembler will attempt a zero-filled allocation of that size.\n\nFix: add a configurable maximum total_size cap (e.g. max_total_size parameter or a MAX_TOTAL_SIZE constant) and return an error if exceeded. The doc example in lib.rs shows the caller is expected to supply total_file_size — document that callers must validate it against their own resource limits before calling Assembler::new().",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T22:50:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T22:59:20Z",
+  "closed_at": "2026-05-04T22:59:20Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-592.13",
+      "depends_on_id": "MIME-592",
+      "type": "parent-child",
+      "created_at": "2026-05-04T15:50:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

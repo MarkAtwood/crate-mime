@@ -1,0 +1,30 @@
+{
+  "id": "MIME-72l.55",
+  "title": "decrypt_aes128/256_gcm functions are dead code; AES-GCM path is unreachable",
+  "description": "decrypt.rs defines decrypt_aes128_gcm() and decrypt_aes256_gcm() (lines 169-198) both marked #[allow(dead_code)]. The dispatch in decrypt() explicitly returns UnsupportedAlgorithm for AES-GCM OIDs before it would reach them (lines 58-63). These functions are dead code that will never be called through the current logic. They will confuse a contributor who wonders why GCM is stubbed out in one place but apparently implemented elsewhere. They should be removed until AuthEnvelopedData is actually implemented.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:44:19Z",
+  "closed_at": "2026-05-02T05:44:19Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.55",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

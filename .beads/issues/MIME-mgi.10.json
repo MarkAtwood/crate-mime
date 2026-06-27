@@ -1,0 +1,28 @@
+{
+  "id": "MIME-mgi.10",
+  "title": "Zeroizing\u003cVec\u003cu8\u003e\u003e for CEK and KEK — worth defending",
+  "description": "encrypt_aes_cbc returns the CEK as Zeroizing\u003cVec\u003cu8\u003e\u003e; ecdh_wrap_cek holds the KEK as Zeroizing\u003cVec\u003cu8\u003e\u003e; find_and_decrypt_cek returns Zeroizing\u003cVec\u003cu8\u003e\u003e. This ensures key material is scrubbed from heap memory when the Vec is dropped. A contributor cleaning up 'unnecessary' type wrappers would introduce a key-material leak. The Zeroize dependency is already listed and its use here is the entire justification for it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:09:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:43:38Z",
+  "closed_at": "2026-05-02T15:43:38Z",
+  "close_reason": "Zeroizing rationale in encrypt.rs:197 and decrypt.rs:96 doc comments; scrub-on-drop behavior is the point of the dep",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.10",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:09:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

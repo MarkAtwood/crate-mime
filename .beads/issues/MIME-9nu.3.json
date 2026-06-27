@@ -1,0 +1,30 @@
+{
+  "id": "MIME-9nu.3",
+  "title": "decode_limited() O(max_bytes) claim is wrong — splits all input into lines first",
+  "description": "The doc comment says 'This makes preview queries O(max_bytes) rather than O(input)' but this is inaccurate. The function begins with: let lines: Vec\u003c\u0026[u8]\u003e = input.split(...).collect() — this walks all of input and builds a Vec of all lines, O(input) time and O(number-of-lines) space. The begin_idx search is also O(input). Only the *decoding* of data lines is O(max_bytes). For large UU-encoded attachments (hundreds of KB), a max_bytes=100 preview call still pays the full input-splitting cost. A line-by-line iterator approach (without collect()) would achieve true O(max_bytes) after the begin line is found. The allocation for decoded data is bounded (correct), but the claim in the doc is misleading. At scale: a 1 MB UU attachment previewed at 100 bytes does O(1 MB) work instead of O(100 bytes).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:57:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T19:01:00Z",
+  "closed_at": "2026-05-04T19:01:00Z",
+  "close_reason": "Replaced false O(max_bytes) claim with accurate complexity note explaining O(input) line-split up-front.",
+  "labels": [
+    "efficiency",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-9nu.3",
+      "depends_on_id": "MIME-9nu",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:57:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "MIME-o2c.17",
+  "title": "parse_header_typed doc has only Addresses example; Date/URLs/MessageIds/GroupedAddresses/Raw have no example",
+  "description": "header_typed.rs:182-196 — the parse_header_typed doc carries one runnable example, covering only the Addresses form.\n\nThe other five forms (GroupedAddresses, MessageIds, Date, URLs, Raw) are documented in prose on HeaderForm (lines 132-149) but have no concrete examples showing input/output. A caller reading the parse_header_typed API on docs.rs sees one example and has to read tests/header_typed_tests.rs to see the rest.\n\nCaller-facing consequence: the cost is friction, not correctness. But the friction is unevenly distributed — Addresses gets the example, the rest don't, even though Date and URLs have more nuance (DateTime(None) on failure, RFC 2369 URL stripping). A caller is most likely to misuse the forms that have no examples.\n\nFix: add a short example for each remaining form to parse_header_typed's doc block. Each can be a few lines. The integration tests in tests/header_typed_tests.rs are already valid oracles — copy the inputs and assertions.\n\nPriority is low — this is documentation completeness, not a contract gap.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-14T12:26:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-14T16:07:07Z",
+  "closed_at": "2026-05-14T16:07:07Z",
+  "close_reason": "Documentation batch on the typed header surface: (.7) parse_header_typed now states trailing CRLF is permitted-but-not-required (matching the implementation); (.8) EmailAddress.name and AddressGroup.name field docs now state the trim+empty-to-None normalization; (.12) HeaderValueTyped doc has a Serde Wire Format section pinning the current externally-tagged shape and explicitly distinguishing it from RFC 8621 wire format (callers responsible for that mapping); (.17) parse_header_typed doc now carries one runnable example per HeaderForm variant (six total); (.24) HeaderDateTime has an Equality Semantics section noting derived PartialEq is field-wise not instant-wise, with a worked example and the to_timestamp escape hatch; (.25) EmailAddress has an Equality Semantics section noting derived PartialEq is byte-exact (no RFC 5321 domain case-folding) and pointing callers at manual canonicalisation; (.30) parse_header_typed doc has an Empty-Result Ambiguity table making explicit that callers cannot distinguish malformed-vs-empty-vs-non-UTF-8 and flagging the future-direction (strict variant / warnings tuple). No code changes.",
+  "labels": [
+    "api-contract",
+    "docs",
+    "my-oss",
+    "review",
+    "run-bd-review-loop-20260514T122010Z-3486432"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-o2c.17",
+      "depends_on_id": "MIME-o2c",
+      "type": "parent-child",
+      "created_at": "2026-05-14T05:26:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

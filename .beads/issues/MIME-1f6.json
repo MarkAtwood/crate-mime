@@ -1,0 +1,15 @@
+{
+  "id": "MIME-1f6",
+  "title": "[mime-tree] Improve doc comments and examples",
+  "description": "Skoll findings for docs/comments in mime-tree:\n- LOW-4: Document the 1024/256 preview split (1024 bytes covers worst-case 4-byte UTF-8 * 256 chars)\n- LOW-9: Document that charset=None means 'no explicit charset param' vs RFC 2045 us-ascii default\n- INFO-11: Document that per-part headers are accessible via header_range + parse_header_typed\n- INFO-19: Expand find_by_id doc-comment to show both non-multipart (root='1') and multipart (root='') cases\n- INFO-21: Add assert_eq!(msg.html_body, vec!['1']) to lib.rs doc-example\n- LOW-15: Document in InlineYEncBlock that specific yenc error type is not exposed\n- LOW-18: Document that ParsedHeader.value is decoded for text headers but raw for structured headers\n- INFO-17: Document why InvalidRange uses u64 for available vs u32 offset/length\n- MEDIUM-5: Add comment explaining .max(1) in find_ybegin for forward progress guarantee",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:35:14Z",
+  "closed_at": "2026-06-04T22:35:14Z",
+  "close_reason": "All 9 doc items addressed: LOW-4, LOW-9, INFO-11, INFO-19, INFO-21, LOW-15, LOW-18, INFO-17, MEDIUM-5"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "MIME-80l.2",
+  "title": "Warn on unrecognized Content-Transfer-Encoding values",
+  "description": "map_encoding() in parse.rs silently maps any unrecognized CTE token to TransferEncoding::Identity with no indication anything unusual happened. The caller gets raw bytes with no flag.\n\nFix: when the wildcard arm fires (Encoding::None and the CTE string is not 7bit/8bit/binary/x-uuencode/x-uue/uuencode), push a warning to the warnings Vec if the CTE value is non-empty.\n\nNOTE: x-uuencode/x-uue/uuencode are handled by MIME-80l.3 and must NOT trigger the warning.\n\nAcceptance criteria:\n- CTE: x-gzip produces a warning containing the unrecognized value\n- CTE: x-bzip2 produces a warning\n- Absent CTE (no header at all) produces no warning\n- CTE: 7bit / 8bit / binary / quoted-printable / base64 produce no warning\n- CTE: x-uuencode / x-uue / uuencode produce no warning (handled separately)\n- TransferEncoding::Identity is still returned in all unrecognized cases\n- Add tests for all cases above\n\nBlocked by MIME-80l.3 (must know which values are recognized before wiring the warning).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T15:45:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:48:32Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-80l.2",
+      "depends_on_id": "MIME-80l.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T08:48:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-80l.2",
+      "depends_on_id": "MIME-80l",
+      "type": "parent-child",
+      "created_at": "2026-05-04T08:44:59Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

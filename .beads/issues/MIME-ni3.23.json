@@ -1,0 +1,25 @@
+{
+  "id": "MIME-ni3.23",
+  "title": "smime-tree: expect() calls in production code — encrypt.rs and sign.rs",
+  "description": "Four .expect('key is exactly N bytes') calls in encrypt_aes_cbc lambda (encrypt.rs:143,145,153,155) and .expect() on from_utf8 in sign.rs:359 and encrypt.rs:538. All are provably unreachable but violate the convention of no panics in production code. Replace with unreachable!() or restructure to use fixed-size arrays.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T02:53:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T03:02:56Z",
+  "closed_at": "2026-05-05T03:02:56Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ni3.23",
+      "depends_on_id": "MIME-ni3",
+      "type": "parent-child",
+      "created_at": "2026-05-04T19:53:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

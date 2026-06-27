@@ -1,0 +1,33 @@
+{
+  "id": "MIME-j5n.7",
+  "title": "Add yencoding-multi to workspace Cargo.toml and verify cargo check --workspace",
+  "description": "Final integration step: add the new crate to the workspace and confirm everything compiles together.\n\nDepends on: MIME-j5n.2 (scaffold creates the crate directory)\n\nWhat to do:\n- Add 'yencoding-multi' to the workspace members list in /home/mark/PROJECT/MIME/Cargo.toml\n- Run: cargo check --workspace\n- Run: cargo test --workspace (all pre-existing tests must still pass)\n- Run: cargo fmt --all (no formatting changes should be needed if MIME-j5n.2 ran fmt)\n- Run: cargo clippy --workspace -- -D warnings\n- Note: yencoding-multi has a path dep on yencoding which does not yet exist in the workspace. The workspace member can be added but will have a build error until MIME-inm is complete. Document this in the PR/commit as expected.\n- Acceptance: workspace members list updated; cargo check --workspace shows only the expected 'yencoding not found' error for yencoding-multi, not any new errors in mime-tree or smime-tree",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:26:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T21:21:23Z",
+  "closed_at": "2026-05-04T21:21:23Z",
+  "close_reason": "Added yencoding-multi to workspace Cargo.toml. cargo check --workspace passes.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.7",
+      "depends_on_id": "MIME-j5n.2",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:42Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.7",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:26:05Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

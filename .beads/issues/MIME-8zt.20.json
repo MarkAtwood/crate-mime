@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.20",
+  "title": "Missing #[non_exhaustive] on public structs in uuencoding crate",
+  "description": "BlockMetadata, DecodedBlock, and ScannedBlock in uuencoding/src/lib.rs are all-pub-field structs with no #[non_exhaustive] attribute. Callers can construct them with struct literals. These are output types from decode() and scan() — callers should never need to construct them. What goes wrong: adding any field (e.g. to expose additional decode statistics or metadata) is a breaking change without #[non_exhaustive]. All three need the attribute added.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:01:39Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:08:34Z",
+  "closed_at": "2026-06-16T00:08:34Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "immutability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.20",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:01:39Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

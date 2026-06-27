@@ -1,0 +1,15 @@
+{
+  "id": "MIME-h0f",
+  "title": "Fix stale README content for publish readiness",
+  "description": "Workspace README has stale P-384 algorithm gap caveat (now fixed via pkix-path 0.3.1). Both workspace and smime-tree READMEs incorrectly reference RSA-OAEP (encrypt uses PKCS#1v15).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T23:05:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T23:05:27Z",
+  "closed_at": "2026-06-04T23:05:27Z",
+  "close_reason": "Fixed stale P-384 gap caveat and RSA-OAEP references in workspace and smime-tree READMEs"
+}

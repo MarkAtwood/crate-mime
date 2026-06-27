@@ -1,0 +1,19 @@
+{
+  "id": "MIME-e7k",
+  "title": "Review: today's work — MIME/S/MIME crate overhaul",
+  "notes": "Maintainer risk: LOW — the codebase is well-structured, trait-based keys are correctly abstracted, Zeroizing is applied correctly, and non_exhaustive is consistently used. The main risks are the CEK error message chain-index attribution (MIME-e7k.1) and the signed-content CRLF boundary ambiguity (MIME-e7k.2).\nConfidence: 75% chance of missed bug. Least confident flags: (1) MIME-e7k.2 (signed CRLF) — the round-trip test passes, which either means the issue doesn't exist or the test's byte extraction coincidentally excludes the CRLF. Need to read what mail-parser records as body_range for the first part of a multipart/signed vs what sign() actually hashed. (2) MIME-e7k.1 (pkix-chain index ordering) — requires reading pkix-chain source to confirm whether indices are leaf-first or root-first. Uncertainty driven by: not reading pkix-chain source code. Would raise confidence if: ran a test with a deliberately bad intermediate cert and checked whether the error message names the right cert.\nIdiom rating: ACCEPTABLE — The codebase uses idiomatic Rust patterns throughout: non_exhaustive, ? operator, proper error types, no unsafe, no Box\u003cdyn Error\u003e in API. The main non-idiomatic spots are (1) SmimeError::Other used for signature errors in verify_sig (MIME-e7k.16), (2) silent DER encode failure in cycle detection (MIME-e7k.18), and (3) missing Display on three public algorithm enums (MIME-e7k.17). The expect() panics in encrypt_aes_cbc closures are justified by invariants but non-local. No Rc/Arc, no gratuitous clones, no index loops where iterators fit better.\nRust idiom confidence: 80% chance of missed issue. Least confident flags: the closures in encrypt_aes_cbc with expect() — I believe they cannot panic given the structure, but a reader has to trace the invariant across function boundaries. Uncertainty driven by: not having traced every code path exhaustively. Would raise confidence if: clippy --all-features passes clean (already tested above — it does).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:36:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T17:47:10Z",
+  "close_reason": "all steps complete",
+  "labels": [
+    "my-oss",
+    "review"
+  ]
+}

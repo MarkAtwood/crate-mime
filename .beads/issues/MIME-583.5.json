@@ -1,0 +1,25 @@
+{
+  "id": "MIME-583.5",
+  "title": "is_encoding_problem set true on truncation mid-codepoint",
+  "description": "mime-tree/src/decode.rs: when max_bytes truncates mid-multibyte-char, encoding_rs emits replacement char and sets had_errors=true, which sets is_encoding_problem=true. Doc says 'unmappable characters' but this fires on truncation too. Callers cannot distinguish real corruption from truncation artifact. Fix: add doc comment clarifying is_encoding_problem may be set when max_bytes truncates mid-codepoint.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T01:17:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T01:21:54Z",
+  "closed_at": "2026-05-05T01:21:54Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-583.5",
+      "depends_on_id": "MIME-583",
+      "type": "parent-child",
+      "created_at": "2026-05-04T18:17:56Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "id": "MIME-ksl.6",
+  "title": "Documentation: module docs, security note, doc-tests",
+  "description": "Write all documentation for the uuencoding crate. This is a deliverable, not an afterthought.\n\nRequired:\n1. Crate-level doc (src/lib.rs):\n   - What UUencoding is and where it came from (pre-MIME, UUCP/Usenet era)\n   - The two use cases: CTE-declared (Content-Transfer-Encoding: x-uuencode in a MIME part) and inline (begin/end block embedded in text/plain body)\n   - How this crate fits with mime-tree (mime-tree depends on this; this crate does not depend on mime-tree)\n   - Quick-start examples for decode(), encode(), and scan()\n   - Security note: decoded output can be significantly larger than encoded input. If the decoded bytes are themselves a compressed archive, any decompression is the caller's responsibility and must be independently guarded against decompression bombs. This crate does not decompress anything.\n\n2. Each public type: full doc comment on the struct and every field.\n\n3. Each public function: doc comment covering parameters, return value, error conditions, and at least one doc-test that compiles and passes.\n\n4. UuError variants: each variant's doc must explain when it is produced and what the caller should do.\n\n5. The begin-base64 note: document that begin-base64 is a different encoding (MIME base64 in disguise) and that callers who receive BeginBase64 should pass the block to a standard base64 decoder instead.\n\n6. A prominent note that the crate tolerates real-world 'trash': CRLF line endings, trailing-space stripping by mailers, space/backtick ambiguity, and missing end lines. Callers do not need to pre-sanitize input.\n\nAll doc-tests must use oracle-derived expected values (Python uu module or UNIX uuencode), not values derived from this crate.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:56:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:01:37Z",
+  "closed_at": "2026-05-04T18:01:37Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-ksl.6",
+      "depends_on_id": "MIME-ksl.5",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:16Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.6",
+      "depends_on_id": "MIME-ksl.3",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.6",
+      "depends_on_id": "MIME-ksl",
+      "type": "parent-child",
+      "created_at": "2026-05-04T09:56:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-ksl.6",
+      "depends_on_id": "MIME-ksl.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T09:57:15Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-non.1",
+  "title": "encrypt: RSAES-OAEP SPKI cert silently uses PKCS#1v15",
+  "description": "build_recipient_info() in encrypt.rs checks 'alg_oid == ID_RSAES_OAEP' but routes to build_rsa_recipient() which unconditionally uses Pkcs1v15Encrypt and emits rsaEncryption OID. A cert with id-RSAES-OAEP SPKI would get a PKCS#1v15-wrapped CEK, which the recipient's OAEP decrypt will reject. Fix: return UnsupportedAlgorithm for OAEP SPKI certs, or add a separate build_rsa_oaep_recipient() path. Real-world impact is near-zero (no deployed S/MIME cert uses id-RSAES-OAEP in SPKI), but the code explicitly lists the OID implying intent to support it.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:21:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:22:05Z",
+  "closed_at": "2026-05-02T08:22:05Z",
+  "close_reason": "Fixed: build_recipient_info() now returns UnsupportedAlgorithm for id-RSAES-OAEP SPKI OIDs instead of silently routing to the PKCS#1v15 path.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-non.1",
+      "depends_on_id": "MIME-non",
+      "type": "parent-child",
+      "created_at": "2026-05-02T01:21:11Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

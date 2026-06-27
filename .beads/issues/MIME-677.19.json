@@ -1,0 +1,27 @@
+{
+  "id": "MIME-677.19",
+  "title": "part.rs: byte ranges stored as (u32, u32) not (usize, usize) — correct for cross-platform serde stability",
+  "description": "ParsedPart stores header_range and body_range as (u32, u32) not (usize, usize). The comment explains: u32 guarantees identical serialized representation on 32-bit and 64-bit hosts. This is the correct choice for a Serialize+Deserialize type that may be stored (e.g., in a database or on the wire) and later used on a different architecture. A future contributor might 'simplify' to usize to avoid the as usize casts in decode.rs. That would break serialization compatibility across platforms without any compile-time warning.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:51:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:37Z",
+  "closed_at": "2026-05-02T06:24:37Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.19",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:51:54Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "MIME-677.20",
+  "title": "encrypt.rs: AES-256-CBC when any recipient is P-384 is correct security-level matching",
+  "description": "encrypt() upgrades the content encryption key from AES-128-CBC to AES-256-CBC when any recipient uses P-384. The comment explains P-384 provides ~192-bit security and pairing with AES-128 would be a mismatch. This is correct: NIST SP 800-57 Table 2 places P-384 at the 192-bit security level. A future contributor might simplify to always use AES-128-CBC (smaller output, simpler code). That would create a security-level mismatch for P-384 recipients, which is a cryptographic protocol violation. The upgrade logic must stay.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:52:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:37Z",
+  "closed_at": "2026-05-02T06:24:37Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-677.20",
+      "depends_on_id": "MIME-677",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:52:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

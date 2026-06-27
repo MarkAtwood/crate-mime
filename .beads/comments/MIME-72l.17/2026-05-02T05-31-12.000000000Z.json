@@ -1,0 +1,7 @@
+{
+  "id": "1777699872000000000",
+  "issue_id": "MIME-72l.17",
+  "author": "Mark Atwood",
+  "text": "OVERLAP: MIME-72l.26 (efficiency,review) files the same problem — unnecessary child_ids.clone() in parse.rs build_part Multipart arm. MIME-72l.26 also frames it as an O(N) efficiency issue for large messages. Fix team should handle deduplication.",
+  "created_at": "2026-05-02T05:31:12Z"
+}

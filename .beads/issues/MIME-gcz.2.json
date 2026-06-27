@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.2",
+  "title": "scan.rs parse_begin_line rejects empty filename; decode.rs accepts it — API inconsistency causes scan to miss blocks decode handles",
+  "description": "uuencoding/src/scan.rs parse_begin_line() returns None when filename_bytes is empty (line 83-85), so scan() silently drops blocks with empty filenames. But uuencoding/src/decode.rs decode() accepts 'begin 644 ' (empty filename) and returns a DecodedBlock with filename=''. The two code paths disagree on what is valid. A real-world email with 'begin 644 \\n...\\nend\\n' will: succeed through decode(), but be silently skipped by scan(). Callers relying on scan() to find all blocks will miss these.",
+  "acceptance_criteria": "Align scan.rs: accept an empty filename (return a BlockMetadata with filename=''), matching decode.rs behavior. Add a test in scan.rs for an empty-filename begin line.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:25:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:32:17Z",
+  "closed_at": "2026-05-04T18:32:17Z",
+  "close_reason": "Removed empty-filename guard in parse_begin_line; added test",
+  "labels": [
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.2",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:25:53Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

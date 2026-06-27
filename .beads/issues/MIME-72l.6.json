@@ -1,0 +1,30 @@
+{
+  "id": "MIME-72l.6",
+  "title": "sign() hardcodes SHA-256 digest; DigestAlgorithm param ignored",
+  "description": "sign() ignores the DigestAlgorithm variants Sha384 and Sha512 entirely — it always uses SHA-256 (set at line 40: 'let digest_alg = DigestAlgorithm::Sha256'). The SigningKey trait's sign() method receives a DigestAlgorithm, so implementors may reasonably expect to be called with the algorithm they advertised or prefer. A contributor who adds a signing key that only supports SHA-384 will be silently called with SHA-256. There is no mechanism in the trait for the key to advertise which digest it supports. The public API does not document that SHA-256 is the only option.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:43:45Z",
+  "closed_at": "2026-05-02T05:43:45Z",
+  "close_reason": "documented in sign() doc comment",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.6",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:25:20Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

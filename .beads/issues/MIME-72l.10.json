@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.10",
+  "title": "PartType::Message comment contradicts behavior",
+  "description": "In mime-tree/src/parse.rs at the PartType::Message arm (lines 148-155), the comment says 'Nested RFC 5322 message — recurse into the nested message root part using this crate part-tree walker, mapped to a synthetic Message wrapper. We treat the nested message as a single leaf.' The comment describes a plan that was not implemented; the code discards children and the nested message is returned as a leaf with no children at all. A contributor reading the comment will expect recursion, and may be confused by 'let _ = nested'. The comment should be replaced with a one-sentence description of what actually happens and why (e.g. 'Treated as an opaque leaf; decode_body_value handles message/rfc822 bodies on demand').",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:25:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:30:32Z",
+  "closed_at": "2026-05-02T06:30:32Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.10",
+      "depends_on_id": "MIME-0m7",
+      "type": "parent-child",
+      "created_at": "2026-05-01T23:25:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

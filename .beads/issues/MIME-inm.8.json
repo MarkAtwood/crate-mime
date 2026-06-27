@@ -1,0 +1,41 @@
+{
+  "id": "MIME-inm.8",
+  "title": "Quality gate and publish-prep for yencoding crate",
+  "description": "Quality gate and publish preparation for the yencoding crate. Run all pre-publish checks from AGENTS.md and fix any issues found.\n\nCOMMANDS (all must pass clean before this issue can be closed):\n  cargo fmt --all\n  typos yencoding/\n  cargo clippy --all-features -p yencoding -- -D warnings\n  cargo hack check --feature-powerset --depth 2 --no-dev-deps -p yencoding\n  RUSTDOCFLAGS=\"--cfg docsrs -D warnings\" cargo +nightly doc --no-deps --all-features -p yencoding\n  cargo +1.75 test -p yencoding\n\nALSO VERIFY:\n- Cargo.toml has: description, repository, readme, keywords (max 5), categories\n- README.md exists in yencoding/ with a brief crate description and usage example\n- CHANGELOG.md or no-changelog note is not required for 0.1.0 but version/date comment in Cargo.toml is acceptable\n- yencoding/ is added to workspace Cargo.toml members (should already be done in MIME-inm.1)\n- All public items have doc comments (enforced by RUSTDOCFLAGS above)\n- License files: MIT and Apache-2.0 are workspace-level; Cargo.toml license field is sufficient\n\nACCEPTANCE CRITERIA:\n- All 6 commands above exit 0\n- No warnings from clippy or rustdoc\n- cargo package --dry-run succeeds (no missing files)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:28:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T21:17:00Z",
+  "closed_at": "2026-05-04T21:17:00Z",
+  "close_reason": "All quality gates pass. typos clean, clippy -D warnings clean, hack powerset clean, nightly rustdoc clean, MSRV 1.75 confirmed, published to crates.io as yencoding 0.1.0.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-inm.8",
+      "depends_on_id": "MIME-inm",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:28:33Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.8",
+      "depends_on_id": "MIME-inm.7",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:28:47Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-inm.8",
+      "depends_on_id": "MIME-inm.5",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:28:44Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

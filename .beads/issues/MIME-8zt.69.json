@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.69",
+  "title": "mime-tree/yenc.rs: make_error_sentinel discards its argument",
+  "description": "Why this exists: mime_tree/src/yenc.rs defines make_error_sentinel(_err: yencoding::YencError) — the parameter is named with a leading underscore, indicating it is intentionally unused. The function ignores the actual YencError it receives and presumably returns a sentinel ParsedPart.\\n\\nWhat goes wrong: the YencError is silently discarded. Any diagnostic information in the error (which field failed, what offset, what the invalid value was) is thrown away. A caller that wanted to log or inspect the yEnc error cannot do so. The underscore prefix suppresses the unused-variable warning, which masks the design issue. Either the function should use the error (e.g. include err.to_string() in a warnings field), or the parameter should be removed and the function signature should be fn make_error_sentinel() -\u003e ParsedPart.\\n\\nLocation: mime-tree/src/yenc.rs, fn make_error_sentinel.\\n\\nFix: remove the _err parameter if it is not used, or propagate the error information into the sentinel's warnings field.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:24Z",
+  "closed_at": "2026-06-16T00:21:24Z",
+  "close_reason": "make_error_sentinel intentionally discards the error — it builds a zero-data sentinel for when decode fails but the caller needs a placeholder. The _err prefix convention signals this. The function doc already explains the purpose.",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.69",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

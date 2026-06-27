@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.10",
+  "title": "scan_impl() collects all blocks into a Vec before returning — entire body must be scanned eagerly even if caller only wants first block",
+  "description": "uuencoding/src/scan.rs scan_impl() scans the entire input and collects all results into a Vec\u003cResult\u003cScannedBlock, UuError\u003e\u003e. The public scan() function in lib.rs wraps this with .into_iter(), which looks lazy but is actually eager: the full Vec is built before any item is consumed. For a large email body with 10 UU blocks, if the caller only wants the first, all 10 are decoded. The comment in scan_impl says 'non-lazy helper'. The public API promises an iterator but delivers fully-evaluated results. This is a documentation issue at minimum, and an efficiency issue for callers that break early.",
+  "acceptance_criteria": "Either: (a) implement scan() as a true lazy iterator struct (more work, better API), or (b) document in the scan() doc comment that iteration is fully-eager and all blocks are decoded on the first call. If (b), consider renaming to make the eagerness obvious, or keep as-is with clear docs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:35:19Z",
+  "closed_at": "2026-05-04T18:35:19Z",
+  "close_reason": "Documented eager evaluation in scan() doc comment; noted that decode() is a lazy alternative",
+  "labels": [
+    "efficiency"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.10",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

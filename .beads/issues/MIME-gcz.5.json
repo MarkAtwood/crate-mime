@@ -1,0 +1,30 @@
+{
+  "id": "MIME-gcz.5",
+  "title": "uuencoding-multi modules are all pub — internal implementation types exposed",
+  "description": "uuencoding-multi/src/lib.rs declares all modules as 'pub mod collection', 'pub mod error', 'pub mod reassemble', 'pub mod subject', 'pub mod toc'. This means every internal implementation detail (private helper functions, struct fields, etc.) that happen to be 'pub' within those modules is reachable via the module path (e.g. uuencoding_multi::subject::strip_prefixes, uuencoding_multi::toc::re_format1). While the private helpers are not pub themselves, the module visibility means if any internal function is accidentally made pub, it immediately becomes stable API. Contrast with uuencoding/ which uses pub(crate) for its decode module. Any refactoring of internal module structure is a breaking change once users import via module path.",
+  "acceptance_criteria": "Change 'pub mod' to 'pub(crate) mod' for collection, reassemble, subject, toc; keep re-exports through lib.rs. Only error module needs to be 'pub mod' if MultiUuError variants need direct module access, and even that can be pub(crate) with the type re-exported.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:26:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:34:09Z",
+  "closed_at": "2026-05-04T18:34:09Z",
+  "close_reason": "Changed pub mod to pub(crate) mod for all internal modules in uuencoding-multi/src/lib.rs",
+  "labels": [
+    "maintainer-burden",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.5",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:26:22Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

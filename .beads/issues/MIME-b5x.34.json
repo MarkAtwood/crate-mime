@@ -1,0 +1,28 @@
+{
+  "id": "MIME-b5x.34",
+  "title": "sign() boundary_from_content: deterministic boundary with collision check is sound",
+  "description": "sign.rs: boundary_from_content() derives the MIME boundary from SHA-256 of the content. A contributor might replace this with a random boundary to 'be safer'. The current approach is correct: the collision check at the end is the authoritative guard; deriving from content hash gives reproducible output for testing without weakening security. The security note in the function doc explains this. Keep deterministic boundary.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:27:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:36:09Z",
+  "closed_at": "2026-05-02T07:36:09Z",
+  "close_reason": "Decision record — no action needed.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.34",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:27:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

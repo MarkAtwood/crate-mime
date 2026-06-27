@@ -1,0 +1,32 @@
+{
+  "id": "MIME-1pu.2",
+  "title": "sign() P-521 docstring wrong; workaround comment produces broken messages",
+  "description": "sign.rs docstring says 'EC P-521 uses SHA-512' but signature_algorithm_oid() rejects DigestAlgorithm::Sha512 for EC keys with UnsupportedAlgorithm. More importantly, the comment at sign.rs:292 says 'Callers using P-521 keys must override preferred_digest_algorithm() to return Sha384' — this workaround is broken: signing with P-521 key + SHA-384 produces OID ECDSA_WITH_SHA_384, but verify() dispatches that OID to verify_ecdsa_p384() which tries to parse the P-521 public key as a P-384 key and fails. The workaround creates sign/verify-incompatible messages. The correct guidance is: P-521 is unsupported — use P-256 or P-384.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:31:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:49:08Z",
+  "closed_at": "2026-05-02T13:49:08Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.2",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:31:27Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

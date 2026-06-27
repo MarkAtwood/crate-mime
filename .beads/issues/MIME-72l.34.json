@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.34",
+  "title": "walk.rs: double-indirection nullable list params obscures intent",
+  "description": "parse_structure takes text_body as mut-ref-to-optional-mut-ref. Call site must write \u0026mut Some(\u0026mut text_body). The suppression semantic is encoded in a reference layer rather than named. Suggested rewrite: pass the Vec directly plus bool flags text_active/html_active; the suppression logic becomes explicit.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:23Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:40:51Z",
+  "closed_at": "2026-05-02T05:40:51Z",
+  "close_reason": "labeled opinion; engineering rationale in MIME-72l.62 (models RFC 8621 JS pseudocode directly)",
+  "labels": [
+    "elegance",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.34",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:22Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

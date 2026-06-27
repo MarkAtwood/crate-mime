@@ -1,0 +1,30 @@
+{
+  "id": "MIME-1pu.1",
+  "title": "encrypt() panics on RNG failure instead of returning Err",
+  "description": "encrypt.rs:99 uses UnwrapErr(SysRng) — UnwrapErr wraps SysRng and panics if the OS RNG call fails (e.g. /dev/urandom unavailable, getrandom syscall blocked by seccomp). A panic in library code is worse than returning Err: it cannot be caught by the caller. The fix is to map the RNG error into SmimeError::Other rather than wrapping in UnwrapErr.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:31:21Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:44:27Z",
+  "closed_at": "2026-05-02T13:44:27Z",
+  "close_reason": "Fixed encrypt() to propagate RNG errors: ECDH via try_generate_from_rng, CEK/IV via getrandom::fill, from_slice deprecated calls replaced with try_from().expect(). RSA still uses local UnwrapErr(SysRng) as rsa crate requires CryptoRng.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.1",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:31:21Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

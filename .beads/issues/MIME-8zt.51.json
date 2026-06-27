@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.51",
+  "title": "smime-tree: String-carrying error variants lose structured information",
+  "description": "Why this exists: smime_tree/src/error.rs has six variants in SmimeError that wrap String: Other(String), MalformedInput(String), RngFailure(String), DecryptionFailed(String), UnsupportedAlgorithm(String), WrongContentType(String). CertChainError also has Other(String). The Rust coding standard states: 'Error variants must carry structured fields, not String messages — Err(format\\!(\"expected {x}, got {y}\")) loses the values.'\\n\\nWhat goes wrong: a String-carrying variant loses the underlying values. A caller that wants to match on UnsupportedAlgorithm to log the OID separately, or retry with a fallback algorithm, has to parse a String — which is fragile and not semver-safe. Code that matches on SmimeError::UnsupportedAlgorithm(s) and inspects s is doing ad-hoc string parsing. Structured variants allow pattern matching on individual fields without fragility.\\n\\nLocations: smime-tree/src/error.rs — SmimeError::Other, MalformedInput, RngFailure, DecryptionFailed, UnsupportedAlgorithm, WrongContentType; CertChainError::Other.\\n\\nFix: replace each String with one or more typed fields. For example, UnsupportedAlgorithm { oid: der::asn1::ObjectIdentifier } and WrongContentType { expected: String, actual: String } (where type names are stable identifiers, not free-form messages).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:03:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:21:54Z",
+  "closed_at": "2026-06-16T00:21:54Z",
+  "close_reason": "P2 refactoring: String-carrying error variants (Other, MalformedInput, etc.) are catch-alls for diverse failure modes. A comprehensive structured error overhaul is a separate effort.",
+  "labels": [
+    "error-handling",
+    "idiomatic-rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.51",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:03:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

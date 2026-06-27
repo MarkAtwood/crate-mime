@@ -1,0 +1,25 @@
+{
+  "id": "MIME-240.3",
+  "title": "smime-tree: verify missing content-type signed attribute check",
+  "description": "verify.rs:284-313: RFC 5652 §11.1 requires content-type signed attr must be present when signedAttrs present. Only message-digest is checked. A malformed SignedData omitting content-type attr passes verify() silently.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T04:09:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T04:11:50Z",
+  "closed_at": "2026-05-05T04:11:50Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-240.3",
+      "depends_on_id": "MIME-240",
+      "type": "parent-child",
+      "created_at": "2026-05-04T21:09:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

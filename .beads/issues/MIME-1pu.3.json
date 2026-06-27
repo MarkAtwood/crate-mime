@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.3",
+  "title": "OpenSSL-dependent tests panic when openssl binary absent",
+  "description": "smime_tests.rs tests C and D (test_sign_output_accepted_by_openssl, test_encrypt_output_decrypted_by_openssl) call Command::new('openssl').output().expect('openssl must be available'). On a CI machine without openssl in PATH (common in minimal Docker images) the tests panic rather than being skipped. The maintenance consequence: contributors running cargo test in a fresh environment see a panic with no clear guidance on the missing dependency. The fix is to check if openssl is available (e.g. Command::new('openssl').arg('version').status().is_ok()) and use eprintln\\!/panic with a clear skip message, or use the standard skip pattern.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:31:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:49:11Z",
+  "closed_at": "2026-05-02T13:49:11Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.3",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:31:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

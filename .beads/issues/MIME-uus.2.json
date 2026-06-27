@@ -1,0 +1,31 @@
+{
+  "id": "MIME-uus.2",
+  "title": "stale comment in Cargo.toml names pkix-chain-simple after switch to pkix-chain",
+  "description": "smime-tree/Cargo.toml comment reads: 'pkix-chain-simple and pkix-path use x509-cert 0.2' but both those deps were removed and replaced with pkix-chain. A future reader will look for pkix-chain-simple in the dep list and not find it. Fix: update comment to 'pkix-chain uses x509-cert 0.2'.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:30:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T17:32:41Z",
+  "closed_at": "2026-05-02T17:32:41Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-uus.2",
+      "depends_on_id": "MIME-uus",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:30:43Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

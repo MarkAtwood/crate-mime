@@ -1,0 +1,31 @@
+{
+  "id": "MIME-p4h.20",
+  "title": "smime-tree error.rs: SmimeError does not implement Eq — only PartialEq",
+  "description": "SmimeError is #[derive(Debug, Clone, PartialEq)] but not Eq. The reason: SmimeError::Der(der::Error) where der::Error may not implement Eq. Tests and callers that want to use SmimeError in assert_eq\\! or as map keys cannot. Idiomatic Rust: implement Eq manually (since PartialEq is already correct, and Eq is just a marker). Or check whether der::Error now implements Eq in the locked version.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:16:32Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:22:04Z",
+  "closed_at": "2026-05-02T14:22:04Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "my-oss",
+    "review",
+    "type-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-p4h.20",
+      "depends_on_id": "MIME-p4h",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:16:31Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

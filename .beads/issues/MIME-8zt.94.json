@@ -1,0 +1,28 @@
+{
+  "id": "MIME-8zt.94",
+  "title": "[smime-tree] Add AuthEnvelopedData (AES-GCM) encrypt/decrypt support",
+  "description": "encrypt() should produce AuthEnvelopedData (RFC 5083) with AES-GCM instead of EnvelopedData with AES-CBC. decrypt() should accept both AuthEnvelopedData (GCM) and EnvelopedData (CBC, for legacy interop). This eliminates the unauthenticated CBC risk documented in MIME-8zt.3.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "feature",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T23:59:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:40:04Z",
+  "closed_at": "2026-06-16T00:40:04Z",
+  "close_reason": "encrypt() produces AuthEnvelopedData with AES-GCM. decrypt() accepts both GCM and legacy CBC. 2 new roundtrip tests.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.94",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T16:59:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

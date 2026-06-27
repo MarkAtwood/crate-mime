@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.58",
+  "title": "No test for KARI encrypt round-trip; encrypt produces KARI but decrypt skips it",
+  "description": "encrypt() fully implements KARI for P-256 and P-384 recipients. decrypt() silently skips all KARI RecipientInfo entries. There is no test exercising encrypt(EC cert), and no test demonstrating the round-trip failure. A caller who follows the documented pattern — encrypt to an EC cert, then decrypt — will get NoMatchingRecipient with no explanation. The gap between encrypt (works) and decrypt (skips) is undocumented in the public API of either function.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:27:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:48:16Z",
+  "closed_at": "2026-05-02T05:48:16Z",
+  "close_reason": "deferred: KARI decrypt not yet implemented; test is blocked on that feature",
+  "labels": [
+    "maintainer-burden",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.58",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:27:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

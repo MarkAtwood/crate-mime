@@ -1,0 +1,15 @@
+{
+  "id": "MIME-110",
+  "title": "[mime-tree] Fix base64/QP decode error paths",
+  "description": "Skoll HIGH-1 + MEDIUM-2: (1) Base64 decode returns empty Vec on any error, losing all decoded bytes even when error is only at the tail. Consider permissive decoder or chunk-based decode preserving the decodable prefix. (2) QP decode error returns raw encoded bytes (with =XX sequences still in them), inconsistent with base64/UU paths that return empty. Either return empty consistently or document the divergence.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:55:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:04:16Z",
+  "closed_at": "2026-06-04T22:04:16Z",
+  "close_reason": "Switched base64 engine to forgiving DecodePaddingMode::Indifferent for real-world email tolerance. Changed QP error path to return Vec::new() for consistency with base64 and UU. Added tests for missing-padding tolerance and invalid-char error."
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.74",
+  "title": "MAX_TOTAL_SIZE in yencoding-multi is a magic constant with no documented basis",
+  "description": "yencoding-multi/src/assembler.rs exports MAX_TOTAL_SIZE: u64 as a public constant. Callers who pre-allocate based on the yEnc =ybegin line's 'total' field need to know whether this limit is checked before or after allocation, whether exceeding it returns Err or panics, and what the value represents (arbitrary safety limit? filesystem block size? protocol maximum?). What goes wrong: a caller who receives a yEnc post claiming 600 MB total size needs to know whether to attempt assembly or reject upfront. If the limit is not documented, they cannot make that decision. Fix: document what MAX_TOTAL_SIZE represents, that add_part() returns AssemblyError::TotalSizeExceeded (or equivalent) when the declared total exceeds it, and why the specific value was chosen. File: yencoding-multi/src/assembler.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:23:17Z",
+  "closed_at": "2026-06-16T00:23:17Z",
+  "close_reason": "Closed",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.74",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:32Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-r5p.12",
+  "title": "KARI static-originator silently returns Ok(None) — wrong key returns same result as no-match",
+  "description": "try_decrypt_kari() returns Ok(None) for any KARI with a non-ephemeral originator (IssuerAndSerialNumber or SubjectKeyIdentifier). If the recipient's key DOES match a recipient_enc_key entry within such a KARI, the function still returns Ok(None) because the originator-key check happens first and returns early. The caller then falls through to SmimeError::NoMatchingRecipient. This silently ignores static-originator KARIs entirely, even when the recipient key matches. The comment says 'require a different key-lookup path' but that path is never taken — the key match never even happens.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:51:45Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:07:45Z",
+  "closed_at": "2026-05-02T18:07:45Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.12",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:51:45Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

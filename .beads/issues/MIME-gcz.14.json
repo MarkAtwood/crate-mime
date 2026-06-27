@@ -1,0 +1,29 @@
+{
+  "id": "MIME-gcz.14",
+  "title": "scan() doc says 'After yielding an error the scanner continues' but doesn't explain the mixed Ok+Err output for decode errors",
+  "description": "uuencoding/src/lib.rs scan() doc (line 227): 'After yielding an error the scanner continues past the offending block so that subsequent valid blocks are still returned.' This is accurate for begin-base64 errors but misleading for decode-line errors: for a block with bad data lines, the scanner emits one Err per bad line AND then emits an Ok(ScannedBlock) for the same block at the end. A caller reading only the doc comment would not expect to receive both errors and a successful block from the same logical block. The error continuation behavior needs to be precisely documented.",
+  "acceptance_criteria": "Expand the scan() doc comment to explain: (1) begin-base64 → one Err, scanner skips to ==== and continues; (2) malformed begin line → one Err, scanner advances one line; (3) decode error on data line → one Err per bad line, followed by one Ok(ScannedBlock) with is_truncated covering the partially-decoded data.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:27:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:38:06Z",
+  "closed_at": "2026-05-04T18:38:06Z",
+  "close_reason": "Added comprehensive error-continuation documentation to scan() doc comment covering all three error cases (done as part of MIME-gcz.10)",
+  "labels": [
+    "readability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.14",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:27:46Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

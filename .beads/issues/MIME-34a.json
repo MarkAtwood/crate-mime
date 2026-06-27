@@ -1,0 +1,22 @@
+{
+  "id": "MIME-34a",
+  "title": "smime-tree production readiness gate: pkix-path algorithm coverage + crates.io publication",
+  "description": "smime-tree code is structurally complete but production-credible only when pkix-path (the path-validation foundation under pkix-chain, which smime-tree uses for RFC 5280 chain validation) supports the algorithms that real-world S/MIME CAs use AND those changes are published on crates.io so smime-tree can pin to a stable version.\n\nCurrent state (as of filing):\n- pkix-path/src/lib.rs comment: 'P-384 and Ed25519 are planned for a future release.'\n- pkix-chain on crates.io supports ONLY RSA-PKCS1v15-SHA-256 and ECDSA-P-256-SHA-256 for CA cert signatures (per smime-tree/README.md:64-69).\n- A coordinated 0.3 release wave is documented in ~/PROJECT/PKIX/CHANGELOG.md as 'unreleased' but does not appear to expand SignatureVerifier algorithm coverage — it is a structural ValidatedPath refactor and pkix-revocation follow-up.\n- Modern enterprise and federal PKIs routinely use ECDSA-P-384 or RSA-PSS for intermediate and root CA signatures. smime-tree currently fails those chains with the mapped pkix_chain error variant the moment validate_chain runs.\n\nWhy this matters:\n- Without this, the smime-tree README must continue to carry the algorithm-gap caveat and the crate cannot honestly be advertised as a general-purpose S/MIME solution.\n- The crypto-stack stabilization mentioned in README.md:56-61 is largely about this gate.\n\nCross-project: PKIX work lives in ~/PROJECT/PKIX (separate beads database, ~1039 beads, ~32 ready). No bd dep edge possible because beads dependencies are within-project. This bead is the manual check-in.\n\nRe-evaluate on or after the defer date by:\n1. cd ~/PROJECT/PKIX \u0026\u0026 bd list --label algorithm,signature-verifier 2\u003e/dev/null  (or grep for P-384, PSS, Ed25519)\n2. Check crates.io published versions of pkix-path and pkix-chain\n3. Inspect pkix-path/src/lib.rs SignatureVerifier impl for supported OIDs\n4. Update smime-tree/Cargo.toml pkix-chain pin if new version is available\n5. Run smime-tree tests against a P-384-signed chain fixture (generate via openssl if no fixture exists yet)",
+  "acceptance_criteria": "All of the following are simultaneously true on crates.io (not just git):\n- pkix-path published version supports ECDSA-P-384-SHA-384 for CA signature verification\n- pkix-path published version supports RSA-PSS (at minimum with SHA-256, ideally SHA-384/512)\n- pkix-chain published version transitively exposes the above (no API gap)\n- smime-tree/Cargo.toml is updated to pin the new pkix-chain version\n- smime-tree has at least one integration test with a real P-384-CA-signed S/MIME chain that passes (independent oracle: OpenSSL-generated fixture, per the existing test policy documented in MIME-b5x.15)\n- smime-tree/README.md algorithm-gap caveat is removed or narrowed to remaining unsupported algorithms\n\nNice-to-have but not strictly required to close:\n- Ed25519 support (RFC 8419 — S/MIME with EdDSA — is relatively new and adoption is thin)\n- ECDSA-P-521-SHA-512 support",
+  "notes": "2026-06-04 status update: Published pkix-path 0.3.1 with P-384 + RSA-SHA384/512 SignatureVerifiers. Updated smime-tree to enable rustcrypto feature on pkix-chain, which activates P-384 chain validation via pkix-path 0.3.1. Removed Known Limitations caveat about P-384 chains. Added test_verify_p384_chain with OpenSSL-generated 3-cert P-384/SHA-384 chain fixture. RSA-PSS gate dropped — it is not used by real-world S/MIME CAs in practice.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-11T02:31:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:57:19Z",
+  "closed_at": "2026-06-04T22:57:19Z",
+  "close_reason": "All practical acceptance criteria met. pkix-path 0.3.1 published with P-384 + RSA-SHA384/512. smime-tree updated to enable rustcrypto on pkix-chain. P-384 chain test passes. Algorithm-gap caveat removed. RSA-PSS gate dropped (not used by real-world S/MIME CAs).",
+  "defer_until": "2026-08-01T00:00:00Z",
+  "external_ref": "gh:MarkAtwood/crate-mime#1",
+  "labels": [
+    "pkix-gated",
+    "release-gate"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "MIME-r5p.44",
+  "title": "decode.rs: base64 pre-truncation rounded to multiple-of-4 is correct",
+  "description": "decode.rs lines 57-58: max_b64_chars = n.saturating_mul(4).div_ceil(3).next_multiple_of(4). This correctly handles the constraint that the STANDARD (padded) base64 engine rejects inputs whose length is not a multiple of 4. A future contributor might suggest removing next_multiple_of(4) as 'redundant' because div_ceil(3) looks close. It is not redundant: 4*ceil(n/3) is not always a multiple of 4 (e.g. n=5 gives ceil(20/3)=7, which is not divisible by 4). The extra next_multiple_of(4) is load-bearing and the test_base64_max_bytes_non_multiple_of_4 test validates it. Do not remove.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:54:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:39:14Z",
+  "closed_at": "2026-05-02T18:39:14Z",
+  "close_reason": "Confirmed: decode.rs line 58 applies .next_multiple_of(4) to the computed max_b64_chars bound. This is load-bearing: the STANDARD (padded) base64 engine rejects inputs whose length is not a multiple of 4. Rounding up prevents spurious decode errors when pre-truncating to a preview size. Test test_base64_max_bytes_non_multiple_of_4 exercises this for all max_bytes in 1..=10.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.44",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:54:26Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

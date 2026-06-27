@@ -1,0 +1,25 @@
+{
+  "id": "MIME-n33.2",
+  "title": "mime-tree yenc: =yend needle lacks trailing space/terminator guard",
+  "description": "P0: find_yend_end matches b\"=yend\" without trailing space. If encoded data bytes happen to spell =yend at line start (crafted/malformed), scan returns premature end. Fix: match =yend followed by space/CR/LF/end.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T23:43:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T23:47:25Z",
+  "closed_at": "2026-05-04T23:47:25Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-n33.2",
+      "depends_on_id": "MIME-n33",
+      "type": "parent-child",
+      "created_at": "2026-05-04T16:43:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

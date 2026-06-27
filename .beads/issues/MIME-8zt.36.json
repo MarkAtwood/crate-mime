@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.36",
+  "title": "encrypt.rs: build_p256_recipient and build_p384_recipient are structural duplicates",
+  "description": "smime-tree/src/encrypt.rs: build_p256_recipient and build_p384_recipient are structurally identical functions differing only in their type parameters (P256/P384), KDF OID, key-wrap OID, and CEK size constant. Any future bug fix or feature change must be applied twice and kept in sync. The existing do_wrap! macro shows the codebase already addresses this pattern with macros; a generic build_kari_recipient\u003cC, D\u003e(cek, recipient_cert, kdf_oid, wrap_oid) would eliminate the duplication at the cost of slightly more complex type bounds. As-is, a one-line correctness fix in one function can silently leave the other broken.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:52:41Z",
+  "closed_at": "2026-06-16T00:52:41Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.36",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:50Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

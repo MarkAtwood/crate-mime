@@ -1,0 +1,30 @@
+{
+  "id": "MIME-qlt.1",
+  "title": "sign() emits ecdsa-with-SHA512 that verify() cannot verify",
+  "description": "sign.rs line 291 maps DigestAlgorithm::Sha512 to ECDSA_WITH_SHA_512 (ecdsa-with-SHA512 OID). verify.rs:verify_sig() handles ECDSA_WITH_SHA_256 and ECDSA_WITH_SHA_384 but has no branch for ECDSA_WITH_SHA_512. cert.rs:verify_signature() similarly. Trigger: caller implements a P-521 SigningKey (or uses preferred_digest_algorithm returning Sha512 for an EC key). sign() succeeds and emits a valid ECDSA/SHA-512 signature; verify() and cert chain verification both return UnsupportedAlgorithm. The sign→verify round-trip silently breaks for SHA-512 ECDSA.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T08:11:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:16:56Z",
+  "closed_at": "2026-05-02T08:16:56Z",
+  "close_reason": "Fixed: signature_algorithm_oid() now returns UnsupportedAlgorithm for EC+SHA-512 (P-521) instead of emitting ECDSA_WITH_SHA_512 that verify() cannot check.",
+  "labels": [
+    "correctness",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-qlt.1",
+      "depends_on_id": "MIME-qlt",
+      "type": "parent-child",
+      "created_at": "2026-05-02T01:11:52Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.76",
+  "title": "uuencoding::decode_limited splits all input into lines upfront, defeating the max_bytes limit for large inputs",
+  "description": "## Problem\n\nIn `uuencoding/src/decode.rs`, `decode_limited(input, max_bytes)` begins by:\n\n```rust\nlet lines: Vec\u003c\u0026[u8]\u003e = input.split(|\u0026b| b == b'\\n').collect();\n```\n\nThis splits the ENTIRE input into a `Vec` of line slices before any decoding occurs, regardless of the `max_bytes` limit. For a 100 MiB UU-encoded body with `max_bytes = 1024`, the function allocates and iterates over roughly 2 million line entries before stopping at the limit.\n\n## Documented in the docstring but underemphasised\n\nThe function docstring notes: 'Memory used by this function is O(max_bytes) for output but O(input) for the internal line split'. This is documented, but only in a buried note that callers frequently miss.\n\n## What goes wrong\n\nA JMAP server or mail client calling `decode_body_value(raw, part, Some(4096))` on a large attachment (e.g. a 50 MiB UU-encoded file in a text/plain body) will allocate and scan the full 50 MiB of line pointers even though the request is for only 4 KiB of decoded output. The `max_bytes` parameter does not bound memory consumption or CPU time — it only limits the OUTPUT size.\n\n`mime-tree::decode_body_value` calls `decode_limited` for `TransferEncoding::UUencode` parts, so this path is reachable by any caller of `decode_body_value` with a `max_bytes` limit.\n\n## Files\n\n- `uuencoding/src/decode.rs` — `decode_limited` function\n- `mime-tree/src/decode.rs` — calls `decode_limited` for UUencode transfer encoding\n\n## What goes wrong if left as-is\n\nCallers who set `max_bytes` to bound resource consumption during MIME preview generation will be surprised to find that UUencode parts consume O(input) resources anyway. This is a correctness violation of the implied contract of `max_bytes`.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:04:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:26:41Z",
+  "closed_at": "2026-06-16T00:26:41Z",
+  "close_reason": "Replaced upfront Vec line split with LazyLines iterator. decode_limited now scans O(bytes consumed) not O(total input).",
+  "labels": [
+    "api-contract",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.76",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:04:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

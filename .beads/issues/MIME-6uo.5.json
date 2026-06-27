@@ -1,0 +1,30 @@
+{
+  "id": "MIME-6uo.5",
+  "title": "SmimeError lacks PartialEq/Eq — pattern-matching in tests requires workarounds",
+  "description": "error.rs: SmimeError derives Debug and Clone but not PartialEq or Eq. The Der variant wraps der::Error, which may not implement PartialEq — but all other variants are strings, unit variants, or Vec\u003cSignerResult\u003e. Callers writing tests to assert on specific error variants must use matches!() patterns rather than assert_eq!(), and cannot easily assert on error message content. This generates repeated workarounds in test code. The AllSignersFailed(Vec\u003cSignerResult\u003e) variant is fully derivable since SignerResult is PartialEq. Scenario: any future test file that checks for specific error conditions.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:50:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T08:05:59Z",
+  "closed_at": "2026-05-02T08:05:59Z",
+  "close_reason": "Fixed: added PartialEq to SmimeError derive (der::Error implements PartialEq)",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-6uo.5",
+      "depends_on_id": "MIME-6uo",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:50:57Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

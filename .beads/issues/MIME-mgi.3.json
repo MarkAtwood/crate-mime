@@ -1,0 +1,31 @@
+{
+  "id": "MIME-mgi.3",
+  "title": "random_boundary failure returns MalformedInput, not RngFailure",
+  "description": "sign.rs: random_boundary() returns Err(SmimeError::MalformedInput(...)) when all 8 boundary generation attempts fail. SmimeError::MalformedInput is documented as 'Input is structurally malformed (e.g. missing required CMS fields)' — not a random generation failure. Eight consecutive failures imply a broken RNG or extremely adversarial content; the correct variant is SmimeError::RngFailure. Callers matching on SmimeError::MalformedInput for their content-parse error path would incorrectly swallow an RNG failure as a caller error.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T15:08:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T15:16:21Z",
+  "closed_at": "2026-05-02T15:16:21Z",
+  "close_reason": "Closed",
+  "labels": [
+    "maintainer-burden",
+    "my-oss",
+    "review",
+    "risk"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-mgi.3",
+      "depends_on_id": "MIME-mgi",
+      "type": "parent-child",
+      "created_at": "2026-05-02T08:08:12Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "MIME-1pu.16",
+  "title": "sign.rs: wrap_base64 builds intermediate Vec before joining — stream instead",
+  "description": "sign.rs:368-376: wrap_base64 builds a Vec\u003c\u0026str\u003e then calls .join('\\r\\n'). This allocates the Vec and then re-allocates for the joined String. Idiomatic alternative: pre-calculate capacity (b64.len() + (b64.len()/width)*2) and write chunks directly into a String using a fold or for loop with push_str. The current form reads clearly but models the pattern of collecting then joining rather than streaming — a pattern contributors will repeat.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:34:33Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:51:23Z",
+  "closed_at": "2026-05-02T13:51:23Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.16",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:34:33Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

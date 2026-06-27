@@ -1,0 +1,27 @@
+{
+  "id": "MIME-8zt.93",
+  "title": "Good: encrypt.rs RSA preflight getrandom call before PKCS#1v15 encrypt",
+  "description": "smime-tree/src/encrypt.rs: before calling RSA PKCS#1v15 encrypt for key transport, the code performs a preflight check by calling getrandom for 256 random bytes and returning UnwrapErr(SysRng) if the system RNG is unavailable. This ensures the encrypt operation fails fast with a diagnostic error rather than panicking or silently producing a deterministic (zero-random) ciphertext if the RNG is broken. The preflight is especially important for PKCS#1v15, which is susceptible to Bleichenbacher attacks if randomness is weak. The invariant is documented in a comment. Worth defending against removal as a 'redundant' check.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:05:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:22:27Z",
+  "closed_at": "2026-06-16T00:22:27Z",
+  "close_reason": "Positive finding — no action needed.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.93",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:05:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

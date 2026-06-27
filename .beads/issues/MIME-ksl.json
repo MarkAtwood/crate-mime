@@ -1,0 +1,14 @@
+{
+  "id": "MIME-ksl",
+  "title": "New crate: uuencode (standalone UU encode/decode)",
+  "description": "Standalone Rust crate for UUencoding and UUdecoding.\n\nScope:\n- No dependency on mime-tree. Usable as a general-purpose library.\n- mime-tree depends on this crate for TransferEncoding::UuEncoding support (MIME-80l.3).\n- Must handle real-world 'trash': CRLF, trailing-space stripping, space/backtick zero ambiguity, missing end, begin-base64 detection, multiple blocks, inline blocks with surrounding text.\n- No panics on any input.\n\nPublic API shape:\n  pub struct BlockMetadata { pub filename: String, pub mode: u32 }\n  pub struct DecodedBlock { pub data: Vec\u003cu8\u003e, pub metadata: BlockMetadata, pub is_truncated: bool }\n  pub struct BlockLocation { pub begin_offset: usize, pub end_offset: usize, pub metadata: BlockMetadata }\n  pub enum UuError { ... }\n  pub fn decode(input: \u0026[u8]) -\u003e Result\u003cDecodedBlock, UuError\u003e   // full block incl. begin/end lines\n  pub fn encode(data: \u0026[u8], filename: \u0026str, mode: u32) -\u003e Vec\u003cu8\u003e  // produces begin/end framing\n  pub fn scan(input: \u0026[u8]) -\u003e impl Iterator\u003cItem = Result\u003cBlockLocation, UuError\u003e\u003e  // finds blocks in text\n\nCrate name: uuencoding\nLocated at: uuencoding/ in this workspace (or as a sibling workspace)\nLicense: MIT OR Apache-2.0\nMSRV: 1.75 (no mime-tree dep, so can match the lower bar)\nNo unsafe.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T16:55:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T18:01:16Z",
+  "close_reason": "all steps complete"
+}

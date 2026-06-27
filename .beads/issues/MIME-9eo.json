@@ -1,0 +1,15 @@
+{
+  "id": "MIME-9eo",
+  "title": "Resolve yanked aes 0.9.0 dependency",
+  "description": "smime-tree's lockfile references aes 0.9.0 which is yanked on crates.io. Check if a non-yanked patch exists or if the cms pre-release stack requires it. Update Cargo.lock.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-16T01:38:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T01:41:45Z",
+  "closed_at": "2026-06-16T01:41:45Z",
+  "close_reason": "Closed"
+}

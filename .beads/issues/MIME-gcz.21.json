@@ -1,0 +1,28 @@
+{
+  "id": "MIME-gcz.21",
+  "title": "decode_uuencode always decodes entire block before applying max_bytes limit",
+  "description": "The new decode_uuencode() in mime-tree/src/decode.rs delegates to uuencoding::decode(body) which always decodes the full block into memory before returning. Then max_bytes truncation is applied to the result. The old inline decoder stopped decoding as soon as max_bytes bytes were produced, making preview queries O(max_bytes). For a caller requesting a 100-byte preview of a 10MB UU body, the old code read ~133 encoded bytes and stopped; the new code decodes all 7.5MB into a Vec\u003cu8\u003e then discards all but 100 bytes. Impact: callers using max_bytes for snippet/preview generation (common in mail clients) now allocate proportional to the full attachment size, not the preview size.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T18:47:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:51:53Z",
+  "closed_at": "2026-05-04T18:51:53Z",
+  "close_reason": "Fixed: decode_uuencode now calls uuencoding::decode_limited(body, max_bytes) which halts decoding as soon as max_bytes bytes are produced; added decode_limited to uuencoding public API.",
+  "labels": [
+    "efficiency"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-gcz.21",
+      "depends_on_id": "MIME-gcz",
+      "type": "parent-child",
+      "created_at": "2026-05-04T11:47:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

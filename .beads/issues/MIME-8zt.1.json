@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.1",
+  "title": "decrypt: no ciphertext length bound before CBC allocation",
+  "description": "In decrypt.rs, the encrypted content OctetString from a DER-parsed EnvelopedData is passed directly to decrypt_padded_vec with no upper-bound check on its size. A crafted EnvelopedData with a multi-gigabyte OctetString will cause the cbc crate to attempt a proportionally sized Vec allocation, producing a memory-DoS from untrusted input.\n\nWhat goes wrong: an unauthenticated remote sender supplies a malformed EnvelopedData DER blob; the receiver allocates gigabytes of RAM and is killed by OOM, denying service.\n\nAffected code: decrypt.rs lines 62-87 (ct = encrypted_content.as_bytes(), passed directly to decrypt_aes128_cbc / decrypt_aes256_cbc -\u003e decrypt_padded_vec).\n\nFix: reject any encrypted_content whose byte length exceeds a configurable upper bound (e.g. 64 MiB by default) before calling the CBC decryptor. Return SmimeError::MalformedInput with a clear message. The bound should be documented and ideally caller-configurable.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T19:59:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:00:29Z",
+  "closed_at": "2026-06-16T00:00:29Z",
+  "close_reason": "Added MAX_ENCRYPTED_CONTENT_SIZE (64 MiB) check before decrypt_padded_vec.",
+  "labels": [
+    "crypto-security",
+    "review",
+    "untrusted-input"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.1",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T12:59:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

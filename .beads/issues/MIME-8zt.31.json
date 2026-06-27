@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.31",
+  "title": "uuencoding/encode.rs: index loop should use .chunks(3)",
+  "description": "Why this exists: uuencoding/src/encode.rs uses a while i \u003c chunk.len() loop with manual chunk[i], chunk[i+1], chunk[i+2] indexing to process 3-byte groups. The iterators standard mandates .iter()/.enumerate() over index loops because index loops can panic; iterators cannot go out of bounds.\\n\\nWhat goes wrong: chunk[i+1] and chunk[i+2] will panic at runtime if the slice is not a multiple of 3 bytes (the final partial group). The code avoids this by padding, but the correctness depends on the padding logic being right — an off-by-one in the padding leaves a panic path. Using .chunks(3) makes the boundary safe by construction and eliminates the manual index arithmetic entirely.\\n\\nFix: replace the while loop with for group in chunk.chunks(3) { ... } and match on group.len() for the partial final chunk.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:18:26Z",
+  "closed_at": "2026-06-16T00:18:26Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "iterators",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.31",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:37Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

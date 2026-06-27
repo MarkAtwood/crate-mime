@@ -1,0 +1,29 @@
+{
+  "id": "MIME-72l.23",
+  "title": "decode.rs: identity/7bit/8bit path copies full body unconditionally",
+  "description": "decode_body_value() line 67: the Identity/SevenBit/EightBit/Binary arms do body_bytes.to_vec() unconditionally, cloning the entire raw body slice into a new Vec\u003cu8\u003e before max_bytes truncation is applied at line 72. For a large binary attachment retrieved with a small max_bytes limit (e.g. a 5 MB inline image with max_bytes=512 for preview), this clones 5 MB to immediately discard 4,999,488 bytes. Fix direction: truncate the slice to min(body_bytes.len(), max_bytes.unwrap_or(usize::MAX)) before calling to_vec(), or handle the truncation inline.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T05:46:38Z",
+  "closed_at": "2026-05-02T05:46:38Z",
+  "close_reason": "Closed",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.23",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:00Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

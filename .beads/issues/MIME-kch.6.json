@@ -1,0 +1,24 @@
+{
+  "id": "MIME-kch.6",
+  "title": "P4: tighten encode_all_bytes_round_trip oracle comment",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-05T00:55:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-05T00:57:01Z",
+  "closed_at": "2026-05-05T00:57:01Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-kch.6",
+      "depends_on_id": "MIME-kch",
+      "type": "parent-child",
+      "created_at": "2026-05-04T17:55:38Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

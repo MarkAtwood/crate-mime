@@ -1,0 +1,28 @@
+{
+  "id": "MIME-1pu.10",
+  "title": "DER-exact DN comparison in cert.rs is the right default",
+  "description": "names_equal() uses byte-exact DER comparison rather than RFC 5280 §7.1 string comparison. This is correct for the vast majority of certificate chains produced by conformant CAs. The alternative — implementing the full RFC 5280 DN matching algorithm — would add significant complexity (case folding, whitespace normalisation, mixed encoding rules for different string types) for a rare edge case. The real risk (MIME-1pu.4) is that non-conformant CAs exist in production; the mitigation is better documentation, not a full RFC 5280 matcher. A future contributor suggesting 'just add RFC 5280 DN matching' should be asked to identify which CAs they're trying to support and why simpler alternatives (cert pinning, pre-normalised trust stores) are insufficient.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T13:32:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T13:51:56Z",
+  "closed_at": "2026-05-02T13:51:56Z",
+  "close_reason": "Design decision documented; no code change needed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-1pu.10",
+      "depends_on_id": "MIME-1pu",
+      "type": "parent-child",
+      "created_at": "2026-05-02T06:32:35Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "MIME-72l",
+  "title": "Review round 1: Build mime-tree and smime-tree workspace",
+  "notes": "Maintainer risk: HIGH — Public API has multiple security footguns (verify() Ok on all-signers-fail, revocation silently skipped, KARI decrypt silently dropped) and several pre-breaking-change design issues (trait extensibility, encrypt algorithm hardcoded, usize serialization hazard, RecipientIdentifier pub re-export of pre-release dep) that will require semver bumps before 1.0 if not addressed now.\nConfidence: 75% chance of missed bug. Least confident flags: MIME-72l.9 (P-384 KARI AES-192-KW mismatch — could not verify OID table without running code), MIME-72l.14 (sign/verify hash asymmetry — complex CMS control flow across two functions), MIME-72l.1 (self-signed root signature verification — cert.rs path not traced end-to-end). Uncertainty driven by: (1) crypto correctness issues require tracing DER encoding through RustCrypto CMS types which cannot be verified by reading alone; (2) KARI encrypt/decrypt path is undertested (MIME-72l.58 notes no round-trip test), so issues in that path could not be cross-checked against tests; (3) did not run the code, so issues like MIME-72l.9's AES key-size mismatch require trusting the filing agent's OID-to-keysize arithmetic. Would raise confidence if: test coverage for KARI encrypt+decrypt round-trip existed (would surface MIME-72l.9), and if the sign/verify digest path had an integration test with a known-good OpenSSL-produced signature. Labeled opinion: MIME-72l.53 (AES-GCM dead dispatch — has documented counter-rationale in MIME-72l.57), MIME-72l.34 (walk double-indirection — has documented RFC 8621 rationale in MIME-72l.62). Overlaps noted: MIME-72l.17 / MIME-72l.26 (same clone), MIME-72l.11 / MIME-72l.20 (same wrong error variant), MIME-72l.53 / MIME-72l.57 (same AES-GCM branch, opposite recommendations), MIME-72l.34 / MIME-72l.62 (same walk pattern, opposite recommendations). Running out of real complaints — only opinion/style remain in P3/P4 elegance items after removing MIME-72l.53 and MIME-72l.34.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:21:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-02T05:49:10Z",
+  "labels": [
+    "review"
+  ]
+}

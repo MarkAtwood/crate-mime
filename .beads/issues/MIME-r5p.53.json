@@ -1,0 +1,31 @@
+{
+  "id": "MIME-r5p.53",
+  "title": "sig_verify functions take err: E: Fn(String)-\u003eSmimeError — could use impl Fn instead of generic",
+  "description": "sig_verify.rs: verify_rsa_pkcs1, verify_ecdsa_p256, verify_ecdsa_p384 all take E: Fn(String) -\u003e SmimeError as a generic type parameter. There is exactly one call site that creates the closure (verify.rs line 328: let e = |msg: String| SmimeError::Other(msg);), and all 8 dispatch arms use that same variable — so there is only ONE monomorphization regardless of whether the bound is generic E or impl Fn. Using impl Fn(String) -\u003e SmimeError instead of E: Fn(String) -\u003e SmimeError would be marginally more idiomatic Rust style (impl Fn expresses 'this is a closure argument', not 'this function is generic over a type') but has no code-size impact here. Low priority.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T17:55:19Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T18:49:20Z",
+  "closed_at": "2026-05-02T18:49:20Z",
+  "close_reason": "Closed",
+  "labels": [
+    "clippy",
+    "idiomatic-rust",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-r5p.53",
+      "depends_on_id": "MIME-r5p",
+      "type": "parent-child",
+      "created_at": "2026-05-02T10:55:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

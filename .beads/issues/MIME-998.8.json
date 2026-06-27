@@ -1,0 +1,28 @@
+{
+  "id": "MIME-998.8",
+  "title": "decode.rs: base64 pre-truncation to avoid full decode is worth defending",
+  "description": "decode.rs pre-truncates the base64 input to max_b64_chars before decoding, avoiding allocation of a full decode buffer when only a preview is needed. The formula n.saturating_mul(4).div_ceil(3).next_multiple_of(4) correctly rounds up to the next 4-byte base64 group boundary, preventing spurious decode errors. The b64_input_was_limited detection (a second scan over body_bytes to find one more non-CRLF byte) is necessary because base64's 3:4 encoding means a full group may not indicate truncation. A contributor might suggest 'simplifying' by always decoding the full body — this would make preview operations O(body_size) in memory instead of O(max_bytes).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:40:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:44:39Z",
+  "closed_at": "2026-05-02T07:44:39Z",
+  "close_reason": "Decision record — no action needed.",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-998.8",
+      "depends_on_id": "MIME-998",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:40:09Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

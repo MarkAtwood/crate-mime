@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.10",
+  "title": "redundant cast in encrypt.rs: (cek.as_ref() as \u0026[u8]).to_vec()",
+  "description": "encrypt.rs has two occurrences of: let cek_bytes: Vec\u003cu8\u003e = (cek.as_ref() as \u0026[u8]).to_vec(); The explicit 'as \u0026[u8]' cast is redundant because cek.as_ref() on a crypto_common::Key already returns \u0026[u8]. Rewrite as: let cek_bytes = cek.as_ref().to_vec(); This is purely cosmetic noise but any contributor will wonder why the cast is there.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:05:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:18:01Z",
+  "closed_at": "2026-05-02T07:18:01Z",
+  "close_reason": "cast is required for type disambiguation — crypto_common::Key implements multiple AsRef\u003cT\u003e impls; the explicit 'as \u0026[u8]' is necessary, not redundant. Subagent's attempt to remove it broke compilation (E0282). Reverted to original.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.10",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:05:10Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

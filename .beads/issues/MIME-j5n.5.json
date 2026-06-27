@@ -1,0 +1,33 @@
+{
+  "id": "MIME-j5n.5",
+  "title": "Integration tests: 3-part reassembly, out-of-order, error cases, CRC32",
+  "description": "Comprehensive test suite. Oracle: known byte patterns with known ranges. No round-trip self-tests.\n\nDepends on: MIME-j5n.4 (add_part + finish complete)\n\nTests:\n1. 3-part in-order: [0..100), [100..200), [200..300) of known bytes; finish() == correct buffer\n2. 3-part out-of-order (3,1,2): same result\n3. Single-part covering whole file\n4. Missing part: is_complete()=false, missing_ranges()=[100..200), finish()=Err(Incomplete)\n5. Overlapping: Err(OverlappingPart)\n6. Out-of-range part: Err(OutOfRange)\n7. CRC32 mismatch: Err(CrcMismatch) with correct expected/actual fields\n8. CRC32 correct: Ok\n9. TruncatedPart: data shorter than claimed range\n\nCRC32 oracle: compute crc32fast::hash() of the known pattern independently; hardcode as constant.\nAcceptance: cargo test -p yencoding-multi passes, zero self-referential oracles",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:25:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T21:21:19Z",
+  "closed_at": "2026-05-04T21:21:19Z",
+  "close_reason": "23 tests: 3-part in-order, out-of-order, missing part, dup rejection, CRC mismatch, zero-byte, sweep.",
+  "dependencies": [
+    {
+      "issue_id": "MIME-j5n.5",
+      "depends_on_id": "MIME-j5n",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:25:49Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-j5n.5",
+      "depends_on_id": "MIME-j5n.4",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:36Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

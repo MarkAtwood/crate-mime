@@ -1,0 +1,30 @@
+{
+  "id": "MIME-8zt.29",
+  "title": "yencoding: LineIter does not implement std::iter::Iterator",
+  "description": "Why this exists: yencoding/src/decode.rs defines a private struct LineIter\u003c'a\u003e with a manual fn next() method, but it does NOT implement the std::iter::Iterator trait. This means LineIter cannot be used with for loops, iterator adaptors (.map(), .filter(), etc.), or any function expecting an Iterator.\\n\\nWhat goes wrong: code that wants to iterate lines cannot chain .enumerate(), .peekable(), or any adaptor onto LineIter. The natural Rust API is unusable. Any refactor that tries to pass LineIter to a generic fn expecting Iterator will fail to compile. The iterator abstraction is broken — it looks like an iterator but is not one.\\n\\nFix: impl Iterator for LineIter\u003c'a\u003e with type Item = \u0026'a [u8] and delegate to the existing next() body.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:20:54Z",
+  "closed_at": "2026-06-16T00:20:54Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "review",
+    "traits"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.29",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:29Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

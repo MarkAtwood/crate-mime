@@ -1,0 +1,30 @@
+{
+  "id": "MIME-b5x.29",
+  "title": "compute_digest / verify_sig use if-else chains instead of match on OID",
+  "description": "verify.rs: compute_digest() and verify_sig() use 'if *oid == X { ... } else if *oid == Y { ... }' chains over ObjectIdentifiers. These are pattern-matchable values but OIDs are not pattern-matchable constants in Rust match arms directly. The current form is idiomatic for OID dispatch. However, a match on a tuple or a helper function would be cleaner. Suggested rewrite: create an enum from OID in a helper, then match on the enum — this moves the OID→enum mapping to one place instead of scattered if-else chains.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T07:27:06Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T07:35:54Z",
+  "closed_at": "2026-05-02T07:35:54Z",
+  "close_reason": "ObjectIdentifier values cannot be used as match arm patterns in Rust — the if-else chain is the correct idiomatic approach for runtime OID dispatch. A match would require converting to an intermediate enum, adding complexity with no readability benefit.",
+  "labels": [
+    "elegance",
+    "my-oss",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-b5x.29",
+      "depends_on_id": "MIME-b5x",
+      "type": "parent-child",
+      "created_at": "2026-05-02T00:27:06Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

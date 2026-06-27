@@ -1,0 +1,28 @@
+{
+  "id": "MIME-uxy.1",
+  "title": "decrypt.rs: CEK Vec not zeroed after content decryption",
+  "description": "In decrypt(), the cek returned by both key.decrypt_cek() (KTRI path, line 105) and key.agree_ecdh() (KARI path, line 226-231) is a plain Vec\u003cu8\u003e bound at line 59. It is passed into decrypt_aes128_cbc / decrypt_aes256_cbc and then dropped without zeroing. The plaintext CEK remains accessible in heap memory until the allocator reuses or zeroes that region.\n\nFix: wrap the cek binding in Zeroizing\u003cVec\u003cu8\u003e\u003e in find_and_decrypt_cek() and propagate the type through to the CBC decrypt functions (which take \u0026[u8] so no signature change needed — only the owning binding changes).\n\nAcceptance: cek is Zeroizing\u003cVec\u003cu8\u003e\u003e in find_and_decrypt_cek and decrypt(), and the CBC helper functions still accept \u0026[u8] slices.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T14:50:18Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T14:51:22Z",
+  "closed_at": "2026-05-02T14:51:22Z",
+  "close_reason": "Closed",
+  "labels": [
+    "my-oss",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-uxy.1",
+      "depends_on_id": "MIME-uxy",
+      "type": "parent-child",
+      "created_at": "2026-05-02T07:50:17Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

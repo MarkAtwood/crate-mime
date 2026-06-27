@@ -1,0 +1,29 @@
+{
+  "id": "MIME-8zt.35",
+  "title": "SmimeError is not Serialize/Deserialize but VerificationResult contains it indirectly",
+  "description": "VerificationResult and SignerResult both derive Serialize/Deserialize (smime-tree/src/error.rs). However, SmimeError does not implement Serialize/Deserialize. If callers store a VerificationResult that contains a SmimeError in any of its fields (e.g. through a future field addition), the serde derives would break. More immediately: callers who want to persist or log VerificationResult cannot round-trip it through JSON if the result internally references any SmimeError. What goes wrong: the promise of Serialize/Deserialize on VerificationResult is inconsistent — it can be serialized today only because no field currently holds SmimeError. Adding #[derive(Serialize, Deserialize)] to SmimeError is the fix; alternatively, document explicitly that SmimeError is intentionally not serializable and that VerificationResult fields are chosen to avoid it. File: smime-tree/src/error.rs.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:02:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-16T00:14:31Z",
+  "closed_at": "2026-06-16T00:14:31Z",
+  "close_reason": "Duplicate of MIME-8zt.70 — SmimeError now has Serialize/Deserialize.",
+  "labels": [
+    "api-contract",
+    "review",
+    "underspecified"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.35",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:02:48Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

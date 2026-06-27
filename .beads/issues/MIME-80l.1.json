@@ -1,0 +1,25 @@
+{
+  "id": "MIME-80l.1",
+  "title": "Decode RFC 2047 encoded-words in extract_headers",
+  "description": "extract_headers() in parse.rs slices raw bytes via h.offset_start/h.offset_end and applies from_utf8_lossy, leaving encoded-words like =?utf-8?b?SGVsbG8=?= undecoded in ParsedMessage.headers.\n\nmail-parser has an internal RFC 2047 decoder (decoders/encoded_word.rs, decode_rfc2047) but mime-tree bypasses it by reading raw offsets. Fix: use mail-parser's decoded header value instead of the raw byte slice, so callers see decoded Unicode strings in ParsedMessage.headers.\n\nAcceptance criteria:\n- Subject: =?utf-8?b?SGVsbG8=?= appears as 'Hello' in ParsedMessage.headers\n- Subject: =?iso-8859-1?q?caf=E9?= appears as 'café'\n- Headers with no encoded-words are unchanged\n- Add tests for both cases with known decoded values as oracle (NOT derived from this crate — use https://www.rfc-editor.org/rfc/rfc2047 examples or manual decode)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T15:44:52Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T20:02:47Z",
+  "closed_at": "2026-05-04T17:45:43Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-80l.1",
+      "depends_on_id": "MIME-80l",
+      "type": "parent-child",
+      "created_at": "2026-05-04T08:44:51Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

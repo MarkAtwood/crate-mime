@@ -1,0 +1,15 @@
+{
+  "id": "MIME-7o5",
+  "title": "[yencoding] Improve docs and comments",
+  "description": "Skoll findings for docs/comments in yencoding:\n- LOW-56: Document that YencMetadata::line_length defaults to 128 when line= field is absent\n- LOW-59: Document that strip_keyword does not trim leading whitespace before keyword lines\n- MEDIUM-60: Add comment in encode_body explaining that pre-flush col==0 check correctly handles dot/TAB-at-line-start (escape pair starts with '=' not '.'/'TAB')\n- INFO-62: Change 'Safety:' comment in assembler.rs to 'Invariant:' (not an unsafe block)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:58Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:30:24Z",
+  "closed_at": "2026-06-04T22:30:24Z",
+  "close_reason": "Documented line_length default (128), strip_keyword leading whitespace behavior, encode_body col==0 flush safety, and fixed Safety→Invariant comment."
+}

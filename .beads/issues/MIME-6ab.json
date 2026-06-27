@@ -1,0 +1,15 @@
+{
+  "id": "MIME-6ab",
+  "title": "[yencoding] Cross-validate yend size= vs ybegin size= for single-part",
+  "description": "Skoll LOW-63: For single-part articles, =ybegin size= should equal decoded payload length, but only =yend size= is checked against data.len(). A malformed article with mismatched =ybegin size= and =yend size= succeeds silently. Add validation that total_size == data.len() for single-part articles (not multi-part where total_size is whole-file size).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-06-04T21:56:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-04T22:16:57Z",
+  "closed_at": "2026-06-04T22:16:57Z",
+  "close_reason": "Added cross-validation of =ybegin size= against decoded payload length for single-part articles. Added test decode_ybegin_size_mismatch_single_part. Updated SizeMismatch error docs."
+}

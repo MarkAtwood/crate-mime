@@ -1,0 +1,41 @@
+{
+  "id": "MIME-zjr.8",
+  "title": "Integration tests and property tests for uuencoding-multi",
+  "description": "Write a thorough integration test suite in tests/integration.rs and property tests.\n\nTest oracle discipline: ALL expected values must come from external oracles (UNIX uudecode, Python uu module, or known-good test fixtures). Never use this crate's output as its own expected value.\n\nIntegration tests (tests/integration.rs):\n  - Test fixture: create a 3-part multi-part UU sequence from a known file using UNIX uuencode split at the shell level; use hex!() literals for the byte content\n  - End-to-end happy path: parse 3 subject lines, build PartCollection, reassemble, verify output matches oracle bytes\n  - End-to-end with TOC (part 0): parse TOC, parse 3 data parts, reassemble, verify output\n  - Out-of-order insertion: add parts 3, 1, 2; verify reassemble works\n  - Missing middle part: add parts 1, 3 with total=3; verify is_truncated=true and missing_parts=[2]\n  - Duplicate part rejected by PartCollection::add\n  - Subject lines: test all format variants from MIME-zjr.1 with at least 2 real examples each\n  - TOC parsing: at least 3 real TOC body samples (transcribed from real Usenet archives or constructed to match documented formats)\n\nProperty tests (proptest or quickcheck):\n  - parse_subject does not panic on any arbitrary \u0026str input (use proptest::arbitrary)\n  - parse_toc does not panic on any arbitrary \u0026[u8] input\n  - PartCollection::add never panics regardless of input order\n\nNo test may use this crate to generate its own expected values. All multi-part byte sequences used as fixtures must be generated externally (uuencode shell command) and recorded as constants.\n\nQuality gate:\n  cargo fmt\n  cargo clippy -p uuencoding-multi -- -D warnings\n  cargo test -p uuencoding-multi\n\nPARENT: MIME-zjr",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-04T17:26:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-04T18:17:39Z",
+  "closed_at": "2026-05-04T18:17:39Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "MIME-zjr.8",
+      "depends_on_id": "MIME-zjr",
+      "type": "parent-child",
+      "created_at": "2026-05-04T10:26:03Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.8",
+      "depends_on_id": "MIME-zjr.6",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:19Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "MIME-zjr.8",
+      "depends_on_id": "MIME-zjr.5",
+      "type": "blocks",
+      "created_at": "2026-05-04T10:26:18Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

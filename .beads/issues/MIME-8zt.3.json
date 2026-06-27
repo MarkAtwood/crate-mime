@@ -1,0 +1,31 @@
+{
+  "id": "MIME-8zt.3",
+  "title": "decrypt: AES-CBC used without authentication — padding oracle + EFAIL",
+  "description": "decrypt.rs decrypts EnvelopedData content with AES-128-CBC or AES-256-CBC (neither is an AEAD). There is no MAC, no GCM tag, and no integrity check over the ciphertext before plaintext is returned to the caller.\n\nTwo concrete threats:\n\n1. PKCS#7 padding oracle: if the caller surfaces SmimeError::DecryptionFailed to any interactive channel (HTTP 400, SMTP DSN, etc.), the attacker can submit chosen-ciphertext queries and recover the full plaintext via adaptive padding-oracle attack. The error string includes the low-level UnpadError detail, which distinguishes padding failure from a correct-padded-but-wrong-content result.\n\n2. EFAIL (CVE-2017-17688 class): unauthenticated CBC decryption means a passive attacker who intercepts the ciphertext can modify arbitrary blocks to redirect the decrypted plaintext to an attacker-chosen channel (e.g. embed it in an img src= URL in the MIME content), without knowing the CEK.\n\nWhat goes wrong: confidentiality of the decrypted MIME content is not guaranteed — an active attacker who obtains the ciphertext can recover plaintext via padding oracle, or cause the decrypted content to be exfiltrated.\n\nAffected code: decrypt.rs decrypt_aes128_cbc() and decrypt_aes256_cbc().\n\nThe doc comment in lib.rs and encrypt.rs mentions PKCS#1v15 deprecation but does NOT disclose the CBC unauthenticated decryption risk.\n\nCorrect fix: use AuthEnvelopedData (RFC 5083) with AES-GCM for new messages (encrypt produces GCM, decrypt accepts both CBC for legacy and GCM for new). The CBC path should remain for interoperability but callers must be warned in the doc that returning error detail to the network is a padding-oracle risk.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "mark@wolfssl.com",
+  "created_at": "2026-06-15T20:00:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-15T23:59:46Z",
+  "closed_at": "2026-06-15T23:59:46Z",
+  "close_reason": "Eliminated padding oracle info leak (generic error message), documented unauthenticated CBC risks. AES-GCM feature tracked in MIME-8zt.94.",
+  "labels": [
+    "algorithm",
+    "crypto-security",
+    "review",
+    "untrusted-input"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-8zt.3",
+      "depends_on_id": "MIME-8zt",
+      "type": "parent-child",
+      "created_at": "2026-06-15T13:00:01Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

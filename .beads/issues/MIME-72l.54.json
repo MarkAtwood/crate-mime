@@ -1,0 +1,27 @@
+{
+  "id": "MIME-72l.54",
+  "title": "X.509 Name comparison uses DER re-encoding, not string or field-by-field comparison",
+  "description": "cert.rs names_equal() re-encodes both Names to DER and compares the byte slices. verify.rs find_cert() does the same for IssuerAndSerialNumber matching. A future contributor might suggest comparing Name fields as strings (e.g., converting to RFC 4514 format and comparing) to 'simplify the code'. That would be wrong: RFC 5280 §7.1 requires case-insensitive comparison of attribute values plus various folding rules, but the practical interoperability requirement is that implementations compare DER-encoded Names byte-for-byte since that is what every real CA and TLS stack does. String comparison would miss encoding variants (PrintableString vs UTF8String) and attribute ordering differences that are semantically equivalent but byte-different in string form.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "mark@reviewcommit.com",
+  "created_at": "2026-05-02T05:26:56Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-02T06:24:41Z",
+  "closed_at": "2026-05-02T06:24:41Z",
+  "close_reason": "confirmed correct, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "MIME-72l.54",
+      "depends_on_id": "MIME-72l",
+      "type": "parent-child",
+      "created_at": "2026-05-01T22:26:55Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
