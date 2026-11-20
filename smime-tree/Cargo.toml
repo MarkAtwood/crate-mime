@@ -14,31 +14,31 @@ exclude = ["CLAUDE.md", "AGENTS.md"]
 
 [dependencies]
 base64 = { version = "0.22" }
-cms = { version = "=0.3.0-pre.2" }
+cms = { version = "=0.3.0-rc.2" }
 crypto-common = { version = "0.2" }
-elliptic-curve = { version = "=0.14.0-rc.32", features = ["ecdh"] }
+elliptic-curve = { version = "0.14", features = ["ecdh"] }
 const-oid = { version = "0.10", features = ["db"] }
-x509-cert = { version = "=0.3.0-rc.4", default-features = false, features = ["std"] }
-rsa = { version = "=0.10.0-rc.18" }
-p256 = { version = "=0.14.0-rc.9", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
-p384 = { version = "=0.14.0-rc.9", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
-ansi-x963-kdf = { version = "=0.1.0-rc.2" }
+x509-cert = { version = "0.3", default-features = false, features = ["std"] }
+rsa = { version = "0.10", features = ["pkcs1v15"] }
+p256 = { version = "0.14", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
+p384 = { version = "0.14", default-features = false, features = ["ecdh", "ecdsa", "pkcs8"] }
+ansi-x963-kdf = { version = "0.1" }
 aes-kw = { version = "0.3" }
 aes = { version = "0.9" }
-aes-gcm = { version = "=0.11.0-rc.4" }
+aes-gcm = { version = "0.11" }
 cbc = { version = "0.2", features = ["alloc"] }
 sha2 = { version = "0.11" }
 der = { version = "0.8" }
 spki = { version = "0.8" }
-signature = { version = "=3.0.0-rc.10" }
+signature = { version = "3" }
 getrandom = { version = "0.4", features = ["sys_rng"] }
 serde = { version = "1", features = ["derive"] }
 subtle = { version = "2" }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 # Certificate chain validation via the PKIX crate family.
-# pkix-chain uses x509-cert 0.2 (the stable stack), while the rest of
-# smime-tree uses x509-cert 0.3.0-rc (required by the `cms` crate).
-# Certificates are bridged via DER round-trip in cert.rs.
+# pkix-chain still uses x509-cert 0.2, while the rest of smime-tree uses
+# x509-cert 0.3 (required by the `cms` crate). Certificates are bridged
+# via DER round-trip in cert.rs (GitHub issue #2).
 pkix-chain = { version = "0.4", features = ["rustcrypto"] }
 x509-cert-stable = { package = "x509-cert", version = "0.2" }
 der-stable = { package = "der", version = "0.7" }

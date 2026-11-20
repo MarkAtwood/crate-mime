@@ -28,7 +28,7 @@
 
 use der::{Decode, Encode};
 use rsa::signature::SignatureEncoding;
-use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
+use rsa::{pkcs8::DecodePrivateKey, PrivateKey as RsaPrivateKey};
 use sha2::{Digest, Sha256};
 use signature::hazmat::PrehashSigner as _;
 use smime_tree::{

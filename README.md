@@ -46,12 +46,12 @@ MSRV: **1.85**
 These crates are published and tested against OpenSSL and Python's `cryptography`
 library, but adoption today comes with real limitations worth knowing up front.
 
-**Ecosystem timing is the main blocker for `smime-tree`.**
-Several of its dependencies are pinned to pre-release RustCrypto crates —
-`cms = "=0.3.0-pre.2"`, `x509-cert = "=0.3.0-rc.4"`, `p256`/`p384`/`rsa` at
-matching rc pins. Until those crates ship stable releases, pinning to specific
-pre-release versions is unavoidable and creates downstream resolver conflicts.
-The code is ready; the ecosystem is not quite there yet.
+**`smime-tree` still depends on one pre-release crate.**
+The RustCrypto stack it builds on (`x509-cert` 0.3, `rsa` 0.10, `p256`/`p384`
+0.14, `aes-gcm` 0.11, `signature` 3) has shipped stable releases, but `cms` is
+still a release candidate and is pinned exactly (`cms = "=0.3.0-rc.2"`). An
+exact pre-release pin can conflict with another crate in the same build that
+pins a different `cms` pre-release.
 
 **`smime-tree` is ahead of the broader Rust ecosystem for S/MIME.**
 At the time of writing there is no other general-purpose S/MIME crate at this

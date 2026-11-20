@@ -8,7 +8,7 @@ use const_oid::AssociatedOid;
 use der::Encode;
 use p256::ecdsa::{DerSignature as P256DerSig, VerifyingKey as P256VerifyingKey};
 use p384::ecdsa::{DerSignature as P384DerSig, VerifyingKey as P384VerifyingKey};
-use rsa::{pkcs1v15, pkcs8::DecodePublicKey, RsaPublicKey};
+use rsa::{pkcs1v15, pkcs8::DecodePublicKey, PublicKey};
 use sha2::digest::Digest;
 use signature::Verifier as _;
 use x509_cert::Certificate;
@@ -34,7 +34,7 @@ where
         .subject_public_key_info()
         .to_der()
         .map_err(|e| err(format!("SPKI DER encode: {e}")))?;
-    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| err(e.to_string()))?;
+    let rsa_pub = PublicKey::from_public_key_der(&spki_der).map_err(|e| err(e.to_string()))?;
     let verifying_key = pkcs1v15::VerifyingKey::<D>::new(rsa_pub);
     let signature = pkcs1v15::Signature::try_from(sig_bytes).map_err(|e| err(e.to_string()))?;
     verifying_key

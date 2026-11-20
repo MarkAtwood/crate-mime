@@ -27,7 +27,7 @@ use elliptic_curve::ecdh::EphemeralSecret;
 use elliptic_curve::sec1::{FromSec1Point, ModulusSize, ToSec1Point};
 use elliptic_curve::{AffinePoint, CurveArithmetic, FieldBytesSize};
 use getrandom::{rand_core::UnwrapErr, SysRng};
-use rsa::{pkcs8::DecodePublicKey, RsaPublicKey};
+use rsa::{pkcs8::DecodePublicKey, PublicKey};
 use spki::AlgorithmIdentifierOwned;
 use x509_cert::Certificate;
 
@@ -363,7 +363,7 @@ fn build_rsa_recipient(cert: &Certificate, cek: &[u8]) -> Result<RecipientInfo, 
     let _ = preflight;
 
     let spki_der = cert.tbs_certificate().subject_public_key_info().to_der()?;
-    let rsa_pub = RsaPublicKey::from_public_key_der(&spki_der).map_err(|e| {
+    let rsa_pub = PublicKey::from_public_key_der(&spki_der).map_err(|e| {
         SmimeError::MalformedInput(format!("RSA public key in recipient cert: {e}"))
     })?;
 

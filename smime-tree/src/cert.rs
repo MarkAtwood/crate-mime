@@ -2,7 +2,7 @@
 //!
 //! Delegates RFC 5280 path validation to [`pkix_chain::verify_chain_default`].
 //!
-//! Because the `cms` crate requires x509-cert 0.3.0-rc and
+//! Because the `cms` crate requires x509-cert 0.3 and
 //! `pkix-chain` requires x509-cert 0.2, all certificates are bridged
 //! via DER round-trip in [`bridge_cert`] before being passed to pkix.
 
@@ -190,11 +190,11 @@ fn build_chain<'a>(
 // DER bridge
 // ---------------------------------------------------------------------------
 
-/// DER-encode an x509-cert 0.3-rc `Certificate` and re-parse as x509-cert 0.2.
+/// DER-encode an x509-cert 0.3 `Certificate` and re-parse as x509-cert 0.2.
 ///
 /// Both crate versions represent the same RFC 5280 ASN.1 structure; the
 /// round-trip is lossless. This bridge is needed because `cms` (and the
-/// rest of smime-tree) is pinned to x509-cert 0.3.0-rc while
+/// rest of smime-tree) uses x509-cert 0.3 while
 /// `pkix-chain` requires x509-cert 0.2.
 fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, SmimeError> {
     let der = cert.to_der().map_err(|e| {
