@@ -34,7 +34,8 @@ use crate::{DecodedPart, YencMetadata};
 /// - [`YencError::InvalidHeader`] — a required field is missing or unparsable.
 /// - [`YencError::UnexpectedEof`] — `=yend` line was never found.
 /// - [`YencError::CrcMismatch`] — decoded bytes do not match the CRC in `=yend`.
-/// - [`YencError::SizeMismatch`] — decoded byte count does not match `=yend size=`.
+/// - [`YencError::SizeMismatch`] — decoded byte count does not match `=yend size=`
+///   or (single-part only) `=ybegin size=`.
 pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
     // -----------------------------------------------------------------------
     // Step 1: Find =ybegin line.

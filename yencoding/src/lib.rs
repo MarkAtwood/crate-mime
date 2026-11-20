@@ -99,8 +99,19 @@ pub struct YencMetadata {
     /// Filename from the `name=` field of `=ybegin`.
     ///
     /// Preserved verbatim from the encoded stream, including any embedded
-    /// spaces. Not sanitised against path traversal — callers that write this
-    /// to disk must validate against `..` components and absolute paths.
+    /// spaces. **Untrusted input**: it is not sanitised in any way. Callers
+    /// that use it as a path or display it must validate it themselves; it
+    /// may contain:
+    ///
+    /// - `..` components and absolute paths (path traversal);
+    /// - backslashes, drive letters (`C:`), or UNC prefixes, which are path
+    ///   separators or roots on Windows even if not on the host platform;
+    /// - control characters, including NUL, TAB, and terminal escape
+    ///   sequences;
+    /// - U+FFFD REPLACEMENT CHARACTER: the header is decoded as UTF-8
+    ///   lossily, so a name in another encoding (e.g. Latin-1) has its
+    ///   invalid bytes replaced and cannot be recovered byte-for-byte;
+    /// - trailing spaces, or an empty string.
     pub filename: String,
 
     /// Total size of the file in bytes, from the `size=` field of `=ybegin`.
@@ -227,6 +238,19 @@ impl DecodedPart {
 /// `input` may begin with arbitrary prose (NNTP article headers, preamble
 /// text, etc.) — the decoder scans forward for the first `=ybegin` line.
 ///
+/// # NNTP dot-stuffing
+///
+/// `input` may be either the raw article body as sent over NNTP (still
+/// dot-stuffed) or an already un-stuffed body. Any data line beginning with
+/// `..` has its first `.` dropped before decoding; a line beginning with a
+/// single `.` is decoded as-is. This is correct for un-stuffed input from
+/// encoders (including [`encode`]) that escape a leading `.`, since such a
+/// line can then never start with `..`. It is wrong only for **un-stuffed**
+/// input from a non-conforming encoder that emits an unescaped `.` as the
+/// first two bytes of a line: one data byte is then lost, which normally
+/// surfaces as [`YencError::CrcMismatch`] or [`YencError::SizeMismatch`].
+/// The NNTP end-of-article line (a lone `.`) must not be included.
+///
 /// # Errors
 ///
 /// - [`YencError::NoHeader`] — no `=ybegin` line found.
@@ -234,6 +258,8 @@ impl DecodedPart {
 /// - [`YencError::UnexpectedEof`] — no `=yend` line found.
 /// - [`YencError::CrcMismatch`] — CRC mismatch between decoded bytes and
 ///   the `crc32=` / `pcrc32=` field in `=yend`.
+/// - [`YencError::SizeMismatch`] — the decoded byte count differs from
+///   `=yend size=`, or (single-part articles only) from `=ybegin size=`.
 ///
 /// # Examples
 ///
@@ -259,9 +285,16 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
 /// # Parameters
 ///
 /// - `data` — raw bytes to encode. May be empty.
-/// - `filename` — written verbatim to `name=` on `=ybegin`.
+/// - `filename` — written verbatim to `name=` on `=ybegin`. It is not
+///   validated or escaped: a CR or LF in it ends the `=ybegin` line early and
+///   injects the rest of the string as extra lines (e.g. forged data or a
+///   forged `=yend`). Callers passing untrusted names must reject or strip
+///   control characters first.
 /// - `line_length` — encoded bytes per line. Values below 2 are clamped to 2.
 ///   Use [`DEFAULT_LINE_LENGTH`] (128) unless you have a specific reason to deviate.
+///
+/// Data lines never begin with `.`, SPACE, or TAB and never end with SPACE or
+/// TAB; such bytes are escaped as recommended by yEnc 1.3.
 ///
 /// # Examples
 ///
@@ -308,6 +341,9 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
 #[derive(Debug, Clone)]
 pub struct EncodePartOptions<'a> {
     /// Verbatim filename for `=ybegin name=`.
+    ///
+    /// Not validated or escaped: a CR or LF in it injects extra lines into
+    /// the article. See [`encode`].
     pub filename: &'a str,
     /// Size of the **entire** file, written to `=ybegin size=`.
     pub total_size: u64,
@@ -335,6 +371,10 @@ pub struct EncodePartOptions<'a> {
 ///
 /// Returns the complete part article body including `=ybegin`, `=ypart`,
 /// encoded data, and `=yend` with `pcrc32=` and `crc32=`.
+///
+/// `opts.filename` is written verbatim; a CR or LF in it injects extra lines
+/// into the article (see [`encode`]). Whitespace and `.` are escaped at line
+/// boundaries as described for [`encode`].
 #[must_use]
 pub fn encode_part(data: &[u8], opts: &EncodePartOptions<'_>) -> Vec<u8> {
     encode::encode_part(

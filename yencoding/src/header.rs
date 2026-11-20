@@ -134,15 +134,14 @@ fn find_name_param(payload: &str) -> Option<usize> {
     if payload.starts_with("name=") {
         return Some(0);
     }
-    // Find " name=" — a space followed by "name=".
-    if let Some(pos) = payload.find(" name=") {
-        return Some(pos + 1); // +1 to skip the leading space
-    }
-    // Find "\tname=" — a tab followed by "name=" (non-standard but handled).
-    if let Some(pos) = payload.find("\tname=") {
-        return Some(pos + 1); // +1 to skip the leading tab
-    }
-    None
+    // Find the earliest "name=" preceded by a space or a tab (tab is
+    // non-standard but handled). The earliest occurrence wins regardless of
+    // which separator precedes it: the value runs to end of line, so a later
+    // " name=" may be part of an earlier name's value.
+    payload
+        .match_indices("name=")
+        .find(|&(pos, _)| pos > 0 && matches!(payload.as_bytes()[pos - 1], b' ' | b'\t'))
+        .map(|(pos, _)| pos)
 }
 
 /// Apply parsed key=value tokens (excluding `name=`) to a `YbeginFields`.
@@ -342,6 +341,32 @@ mod tests {
         );
         assert_eq!(f.size, Some(3));
         assert_eq!(f.line_length, Some(128));
+    }
+
+    #[test]
+    fn ybegin_tab_name_before_space_name_takes_first() {
+        // The yEnc 1.3 spec says name= is the last field and its value runs
+        // to end of line, so a later " name=" belongs to the earlier name's
+        // value. Hand-built payload: tab separator before the first name=,
+        // a space-separated "name=" inside the value.
+        let f = parse_ybegin("size=1\tname=a name=b").unwrap();
+        assert_eq!(f.name.as_deref(), Some("a name=b"));
+        assert_eq!(f.size, Some(1));
+    }
+
+    #[test]
+    fn ybegin_space_name_before_tab_name_takes_first() {
+        // Mirror case: space before the first name=, a tab-separated
+        // "name=" inside the value.
+        let f = parse_ybegin("size=1 name=a\tname=b").unwrap();
+        assert_eq!(f.name.as_deref(), Some("a\tname=b"));
+    }
+
+    #[test]
+    fn ybegin_name_substring_of_other_token_is_not_matched() {
+        // "xname=" must not be taken as the name= field.
+        let f = parse_ybegin("xname=q size=1 name=real").unwrap();
+        assert_eq!(f.name.as_deref(), Some("real"));
     }
 
     // -----------------------------------------------------------------------

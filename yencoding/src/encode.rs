@@ -7,13 +7,18 @@
 //! - `\r` (CR, 0x0D) — carriage return; same issue
 //! - `=`  (0x3D) — the escape character itself
 //!
-//! Additionally, the yEnc spec documents two optional-but-common escapes:
-//! - `.` at the start of a line is escaped to avoid NNTP dot-stuffing ambiguity
-//! - TAB (0x09) at the start of a line is escaped on some encoders
+//! Additionally, the yEnc 1.3 spec recommends escaping characters that
+//! transports may mangle at line boundaries. This implementation escapes:
+//! - `.` (0x2E) at the start of a line, to avoid NNTP dot-stuffing ambiguity
+//! - TAB (0x09) and SPACE (0x20) at the start of a line
+//! - TAB (0x09) and SPACE (0x20) as the last byte of a line (including the
+//!   final data line), because many transports strip trailing whitespace,
+//!   which would otherwise silently drop data bytes
 //!
-//! This implementation escapes `.` and TAB at line start, matching what real
-//! Usenet encoders produce and what the Python fixture generator in
-//! `tests/fixtures/gen_fixtures.py` does.
+//! Elsewhere in a line, `.`, TAB, and SPACE are emitted unescaped. Every
+//! escaped form (`=` followed by the encoded byte plus 64) is itself free of
+//! whitespace, so escaping never introduces new leading or trailing
+//! whitespace.
 //!
 //! Lines are wrapped at `line_length` *encoded* characters (default 128).
 //! Line endings are `\r\n`.
@@ -31,7 +36,7 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 ///
 /// - `data` — raw bytes to encode. May be empty.
 /// - `filename` — written verbatim to the `name=` field of `=ybegin`.
-///   No validation is performed; control characters should be avoided.
+///   No validation is performed; a CR or LF injects extra lines.
 /// - `line_length` — maximum number of encoded bytes per line (1–255).
 ///   Values below 2 are clamped to 2 (escape pairs are 2 bytes and must
 ///   fit on one line). Pass `DEFAULT_LINE_LENGTH` (128) for the standard value.
@@ -117,8 +122,11 @@ pub fn encode_part(
 
 /// Encode `data` into `out`, wrapping at `line_length` encoded bytes.
 ///
+/// `line_length` must be at least 2 so that an escape pair fits on a line.
+///
 /// Returns the CRC32 of the *raw* (pre-encode) `data`.
 fn encode_body(data: &[u8], line_length: usize, out: &mut Vec<u8>) -> u32 {
+    debug_assert!(line_length >= 2);
     let mut hasher = crc32fast::Hasher::new();
     hasher.update(data);
     let crc = hasher.finalize();
@@ -129,20 +137,22 @@ fn encode_body(data: &[u8], line_length: usize, out: &mut Vec<u8>) -> u32 {
         let encoded = byte.wrapping_add(42);
 
         // Determine whether this byte must be escaped.
-        // NUL, LF, CR, and '=' are always escaped.
-        // '.' and TAB (0x09) at position 0 of a line are also escaped, to
-        // prevent NNTP dot-stuffing issues and whitespace-sensitive transports.
+        // - NUL, LF, CR, and '=' are always escaped.
+        // - '.', TAB, and SPACE at column 0 are escaped (NNTP dot-stuffing,
+        //   leading-whitespace stripping).
+        // - TAB and SPACE in the last column are escaped (trailing-whitespace
+        //   stripping). A TAB/SPACE that ends up last on a line for any other
+        //   reason (end of data, or a following escape pair that does not fit)
+        //   is fixed up by `end_line`.
         let must_escape = matches!(encoded, 0x00 | 0x0A | 0x0D | 0x3D)
-            || (col == 0 && matches!(encoded, 0x2E | 0x09));
+            || (col == 0 && matches!(encoded, 0x2E | 0x09 | 0x20))
+            || (col + 1 == line_length && matches!(encoded, 0x09 | 0x20));
 
         if must_escape {
             // A 2-byte escape pair must fit on one line.  If there is only one
-            // column left, flush the current line before emitting the pair.
-            // The flush resets col to 0, but this is safe: the escape pair's
-            // first byte is always '=' (0x3D), not '.' or TAB, so the col==0
-            // check above cannot re-trigger on the escape output itself.
+            // column left, end the current line before emitting the pair.
             if col + 2 > line_length {
-                out.extend_from_slice(b"\r\n");
+                end_line(out, col);
                 col = 0;
             }
             out.push(b'=');
@@ -154,17 +164,39 @@ fn encode_body(data: &[u8], line_length: usize, out: &mut Vec<u8>) -> u32 {
         }
 
         if col >= line_length {
-            out.extend_from_slice(b"\r\n");
+            end_line(out, col);
             col = 0;
         }
     }
 
     // Emit a final line ending if there are any leftover characters.
     if col > 0 {
-        out.extend_from_slice(b"\r\n");
+        end_line(out, col);
     }
 
     crc
+}
+
+/// Terminate the current data line, which holds `col` encoded bytes.
+///
+/// If the line's last byte is an unescaped TAB or SPACE, it is rewritten as
+/// an escape pair first, so that no data line ends in whitespace.
+///
+/// This cannot overflow the line: a TAB or SPACE in the last column is always
+/// escaped when emitted (and an escape pair never ends in whitespace), so a
+/// raw trailing TAB/SPACE implies `col < line_length`, leaving room for the
+/// one extra byte.
+fn end_line(out: &mut Vec<u8>, col: usize) {
+    if col > 0 {
+        if let Some(last) = out.last_mut() {
+            if matches!(*last, 0x09 | 0x20) {
+                let escaped = last.wrapping_add(64);
+                *last = b'=';
+                out.push(escaped);
+            }
+        }
+    }
+    out.extend_from_slice(b"\r\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +330,131 @@ mod tests {
             b"=I",
             "TAB (raw 0xDF) at line start must encode as '=I'"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Leading/trailing whitespace escapes (yEnc 1.3 recommendation).
+    // Oracle: hand calculation. raw 246 -> encoded 0x20 (SPACE), escaped as
+    // '=' + (0x20 + 64) = "=`"; raw 223 -> encoded 0x09 (TAB), escaped as
+    // '=' + (0x09 + 64) = "=I"; raw 0 -> '*'; raw 19 -> '=' -> "=}".
+    // -----------------------------------------------------------------------
+
+    fn body(data: &[u8], line_length: usize) -> Vec<u8> {
+        let mut out = Vec::new();
+        encode_body(data, line_length, &mut out);
+        out
+    }
+
+    #[test]
+    fn encode_space_at_line_start_and_end_is_escaped() {
+        assert_eq!(body(&[246, 0, 246], 128), b"=`*=`\r\n");
+    }
+
+    #[test]
+    fn encode_tab_at_end_of_final_line_is_escaped() {
+        assert_eq!(body(&[0, 223], 128), b"*=I\r\n");
+    }
+
+    #[test]
+    fn encode_lone_space_and_lone_tab_are_escaped() {
+        assert_eq!(body(&[246], 128), b"=`\r\n");
+        assert_eq!(body(&[223], 128), b"=I\r\n");
+    }
+
+    #[test]
+    fn encode_whitespace_mid_line_is_not_escaped() {
+        assert_eq!(body(&[0, 246, 223, 0], 128), b"* \t*\r\n");
+    }
+
+    #[test]
+    fn encode_space_in_last_column_moves_to_next_line_escaped() {
+        // line_length 4: "***" then SPACE would land in column 3 (the last).
+        // Its escape pair does not fit, so the line ends at 3 bytes and the
+        // pair starts the next line.
+        assert_eq!(body(&[0, 0, 0, 246, 0], 4), b"***\r\n=`*\r\n");
+    }
+
+    #[test]
+    fn encode_tab_in_last_column_moves_to_next_line_escaped() {
+        assert_eq!(body(&[0, 0, 0, 223, 0], 4), b"***\r\n=I*\r\n");
+    }
+
+    #[test]
+    fn encode_space_before_wrapped_escape_pair_is_escaped() {
+        // line_length 4: "**" then SPACE in column 2 (not last, so raw), then
+        // '=' needs a pair that does not fit in column 3. The line would end
+        // in the SPACE, so the SPACE is escaped instead, filling the line.
+        assert_eq!(body(&[0, 0, 246, 19, 0], 4), b"**=`\r\n=}*\r\n");
+    }
+
+    #[test]
+    fn encode_whitespace_line_length_2() {
+        // Minimum line length: every SPACE/TAB is either first or last.
+        assert_eq!(body(&[0, 246, 0], 2), b"*\r\n=`\r\n*\r\n");
+        assert_eq!(body(&[246, 223], 2), b"=`\r\n=I\r\n");
+    }
+
+    #[test]
+    fn encode_full_article_with_edge_whitespace_exact_bytes() {
+        // CRC32 oracle: python3 binascii.crc32(bytes([246,0,246])) = 0x1ad68159
+        let out = encode(&[246, 0, 246], "f", 128);
+        assert_eq!(
+            out,
+            b"=ybegin line=128 size=3 name=f\r\n=`*=`\r\n=yend size=3 crc32=1ad68159\r\n"
+        );
+    }
+
+    /// Strip leading and trailing SPACE/TAB from every line, as a lossy
+    /// transport might.
+    fn strip_line_whitespace(article: &[u8]) -> Vec<u8> {
+        let mut out = Vec::new();
+        for line in article.split_inclusive(|&b| b == b'\n') {
+            let content = line.strip_suffix(b"\r\n").unwrap_or(line);
+            let start = content
+                .iter()
+                .position(|&b| b != b' ' && b != b'\t')
+                .unwrap_or(content.len());
+            let end = content
+                .iter()
+                .rposition(|&b| b != b' ' && b != b'\t')
+                .map_or(start, |p| p + 1);
+            out.extend_from_slice(&content[start..end.max(start)]);
+            out.extend_from_slice(b"\r\n");
+        }
+        out
+    }
+
+    #[test]
+    fn encode_whitespace_round_trips_and_survives_whitespace_stripping() {
+        // Exhaustive over short inputs drawn from bytes that encode to SPACE,
+        // TAB, '.', '=', and an ordinary byte, at several line lengths.
+        let alphabet = [246u8, 223, 4, 19, 0];
+        for line_length in 2u8..=6 {
+            for len in 1..=6u32 {
+                for mut n in 0..alphabet.len().pow(len) {
+                    let mut data = Vec::new();
+                    for _ in 0..len {
+                        data.push(alphabet[n % alphabet.len()]);
+                        n /= alphabet.len();
+                    }
+                    let article = encode(&data, "f", line_length);
+                    for line in article.split(|&b| b == b'\n') {
+                        let line = line.strip_suffix(b"\r").unwrap_or(line);
+                        if line.is_empty() || line.starts_with(b"=y") {
+                            continue;
+                        }
+                        assert!(line.len() <= usize::from(line_length), "{data:?}");
+                        assert!(!matches!(line[0], b' ' | b'\t' | b'.'), "{data:?}");
+                        assert!(!matches!(line[line.len() - 1], b' ' | b'\t'), "{data:?}");
+                    }
+                    let decoded = decode(&article).expect("round-trip decode failed");
+                    assert_eq!(decoded.data, data);
+                    let stripped = decode(&strip_line_whitespace(&article))
+                        .expect("decode after whitespace stripping failed");
+                    assert_eq!(stripped.data, data);
+                }
+            }
+        }
     }
 
     #[test]

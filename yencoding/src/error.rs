@@ -80,11 +80,30 @@ impl std::fmt::Display for YencError {
             ),
             YencError::SizeMismatch { expected, actual } => write!(
                 f,
-                "size mismatch: =yend size={expected} but decoded {actual} bytes — \
-                 the article data is corrupt or truncated; re-fetch and retry"
+                "size mismatch: header declared size={expected} (=yend or =ybegin) but decoded \
+                 {actual} bytes — the article data is corrupt or truncated; re-fetch and retry"
             ),
         }
     }
 }
 
 impl std::error::Error for YencError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn size_mismatch_display_does_not_name_only_yend() {
+        // The variant is used for both =yend size= and =ybegin size=
+        // mismatches, so the message must not attribute it to =yend alone.
+        let msg = YencError::SizeMismatch {
+            expected: 5,
+            actual: 1,
+        }
+        .to_string();
+        assert!(!msg.contains("=yend size="), "{msg}");
+        assert!(msg.contains("size=5"), "{msg}");
+        assert!(msg.contains("decoded 1 bytes"), "{msg}");
+    }
+}

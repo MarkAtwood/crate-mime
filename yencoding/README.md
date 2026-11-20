@@ -52,7 +52,7 @@ pub enum YencError {
     InvalidHeader { field: String },     // required field missing or unparsable
     CrcMismatch { expected: u32, actual: u32 },
     UnexpectedEof,                       // =yend line never found
-    SizeMismatch { expected: u64, actual: u64 }, // decoded size != =yend size=
+    SizeMismatch { expected: u64, actual: u64 }, // decoded size != =yend (or single-part =ybegin) size=
 }
 ```
 
@@ -61,6 +61,15 @@ pub enum YencError {
 Decoded bytes may represent a compressed archive. Any decompression is the
 caller's responsibility and must be independently guarded against
 decompression-bomb attacks. This crate does not decompress.
+
+`YencMetadata::filename` is untrusted and unsanitised. It may contain `..`
+components, absolute paths, backslashes or drive letters, control characters
+(including NUL), or U+FFFD from lossy UTF-8 decoding. Validate it before using
+it as a path or printing it to a terminal.
+
+`encode`/`encode_part` write the filename verbatim; a CR or LF in it injects
+extra lines into the article. Reject or strip control characters from
+untrusted names before encoding.
 
 ## License
 
