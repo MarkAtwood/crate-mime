@@ -48,10 +48,10 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
     let mut lines = LazyLines::new(input);
 
     // --- Find the begin line ---
-    // Require whitespace or '-' at position 5 (or end-of-line at exactly 5),
-    // matching scan.rs's try_parse_begin_line() so that prose words like "beginners"
-    // or "beginning" are not mistaken for UU begin lines.
-    let begin_line = loop {
+    // Uses the same parser as scan() so that both entry points agree on what
+    // is a begin line. Lines that start with "begin" but lack an octal mode
+    // token (e.g. "Begin forwarded message:") are ordinary text and skipped.
+    let metadata = loop {
         match lines.next() {
             None => {
                 return Err(UuError::InvalidBeginLine {
@@ -59,60 +59,12 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
                     begin_offset: 0,
                 })
             }
-            Some(line) => {
-                if line.len() >= 5
-                    && line[..5].eq_ignore_ascii_case(b"begin")
-                    && (line.len() == 5 || line[5].is_ascii_whitespace() || line[5] == b'-')
-                {
-                    break line;
-                }
-            }
+            Some(line) => match parse_begin_line(line) {
+                BeginLine::NotBegin => {}
+                BeginLine::Base64 => return Err(UuError::BeginBase64 { begin_offset: 0 }),
+                BeginLine::Uu(metadata) => break metadata,
+            },
         }
-    };
-
-    // Detect begin-base64 before further parsing.
-    let is_begin_base64 = begin_line.len() >= 12
-        && begin_line[..12].eq_ignore_ascii_case(b"begin-base64")
-        && (begin_line.len() == 12 || begin_line[12].is_ascii_whitespace());
-    if is_begin_base64 {
-        return Err(UuError::BeginBase64 { begin_offset: 0 });
-    }
-
-    // --- Parse begin line ---
-    let tokens: Vec<&[u8]> = begin_line
-        .split(|b: &u8| b.is_ascii_whitespace())
-        .filter(|t| !t.is_empty())
-        .collect();
-
-    let mode: u32 = if tokens.len() >= 2 {
-        let mode_str = std::str::from_utf8(tokens[1]).unwrap_or("");
-        u32::from_str_radix(mode_str, 8).unwrap_or(0)
-    } else {
-        0
-    };
-
-    let filename: String = {
-        fn skip_token(s: &[u8]) -> &[u8] {
-            let after = s
-                .iter()
-                .position(|b| b.is_ascii_whitespace())
-                .unwrap_or(s.len());
-            let s = &s[after..];
-            let ws = s
-                .iter()
-                .position(|b| !b.is_ascii_whitespace())
-                .unwrap_or(s.len());
-            &s[ws..]
-        }
-        let rest = skip_token(begin_line);
-        let rest = skip_token(rest);
-        // Trim trailing whitespace to match scan.rs behaviour.
-        let rest = rest
-            .iter()
-            .rposition(|b| !b.is_ascii_whitespace())
-            .map(|pos| &rest[..=pos])
-            .unwrap_or(b"");
-        String::from_utf8_lossy(rest).into_owned()
     };
 
     // --- Decode data lines, stopping at max_bytes ---
@@ -158,10 +110,115 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
 
     Ok(DecodedBlock {
         data,
-        metadata: BlockMetadata { filename, mode },
+        metadata,
         is_truncated,
         was_limit_hit,
     })
+}
+
+/// Maximum number of octal digits accepted in the mode token of a `begin`
+/// line.
+///
+/// Classic `uuencode` writes the mode with `%o` of the permission bits, i.e.
+/// 1 to 4 digits; some encoders write the full `st_mode` (6 digits, e.g.
+/// `100644`). The limit is 11 so that every `u32` mode [`crate::encode`] can
+/// write (up to `37777777777`) is read back; the value must also fit in `u32`.
+const MAX_MODE_DIGITS: usize = 11;
+
+/// Classification of one line (already stripped of `\n` and `\r`) as a
+/// potential `begin` line. Shared by [`decode_limited`] and `scan`.
+pub(crate) enum BeginLine {
+    /// Not a begin line; treat as ordinary text.
+    NotBegin,
+    /// A `begin-base64` line (the `uuencode -m` variant).
+    Base64,
+    /// A classic UU `begin <mode> <filename>` line.
+    Uu(BlockMetadata),
+}
+
+/// Classify `line` as a `begin` line.
+///
+/// The classic header is `begin %o %s`: the keyword `begin`
+/// (case-insensitive), whitespace, a mode of 1 to [`MAX_MODE_DIGITS`] octal
+/// digits with no sign whose value fits in `u32`, whitespace, and the filename. The line is a UU begin
+/// line when it is:
+///
+/// - exactly `begin`, optionally followed only by whitespace (mode 0, empty
+///   filename — tolerated for compatibility); or
+/// - `begin`, whitespace, a valid mode token, then either end of line or
+///   whitespace and the filename.
+///
+/// `begin-base64` followed by whitespace or end of line is reported as
+/// [`BeginLine::Base64`]. Everything else — including prose such as
+/// `"Begin forwarded message:"`, `"beginners guide"`, `"begin-foo 644 x"`,
+/// and `"begin +644 x"` — is [`BeginLine::NotBegin`].
+///
+/// The filename is the rest of the line after the mode token and its
+/// following whitespace, with trailing ASCII whitespace removed, converted
+/// with lossy UTF-8.
+pub(crate) fn parse_begin_line(line: &[u8]) -> BeginLine {
+    if line.len() < 5 || !line[..5].eq_ignore_ascii_case(b"begin") {
+        return BeginLine::NotBegin;
+    }
+    let after_begin = &line[5..];
+
+    if let Some(rest) = after_begin.strip_prefix(b"-") {
+        let is_base64 = rest.len() >= 6
+            && rest[..6].eq_ignore_ascii_case(b"base64")
+            && (rest.len() == 6 || rest[6].is_ascii_whitespace());
+        return if is_base64 {
+            BeginLine::Base64
+        } else {
+            BeginLine::NotBegin
+        };
+    }
+
+    // Bare "begin" (possibly with trailing whitespace): mode 0, no filename.
+    let rest = trim_ascii_start(after_begin);
+    if rest.is_empty() {
+        return BeginLine::Uu(BlockMetadata {
+            filename: String::new(),
+            mode: 0,
+        });
+    }
+    // Otherwise "begin" must be followed by whitespace ("beginners" is prose).
+    if !after_begin[0].is_ascii_whitespace() {
+        return BeginLine::NotBegin;
+    }
+
+    let mode_end = rest
+        .iter()
+        .position(|b| b.is_ascii_whitespace())
+        .unwrap_or(rest.len());
+    let mode_token = &rest[..mode_end];
+    if mode_token.len() > MAX_MODE_DIGITS || !mode_token.iter().all(|b| (b'0'..=b'7').contains(b)) {
+        return BeginLine::NotBegin;
+    }
+    let mode = mode_token.iter().try_fold(0u32, |acc, &d| {
+        acc.checked_mul(8)?.checked_add(u32::from(d - b'0'))
+    });
+    let Some(mode) = mode else {
+        return BeginLine::NotBegin;
+    };
+
+    let filename = trim_ascii_start(&rest[mode_end..]);
+    let filename_end = filename
+        .iter()
+        .rposition(|b| !b.is_ascii_whitespace())
+        .map_or(0, |p| p + 1);
+    let filename = String::from_utf8_lossy(&filename[..filename_end]).into_owned();
+
+    BeginLine::Uu(BlockMetadata { filename, mode })
+}
+
+/// Strip leading ASCII whitespace (`<[u8]>::trim_ascii_start` needs Rust 1.80;
+/// MSRV is 1.75).
+fn trim_ascii_start(s: &[u8]) -> &[u8] {
+    let skip = s
+        .iter()
+        .position(|b| !b.is_ascii_whitespace())
+        .unwrap_or(s.len());
+    &s[skip..]
 }
 
 /// Lazy line iterator over a byte slice: yields `&[u8]` lines split on `\n`,

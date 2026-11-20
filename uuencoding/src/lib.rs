@@ -94,15 +94,24 @@ pub use error::UuError;
 pub struct BlockMetadata {
     /// The filename recorded on the `begin` line.
     ///
-    /// Preserved verbatim from the encoded stream, including any embedded
-    /// spaces. An empty string is returned when the `begin` line has no
-    /// filename token.
+    /// This is everything after the mode token and the whitespace following
+    /// it, including any embedded spaces, with trailing ASCII whitespace
+    /// removed. Bytes that are not valid UTF-8 are replaced with U+FFFD
+    /// (lossy conversion), so the original bytes are not always recoverable.
+    /// An empty string is returned when the `begin` line has no filename.
+    ///
+    /// **Security — untrusted input**: the filename comes straight from the
+    /// encoded message and is not sanitised. It may be an absolute path,
+    /// contain `../` components (path traversal), or contain control
+    /// characters. Sanitise it before using it as a filesystem path, e.g.
+    /// reject names containing `/`, `\`, or `..` components and resolve the
+    /// final path against an allowed base directory.
     pub filename: String,
     /// The Unix permission mode recorded on the `begin` line, stored as a
     /// `u32` (e.g. `0o644` = 420).
     ///
-    /// The value is parsed from the octal string on the `begin` line. If the
-    /// mode field is absent or unparseable, `0` is used.
+    /// The value is parsed from the octal mode token on the `begin` line
+    /// (1 to 11 octal digits, so every value [`encode`] writes is read back). It is `0` for a bare `begin` line with no mode.
     pub mode: u32,
 }
 
@@ -164,8 +173,18 @@ pub struct ScannedBlock {
 /// Decode a single UU block from `input`.
 ///
 /// `input` should begin at (or before) the `begin` line; any leading lines
-/// that do not start with `begin` are skipped. Returns a [`DecodedBlock`] on
+/// that are not a `begin` line are skipped. Returns a [`DecodedBlock`] on
 /// success.
+///
+/// # What counts as a `begin` line
+///
+/// The classic header `begin <mode> <filename>`: the keyword `begin`
+/// (case-insensitive) at the start of the line, whitespace, and a mode of 1
+/// to 11 octal digits with no sign (value fitting in `u32`), optionally followed by whitespace and the
+/// filename. A bare `begin` line (no mode, no filename) is also accepted,
+/// with mode `0` and an empty filename. Lines that start with `begin` but do
+/// not match — such as the prose `"Begin forwarded message:"` — are skipped
+/// like any other text. [`scan`] uses the same rule.
 ///
 /// # Errors
 ///
@@ -209,10 +228,10 @@ pub fn decode(input: &[u8]) -> Result<DecodedBlock, UuError> {
 ///
 /// # Complexity note
 ///
-/// The input is split into lines up front before any limit check takes effect,
-/// so time and space complexity are O(`input.len()`) regardless of `max_bytes`.
-/// For large inputs where only a small prefix is needed, prefer to pre-slice
-/// the input to a conservative upper bound before calling this function.
+/// Lines are split lazily, on demand, so decoding stops reading input as
+/// soon as the limit is exceeded. Time is O(bytes of `input` read): any
+/// leading text before the `begin` line, plus roughly 4/3 × `max_bytes` of
+/// encoded data. Memory for the decoded payload is O(`max_bytes`).
 ///
 /// # Errors
 ///
@@ -244,6 +263,15 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
 /// - `data` — the raw bytes to encode. May be empty.
 /// - `filename` — recorded verbatim on the `begin` line. No validation is
 ///   performed; embedded spaces and special characters are passed through.
+///   Trailing whitespace is lost on decoding (the decoder trims it).
+///
+/// # Security — line injection
+///
+/// A `filename` containing `\n` or `\r` is written as-is, which ends the
+/// `begin` line early and lets the rest of the filename appear as extra lines
+/// in the output — including forged data lines or a premature `end`. If the
+/// filename comes from an untrusted source, reject or strip CR and LF (and
+/// preferably all control characters) before calling this function.
 /// - `mode` — Unix permission bits written as a zero-padded three-digit octal
 ///   number on the `begin` line (e.g. `0o644` → `644`).
 ///
@@ -262,8 +290,10 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
 ///
 /// Walks the input once, locating every `begin`/`end` pair at true line
 /// boundaries. Each item is a fully-decoded [`ScannedBlock`] on success, or a
-/// [`UuError`] for `begin-base64` blocks (which this crate does not decode)
-/// or malformed `begin` lines.
+/// [`UuError::BeginBase64`] for `begin-base64` blocks (which this crate does
+/// not decode). A `begin` line is recognised by the same rule as in
+/// [`decode`]; lines that start with `begin` but are not a valid header (e.g.
+/// `"Begin forwarded message:"`) are ordinary text and produce no item.
 ///
 /// # Error continuation
 ///
@@ -271,13 +301,20 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
 /// subsequent valid blocks are still returned. Specifically:
 ///
 /// - **`begin-base64`**: one [`UuError::BeginBase64`] is emitted; the scanner
-///   then skips to the `====` terminator before resuming.
-/// - **Malformed `begin` line**: one [`UuError::InvalidBeginLine`] is emitted;
-///   the scanner advances one line before resuming.
+///   then skips to the `====` terminator before resuming. If there is no
+///   `====`, the skip stops before the next `begin` or `begin-base64` line
+///   (or at end of input).
 /// - **Decode error on a data line**: decoding stops at that line; a single
 ///   [`ScannedBlock`] with `is_truncated = true` is emitted containing the
 ///   bytes decoded before the error. No separate [`UuError`] is emitted for
 ///   the bad line — only the `Ok(ScannedBlock)` with `is_truncated`.
+/// - **Missing `end` before the next block**: when a block runs into the
+///   `begin` (or `begin-base64`) line of the next block, the first block is
+///   emitted with `is_truncated = true` and `end_offset` at the start of that
+///   line, and scanning resumes there, so the next block is still found.
+///
+/// [`UuError::InvalidBeginLine`] and [`UuError::InvalidChar`] are not
+/// currently emitted by `scan`.
 ///
 /// # Note on `begin` detection
 ///

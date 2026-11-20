@@ -52,12 +52,12 @@ for result in scan(text) {
 
 ```rust
 pub enum UuError {
-    /// No `begin` line was found, or the begin line was malformed.
+    /// No `begin` line was found (returned by `decode` / `decode_limited`).
     InvalidBeginLine { line: String, begin_offset: usize },
     /// A `begin-base64` header was found — this is Base64, not UUencoding.
     BeginBase64 { begin_offset: usize },
-    /// An out-of-range byte was found in a data line.
-    /// `col` is the 0-based offset within the encoded payload; `byte` is the bad value.
+    /// An out-of-range byte in a data line. Not currently returned by any public
+    /// function: bad data lines produce a partial result with `is_truncated = true`.
     InvalidChar { col: usize, byte: u8 },
 }
 ```
@@ -74,10 +74,19 @@ Both `decode` and `decode_limited` return `Ok` even when the block is malformed:
 
 ## Security
 
-Decoded output can be substantially larger than encoded input (ratio up to 3:4).
-If the decoded bytes are a compressed archive, any decompression is the caller's
-responsibility and must be independently guarded against decompression bombs.
+Decoding never expands data: three decoded bytes come from four encoded characters
+plus per-line overhead, so decoded output is about 3/4 of the encoded input size or
+less. However, if the decoded bytes are a compressed archive, any decompression is the
+caller's responsibility and must be independently guarded against decompression bombs.
 This crate does not decompress.
+
+`BlockMetadata::filename` comes straight from the encoded message and is **not
+sanitised**: it may contain `../` components or an absolute path. Sanitise it before
+using it as a filesystem path to prevent directory traversal.
+
+`encode` writes `filename` verbatim; a filename containing CR or LF would inject extra
+lines into the output. Strip or reject control characters in untrusted filenames before
+encoding.
 
 ## License
 

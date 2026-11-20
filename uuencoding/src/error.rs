@@ -2,22 +2,26 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum UuError {
-    /// The `begin` line was missing or malformed.
+    /// No `begin` line was found.
     ///
-    /// Produced by [`decode`][crate::decode] when no line starting with the
-    /// keyword `begin` (case-insensitive) is found, or when the `begin` line
-    /// cannot be parsed. The `line` field contains the offending text, or an
-    /// empty string when no `begin` line was found at all.
+    /// Returned by [`decode`][crate::decode] and
+    /// [`decode_limited`][crate::decode_limited] when `input` contains no
+    /// valid `begin <mode> <filename>` header line (see
+    /// [`decode`][crate::decode] for the exact rule). Lines that merely start
+    /// with `begin` but are not a valid header are skipped rather than
+    /// reported, so in the current implementation `line` is always empty
+    /// and `begin_offset` is always `0`.
     ///
-    /// When produced by [`scan`][crate::scan], `begin_offset` is the byte
-    /// offset of the malformed `begin` line within the input slice.
+    /// [`scan`][crate::scan] does not currently emit this variant; the fields
+    /// are kept for compatibility.
     ///
-    /// **Caller action**: treat the input as not a UU block. Inspect `line`
-    /// for diagnostics.
+    /// **Caller action**: treat the input as not a UU block.
     InvalidBeginLine {
+        /// The offending line, or an empty string when no `begin` line was
+        /// found at all (always empty in the current implementation).
         line: String,
-        /// Byte offset of the malformed `begin` line within the input.
-        /// Always `0` when produced by [`decode`][crate::decode].
+        /// Byte offset of the offending line within the input. Always `0`
+        /// in the current implementation.
         begin_offset: usize,
     },
 
@@ -52,9 +56,12 @@ pub enum UuError {
     /// - `col` — 0-based byte offset within the encoded payload of the bad
     ///   line (i.e. after the length byte).
     ///
-    /// **Caller action**: the block is corrupted. `decode` returns a partial
-    /// result with `is_truncated = true` up to the bad line; callers may log
-    /// `byte` and `col` for diagnostics.
+    /// No public function currently returns this variant: when
+    /// [`decode`][crate::decode], [`decode_limited`][crate::decode_limited],
+    /// or [`scan`][crate::scan] meet a bad data byte they stop at that line
+    /// and return the bytes decoded so far with `is_truncated = true`
+    /// instead. The variant is kept for compatibility and possible future
+    /// use.
     InvalidChar { col: usize, byte: u8 },
 }
 
