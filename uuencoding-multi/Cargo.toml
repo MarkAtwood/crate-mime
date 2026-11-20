@@ -1,6 +1,6 @@
 [package]
 name = "uuencoding-multi"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"
@@ -12,7 +12,7 @@ keywords = ["uuencode", "usenet", "email", "multipart", "encoding"]
 categories = ["email", "encoding"]
 
 [dependencies]
-uuencoding = { version = "0.3.0", path = "../uuencoding" }
+uuencoding = { version = "0.3.1", path = "../uuencoding" }
 regex = { version = "1", default-features = false, features = ["std", "perf", "unicode-case", "unicode-perl"] }
 
 [features]

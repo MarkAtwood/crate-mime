@@ -824,7 +824,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "mime-tree"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "base64",
  "encoding_rs",
@@ -1493,7 +1493,7 @@ checksum = "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59"
 
 [[package]]
 name = "smime-tree"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1694,11 +1694,11 @@ checksum = "3a3b425286980a367278453f3b6d28cdcb134b574e5a35824a6ff5eebad50bb6"
 
 [[package]]
 name = "uuencoding"
-version = "0.3.0"
+version = "0.3.1"
 
 [[package]]
 name = "uuencoding-multi"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "regex",
  "uuencoding",
@@ -1775,7 +1775,7 @@ dependencies = [
 
 [[package]]
 name = "yencoding"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "crc32fast",
  "serde",
@@ -1783,7 +1783,7 @@ dependencies = [
 
 [[package]]
 name = "yencoding-multi"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "crc32fast",
  "yencoding",

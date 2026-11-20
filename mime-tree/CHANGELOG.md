@@ -2,7 +2,43 @@
 
 All notable changes to `mime-tree` will be documented here.
 
-## [0.6.0] - Unreleased
+## [0.6.1] - Unreleased
+
+### Added
+
+- `MAX_NESTING_DEPTH` (100). `parse()` does not descend into multiparts
+  nested deeper than this; the capped part keeps its type and byte ranges,
+  has no `children`, and a warning is added.
+- `ParseError::TooLarge { len }`, returned for input longer than
+  `u32::MAX` bytes, which the `u32` byte ranges cannot address.
+
+### Fixed
+
+- Deeply nested multipart input no longer overflows the stack (about
+  3000 levels, 170 KB, aborted a 2 MiB thread). `ParsedPart::find_by_id`
+  is now iterative.
+- Input over 4 GiB no longer parses with silently wrapped byte ranges.
+- `scan_inline_yencode` is linear: each `=ybegin` decode now sees only its
+  own block (1 MB of `=ybegin` lines took 63 s). A bare `=yend` line
+  without a space is data, as `yencoding` treats it.
+- base64 bodies with spaces, tabs or other bytes outside the alphabet
+  decode (RFC 2045 §6.8) instead of returning an empty value; non-space
+  junk and data after `=` padding set `is_encoding_problem` and keep what
+  decoded.
+- `write_message` drops a caller-supplied `boundary` parameter on a
+  multipart part instead of writing two `boundary` parameters, which let
+  a child body rewrite the structure on re-parse.
+- `write_message` boundary selection is linear in the size of the
+  children (it was quadratic, and cubic in nesting depth). The boundary
+  chosen is unchanged.
+- `Body::Text` without a `charset` parameter is labelled
+  `charset=utf-8`.
+
+### Changed
+
+- Requires `uuencoding` 0.3.1 and `yencoding` 0.3.1.
+
+## [0.6.0] - 2026-11-20
 
 ### Added
 

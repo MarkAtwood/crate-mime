@@ -1,6 +1,6 @@
 [package]
 name = "mime-tree"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
@@ -19,5 +19,5 @@ base64 = { version = "0.23", default-features = false, features = ["alloc"] }
 quoted_printable = "0.5"
 serde = { version = "1", features = ["derive"] }
 unicode-normalization = "0.1"
-uuencoding = { version = "0.3.0", path = "../uuencoding" }
-yencoding = { version = "0.3.0", path = "../yencoding" }
+uuencoding = { version = "0.3.1", path = "../uuencoding" }
+yencoding = { version = "0.3.1", path = "../yencoding" }

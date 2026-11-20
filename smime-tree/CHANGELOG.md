@@ -2,6 +2,55 @@
 
 All notable changes to `smime-tree` will be documented here.
 
+## [0.4.0] - Unreleased
+
+### Breaking Changes
+
+- **Stable RustCrypto dependencies.** `x509-cert` 0.3, `rsa` 0.10,
+  `p256`/`p384` 0.14, `elliptic-curve` 0.14, `signature` 3, `aes-gcm` 0.11
+  and `ansi-x963-kdf` 0.1 replace the exact pre-release pins, and `cms`
+  moves to `=0.3.0-rc.2`. `x509_cert::Certificate` appears in the public
+  API, so callers must use `x509-cert` 0.3. 0.3.3 no longer builds from a
+  fresh dependency resolution (`rsa` 0.10.0-rc.18 fails against `pkcs1`
+  0.8.0).
+- Signer certificates whose keyUsage or extKeyUsage does not allow S/MIME
+  signing are rejected (see Fixed).
+
+### Added
+
+- `CertChainError::UnsuitableSignerCertificate { subject, reason }`.
+- ECDSA signatures with SHA-512, and any pairing of P-256/P-384 with
+  SHA-256/384/512, for both message signatures and certificate chains.
+
+### Fixed
+
+- The signer certificate's purpose is checked: when present, keyUsage
+  must include digitalSignature or nonRepudiation, and extKeyUsage must
+  include emailProtection or anyExtendedKeyUsage. A TLS server
+  certificate previously verified as an S/MIME signer.
+- ECDSA verification takes the curve from the key, not the signature
+  OID. A P-384 key signing with SHA-256 (OpenSSL's default) failed, both
+  as the message signer and as a CA in the chain.
+- KARI messages whose originator key omits the curve parameter (as
+  OpenSSL writes them; RFC 5753 §3.1.1) decrypt. The ephemeral point is
+  checked to be on the curve before `agree_ecdh`.
+- After a recipient matches, a wrong-length CEK, bad padding, a failed
+  GCM tag and `decrypt_cek` errors (other than `UnsupportedAlgorithm` and
+  `RngFailure`) all return the same `DecryptionFailed`, removing a
+  padding-oracle signal on RSA key transport.
+- AES key schedules and the content-encryption key are zeroized on drop,
+  including on early error returns.
+- Documentation: chain-validation algorithm support; size limits apply
+  after DER decoding; only DER, not indefinite-length BER, is accepted;
+  `RsaOaep` carries no OAEP parameters.
+
+### Changed
+
+- `base64` 0.23.
+- `rsa` 0.10.0 is not affected by RUSTSEC-2023-0071; the lockfile also
+  moves off yanked `crypto-bigint`/`ctutils` versions affected by
+  RUSTSEC-2026-0387 / RUSTSEC-2026-0385.
+
 ## [0.3.3] - 2026-06-16
 
 ### Added
