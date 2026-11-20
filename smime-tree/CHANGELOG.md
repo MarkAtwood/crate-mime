@@ -2,7 +2,45 @@
 
 All notable changes to `smime-tree` will be documented here.
 
-## [0.4.0] - Unreleased
+## [0.4.1] - Unreleased
+
+### Changed
+
+- **pkix-chain 0.5.** Certificate chain validation moves to `pkix-chain`
+  0.5 / `pkix-path` 0.4, which use `x509-cert` 0.3, `der` 0.8 and
+  `signature` 3 like the rest of the crate. The duplicate `x509-cert` 0.2,
+  `der` 0.7 and `signature` 2 dependencies, the DER bridge between the two
+  `x509-cert` versions, and smime-tree's own certificate-signature
+  verifier are gone (GitHub issue #2). Chain certificate signatures are
+  checked by `pkix_chain::DefaultVerifier`, which adds RSASSA-PSS,
+  Ed25519 and P-521 issuer keys. Message (`SignerInfo`) signature support
+  is unchanged.
+- pkix-path 0.4 validates more strictly: a certificate carrying an
+  extension more than once is rejected, and so is a name that cannot be
+  checked against a name constraint in effect (for example an `otherName`
+  under an `otherName` constraint).
+
+### Added
+
+- `CertChainError::SignatureNotVerified { subject, reason }`: a
+  certificate signature in the chain could not be checked (unsupported
+  algorithm or issuer key, or malformed issuer key).
+- `CertChainError::MalformedCertificate { subject }` and
+  `CertChainError::NameConstraintViolation { subject }`, previously
+  reported as `CertChainError::Other`.
+
+### Fixed
+
+- A signer or CA certificate whose validity dates before 2050 are encoded
+  as GeneralizedTime verifies. The DER bridge re-encoded them as UTCTime,
+  so the certificate no longer matched its issuer's signature and failed
+  with `CertChainError::SignatureVerification`.
+- A chain certificate signed with an unsupported algorithm (for example
+  `ecdsa-with-SHA1`) is reported as `CertChainError::SignatureNotVerified`
+  instead of `CertChainError::SignatureVerification`, which claimed the
+  signature was wrong.
+
+## [0.4.0] - 2026-11-20
 
 ### Breaking Changes
 
