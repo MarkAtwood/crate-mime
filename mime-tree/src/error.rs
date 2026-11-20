@@ -24,6 +24,12 @@ pub enum ParseError {
         length: u32,
         available: u64,
     },
+    /// The input is longer than `u32::MAX` bytes, which the `u32` byte
+    /// ranges of `ParsedPart` cannot address.
+    ///
+    /// `len` is the input length in bytes, as `u64` for the same reason as
+    /// `InvalidRange::available`.
+    TooLarge { len: u64 },
 }
 
 impl fmt::Display for ParseError {
@@ -41,6 +47,11 @@ impl fmt::Display for ParseError {
                 offset,
                 u64::from(*offset) + u64::from(*length),
                 available,
+            ),
+            ParseError::TooLarge { len } => write!(
+                f,
+                "input of {len} bytes is longer than the {} bytes part byte ranges can address",
+                u32::MAX
             ),
         }
     }

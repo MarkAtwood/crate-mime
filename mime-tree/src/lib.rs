@@ -32,7 +32,8 @@
 //! - `decode_body_value()` decodes a part's body on demand: transfer-encoding
 //!   decode (Base64, QP, identity) followed by charset conversion via `encoding_rs`.
 //! - Parsing is best-effort: malformed input yields a partial result plus
-//!   `ParsedMessage::warnings`. Only empty input or no-headers returns `Err`.
+//!   `ParsedMessage::warnings`. Only empty, oversized (over `u32::MAX`
+//!   bytes) or header-less input returns `Err`.
 //! - [`write_message()`] goes the other way: it writes an RFC 5322 / MIME
 //!   message from [`Header`] fields and a [`Part`] tree, folding header lines
 //!   (RFC 5322 §2.1.1), encoding non-ASCII text as RFC 2047 encoded words
@@ -98,7 +99,7 @@ pub use header_typed::{
     EmailAddress, HeaderDateTime, HeaderForm, HeaderValueTyped, TzSign, UnknownHeaderForm,
 };
 pub use message::{DecodedBodyValue, ParsedMessage};
-pub use parse::{decode_body_value, parse};
+pub use parse::{decode_body_value, parse, MAX_NESTING_DEPTH};
 pub use part::{ParsedHeader, ParsedPart, TransferEncoding};
 pub use uuencode::{scan_inline_uuencode, InlineUUBlock};
 pub use writer::{write_message, Body, Group, Header, HeaderValue, Mailbox, Part, WriteError};

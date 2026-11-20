@@ -79,11 +79,13 @@ pub struct ParsedHeader {
 ///
 /// Both fields use `u32` to guarantee identical serialized representation on
 /// 32-bit and 64-bit hosts.  RFC 5321 recommends a 10 MB message size limit;
-/// the 4 GiB `u32` range covers all realistic messages.  Callers processing
-/// raw input exceeding 4 GiB MUST reject it before calling [`parse`][crate::parse]
-/// — `mail-parser` uses `usize` offsets internally and `parse` truncates them
-/// to `u32` via `saturating_sub`, which would produce incorrect byte ranges
-/// without error on oversized input.
+/// the 4 GiB `u32` range covers all realistic messages.
+/// [`parse`][crate::parse] returns [`ParseError::TooLarge`][crate::ParseError::TooLarge]
+/// for input longer than `u32::MAX` bytes rather than produce byte ranges
+/// it cannot represent.
+///
+/// Trees built by `parse` are at most
+/// [`MAX_NESTING_DEPTH`][crate::MAX_NESTING_DEPTH] levels deep below the root.
 ///
 /// For `multipart/*` parts, `children` is non-empty and `body_range` covers
 /// the entire multipart body including boundaries.
@@ -150,9 +152,16 @@ impl ParsedPart {
     /// assert_eq!(part.content_type, "text/plain");
     /// ```
     pub fn find_by_id(&self, id: &str) -> Option<&ParsedPart> {
-        if self.part_id == id {
-            return Some(self);
+        // Iterative depth-first pre-order search, so a deep tree (for
+        // example one deserialized rather than built by `parse`) cannot
+        // overflow the stack.
+        let mut stack = vec![self];
+        while let Some(part) = stack.pop() {
+            if part.part_id == id {
+                return Some(part);
+            }
+            stack.extend(part.children.iter().rev());
         }
-        self.children.iter().find_map(|child| child.find_by_id(id))
+        None
     }
 }

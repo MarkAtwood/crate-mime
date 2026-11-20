@@ -12,7 +12,7 @@
 //!
 //! None of the expected values are derived from running this crate.
 
-use mime_tree::{decode_body_value, parse, ParseError, TransferEncoding};
+use mime_tree::{decode_body_value, parse, ParseError, TransferEncoding, MAX_NESTING_DEPTH};
 
 // ---------------------------------------------------------------------------
 // Test 1 — simple text/plain message
@@ -854,4 +854,104 @@ fn test_preview_truncates_to_256_chars() {
         preview.chars().all(|c| c == 'A'),
         "preview must contain only 'A' characters"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Test 30 — multipart nesting depth cap
+// ---------------------------------------------------------------------------
+
+/// `n` multipart/mixed parts, each the first child of the one before (RFC
+/// 2046 §5.1.1: a body part starts after `--boundary` CRLF), around a
+/// text/plain leaf. No close delimiters; the parts run to end of input.
+fn nested_multiparts(n: usize) -> Vec<u8> {
+    let mut raw = Vec::new();
+    for i in 0..n {
+        raw.extend_from_slice(
+            format!("Content-Type: multipart/mixed; boundary=b{i}\r\n\r\n--b{i}\r\n").as_bytes(),
+        );
+    }
+    raw.extend_from_slice(b"Content-Type: text/plain\r\n\r\nleaf\r\n");
+    raw
+}
+
+/// IMAP part ID of the part at nesting `depth` in `nested_multiparts`: the
+/// root is `""`, then `"1"`, `"1.1"`, ... (RFC 3501 §6.4.5).
+fn nested_id(depth: usize) -> String {
+    vec!["1"; depth].join(".")
+}
+
+/// 5000 nested multiparts used to overflow the stack of a 2 MiB thread.
+/// Now parsing stops descending at MAX_NESTING_DEPTH and warns.
+#[test]
+fn test_deep_multipart_nesting_is_capped() {
+    let raw = nested_multiparts(5000);
+    let handle = std::thread::Builder::new()
+        .stack_size(2 * 1024 * 1024)
+        .spawn(move || {
+            let msg = parse(&raw).expect("deeply nested input must parse best-effort");
+            let deepest = msg
+                .part_index
+                .find_by_id(&nested_id(MAX_NESTING_DEPTH))
+                .expect("part at the cap depth is in the tree");
+            assert_eq!(deepest.content_type, "multipart/mixed");
+            assert!(deepest.children.is_empty());
+            assert!(msg
+                .part_index
+                .find_by_id(&nested_id(MAX_NESTING_DEPTH + 1))
+                .is_none());
+            assert_eq!(msg.warnings.len(), 1, "{:?}", msg.warnings);
+            assert!(msg.warnings[0].contains("nested deeper than"));
+            // The text/plain leaf is below the cap: no body part reachable.
+            assert!(msg.text_body.is_empty());
+        })
+        .expect("spawn thread");
+    handle
+        .join()
+        .expect("parse must not overflow a 2 MiB stack");
+}
+
+/// Exactly at the cap: MAX_NESTING_DEPTH multiparts put the leaf at depth
+/// MAX_NESTING_DEPTH, which is still built; one more multipart is not
+/// descended into.
+#[test]
+fn test_nesting_depth_cap_boundary() {
+    let raw = nested_multiparts(MAX_NESTING_DEPTH);
+    let msg = parse(&raw).expect("parse");
+    // mail-parser flags the leaf (no close delimiter follows it) as an
+    // encoding problem; only the nesting warning matters here.
+    assert!(
+        !msg.warnings
+            .iter()
+            .any(|w| w.contains("nested deeper than")),
+        "{:?}",
+        msg.warnings
+    );
+    let leaf_id = nested_id(MAX_NESTING_DEPTH);
+    assert_eq!(msg.text_body, vec![leaf_id.clone()]);
+    let leaf = msg.part_index.find_by_id(&leaf_id).expect("leaf");
+    assert_eq!(leaf.content_type, "text/plain");
+    assert_eq!(
+        decode_body_value(&raw, leaf, None)
+            .unwrap()
+            .value
+            .trim_end(),
+        "leaf"
+    );
+
+    let raw = nested_multiparts(MAX_NESTING_DEPTH + 1);
+    let msg = parse(&raw).expect("parse");
+    assert_eq!(msg.warnings.len(), 1, "{:?}", msg.warnings);
+    assert!(msg.text_body.is_empty());
+    let capped = msg.part_index.find_by_id(&leaf_id).expect("capped part");
+    assert_eq!(capped.content_type, "multipart/mixed");
+    assert!(capped.children.is_empty());
+}
+
+/// Oversized input is an error, not wrapped byte ranges; the check itself is
+/// unit-tested in `parse.rs` without a 4 GiB buffer. Here: the error's
+/// Display names the length.
+#[test]
+fn test_too_large_error_display() {
+    let err = ParseError::TooLarge { len: 1u64 << 32 };
+    assert!(err.to_string().contains("4294967296"), "{err}");
 }

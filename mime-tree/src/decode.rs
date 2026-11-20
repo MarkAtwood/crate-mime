@@ -72,18 +72,31 @@ pub fn decode_body_value(
                 .map(|n| n.saturating_mul(4).div_ceil(3).next_multiple_of(4))
                 .unwrap_or(usize::MAX);
 
-            // Strip CR/LF line wrapping, collect up to max_b64_chars bytes,
-            // and detect truncation — all in a single pass.
+            // RFC 2045 §6.8: characters outside the base64 alphabet are
+            // ignored, and `=` may be taken as the end of the data.  In one
+            // pass, keep alphabet characters up to max_b64_chars, stop at
+            // the first alphabet character after padding, and detect
+            // truncation.  Whitespace (line wrapping, trailing spaces) is
+            // ignored silently; other dropped bytes, or data after padding,
+            // set is_encoding_problem but keep the decodable data.
             let mut stripped = Vec::with_capacity(max_b64_chars.min(body_bytes.len()));
+            let mut padded = false;
             for &b in body_bytes {
-                if b == b'\r' || b == b'\n' {
-                    continue;
+                if b.is_ascii_alphanumeric() || b == b'+' || b == b'/' {
+                    if padded {
+                        is_encoding_problem = true;
+                        break;
+                    }
+                    if stripped.len() >= max_b64_chars {
+                        input_was_limited = true;
+                        break;
+                    }
+                    stripped.push(b);
+                } else if b == b'=' {
+                    padded = true;
+                } else if !b.is_ascii_whitespace() {
+                    is_encoding_problem = true;
                 }
-                if stripped.len() >= max_b64_chars {
-                    input_was_limited = true;
-                    break;
-                }
-                stripped.push(b);
             }
             match BASE64_EMAIL.decode(&stripped) {
                 Ok(v) => v,
@@ -319,6 +332,68 @@ mod tests {
         let result = decode_body_value(&raw, &part, None).unwrap();
         assert!(result.is_encoding_problem);
         assert!(result.value.is_empty());
+    }
+
+    /// RFC 2045 §6.8: characters outside the base64 alphabet are ignored.
+    /// Spaces and tabs are line-wrapping noise, not an encoding problem.
+    /// Oracle: Python `binascii.a2b_base64(b"SGVsbG8s \r\nIFdvcmxkIQ==\r\n")`
+    /// is `b"Hello, World!"`; `a2b_base64(b"SGVs bG8=")` is `b"Hello"`.
+    #[test]
+    fn test_base64_ignores_whitespace() {
+        for (b64, expected) in [
+            (&b"SGVsbG8s \r\nIFdvcmxkIQ==\r\n"[..], "Hello, World!"),
+            (b"SGVs bG8=", "Hello"),
+            (b"SGVs\tbG8=\t\r\n", "Hello"),
+        ] {
+            let (raw, part) = make_part(b64, TransferEncoding::Base64, Some("utf-8"));
+            let result = decode_body_value(&raw, &part, None).unwrap();
+            assert_eq!(result.value, expected, "{b64:?}");
+            assert!(!result.is_encoding_problem, "{b64:?}");
+            assert!(!result.is_truncated, "{b64:?}");
+        }
+    }
+
+    /// Non-whitespace junk is dropped (RFC 2045 §6.8) and the data kept,
+    /// but flagged. Oracle: Python `binascii.a2b_base64(b"SGVs!bG8=")` is
+    /// `b"Hello"`.
+    #[test]
+    fn test_base64_junk_is_dropped_and_flagged() {
+        let (raw, part) = make_part(b"SGVs!bG8=", TransferEncoding::Base64, Some("utf-8"));
+        let result = decode_body_value(&raw, &part, None).unwrap();
+        assert_eq!(result.value, "Hello");
+        assert!(result.is_encoding_problem);
+    }
+
+    /// RFC 2045 §6.8: `=` may be taken as the end of the data. Data after
+    /// padding is ignored and flagged, keeping what came before. Oracle:
+    /// Python `binascii.a2b_base64(b"SGVsbG8=IFdvcmxkIQ==")` is `b"Hello"`.
+    #[test]
+    fn test_base64_data_after_padding_keeps_prefix() {
+        for b64 in [&b"SGVsbG8=IFdvcmxkIQ=="[..], b"SGVsbG8=\r\nx\r\n"] {
+            let (raw, part) = make_part(b64, TransferEncoding::Base64, Some("utf-8"));
+            let result = decode_body_value(&raw, &part, None).unwrap();
+            assert_eq!(result.value, "Hello", "{b64:?}");
+            assert!(result.is_encoding_problem, "{b64:?}");
+        }
+    }
+
+    /// Ignored whitespace does not count against `max_bytes`; trailing
+    /// padding after the limit is not more data.
+    #[test]
+    fn test_base64_whitespace_with_max_bytes() {
+        // Oracle: base64("Hello, World!") == "SGVsbG8sIFdvcmxkIQ=="
+        let (raw, part) = make_part(
+            b"SGVs bG8s IFdv cmxk IQ==",
+            TransferEncoding::Base64,
+            Some("utf-8"),
+        );
+        let result = decode_body_value(&raw, &part, Some(5)).unwrap();
+        assert_eq!(result.value, "Hello");
+        assert!(result.is_truncated);
+        let result = decode_body_value(&raw, &part, Some(13)).unwrap();
+        assert_eq!(result.value, "Hello, World!");
+        assert!(!result.is_truncated);
+        assert!(!result.is_encoding_problem);
     }
 
     #[test]

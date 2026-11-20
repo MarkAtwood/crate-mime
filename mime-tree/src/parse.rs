@@ -9,17 +9,38 @@ use crate::{
     walk,
 };
 
+/// The deepest `multipart/*` nesting [`parse`] descends into.
+///
+/// The root part is at depth 0 and each part's children are one deeper. A
+/// multipart part at this depth is kept in the tree with its media type,
+/// headers and body range, but with no `children`, and a warning is added
+/// to [`ParsedMessage::warnings`]. Its body bytes are still reachable
+/// through `body_range`.
+///
+/// The cap bounds the recursion of `parse` and of walks over the tree it
+/// returns (for example [`ParsedPart::find_by_id`]), so a hostile message of
+/// thousands of nested multiparts cannot overflow the stack. Real mail
+/// rarely nests more than a handful of levels.
+pub const MAX_NESTING_DEPTH: usize = 100;
+
 /// Parse raw RFC 5322 bytes into a `ParsedMessage`.
 ///
-/// Returns `Err(ParseError::EmptyInput)` for empty input and
-/// `Err(ParseError::NoHeaders)` when mail-parser cannot find any headers.
-/// All other malformed input produces a best-effort `ParsedMessage` with
-/// `warnings` populated.
+/// All malformed input that does not hit one of the errors below produces a
+/// best-effort `ParsedMessage` with `warnings` populated. Multiparts nested
+/// deeper than [`MAX_NESTING_DEPTH`] are not descended into (see there).
+///
+/// # Errors
+///
+/// - [`ParseError::EmptyInput`] for empty input.
+/// - [`ParseError::TooLarge`] when `raw` is longer than `u32::MAX` bytes,
+///   which the `u32` byte ranges of [`ParsedPart`] cannot address.
+/// - [`ParseError::NoHeaders`] when mail-parser cannot find any headers.
 #[must_use = "the parsed message must be used"]
 pub fn parse(raw: &[u8]) -> Result<ParsedMessage, ParseError> {
     if raw.is_empty() {
         return Err(ParseError::EmptyInput);
     }
+    check_input_len(raw.len())?;
 
     let message = MessageParser::default()
         .parse(raw)
@@ -97,6 +118,16 @@ pub fn decode_body_value(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/// Reject an input length that `u32` byte ranges cannot address.
+///
+/// Factored out of [`parse`] so it can be tested without a 4 GiB buffer.
+fn check_input_len(len: usize) -> Result<(), ParseError> {
+    match u32::try_from(len) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(ParseError::TooLarge { len: len as u64 }),
+    }
+}
+
 /// Extract `ParsedHeader` values from a part's header list.
 ///
 /// For headers whose value mail-parser parses as plain text (Subject,
@@ -152,6 +183,9 @@ fn extract_headers(part: &MessagePart<'_>, raw: &[u8]) -> Vec<ParsedHeader> {
 
 /// Build a `ParsedPart` for `parts[part_idx]`, assigning it the given `part_id`.
 ///
+/// `depth` is the part's nesting depth (0 for the root); a multipart at
+/// [`MAX_NESTING_DEPTH`] gets no children and a warning.
+///
 /// Returns `None` when `part_idx` is out of range in `message.parts`; the
 /// caller logs a warning and skips the missing child.
 ///
@@ -161,6 +195,7 @@ fn build_part(
     message: &Message<'_>,
     part_idx: u32,
     part_id: String,
+    depth: usize,
     warnings: &mut Vec<String>,
 ) -> Option<ParsedPart> {
     let part = match message.parts.get(part_idx as usize) {
@@ -212,6 +247,14 @@ fn build_part(
     let cid = part.content_id().map(str::to_owned);
 
     let children = match &part.body {
+        PartType::Multipart(child_ids) if depth >= MAX_NESTING_DEPTH => {
+            warnings.push(format!(
+                "part {part_id}: multipart nested deeper than {MAX_NESTING_DEPTH} levels; \
+                 {} child part(s) not parsed",
+                child_ids.len()
+            ));
+            vec![]
+        }
         PartType::Multipart(child_ids) => child_ids
             .iter()
             .enumerate()
@@ -221,7 +264,7 @@ fn build_part(
                 } else {
                     format!("{}.{}", part_id, n + 1)
                 };
-                build_part(message, child_idx, child_id, warnings)
+                build_part(message, child_idx, child_id, depth + 1, warnings)
             })
             .collect(),
         PartType::Message(_nested) => {
@@ -274,7 +317,7 @@ fn build_root(
         "1".to_owned()
     };
 
-    build_part(message, part_idx, root_id, warnings)
+    build_part(message, part_idx, root_id, 0, warnings)
 }
 
 /// Map a mail-parser `Encoding` (and optional CTE string) to `TransferEncoding`.
@@ -307,5 +350,27 @@ fn map_encoding(part: &MessagePart<'_>, warnings: &mut Vec<String>) -> TransferE
                 _ => TransferEncoding::Identity,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn input_length_up_to_u32_max_is_accepted() {
+        assert_eq!(check_input_len(1), Ok(()));
+        assert_eq!(check_input_len(u32::MAX as usize), Ok(()));
+    }
+
+    /// One byte past what a `u32` offset can address is rejected.
+    #[cfg(target_pointer_width = "64")]
+    #[test]
+    fn input_length_past_u32_max_is_too_large() {
+        let len = u32::MAX as usize + 1;
+        assert_eq!(
+            check_input_len(len),
+            Err(ParseError::TooLarge { len: 1u64 << 32 })
+        );
     }
 }

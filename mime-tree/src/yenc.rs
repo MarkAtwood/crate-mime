@@ -182,11 +182,14 @@ pub fn scan_inline_yencode(raw: &[u8], part: &ParsedPart) -> Vec<InlineYEncBlock
             None => break, // no more blocks
         };
 
-        // Attempt to decode from the =ybegin line onward. yencoding::decode()
-        // scans forward for =ybegin itself, so passing the slice starting at
-        // ybegin_rel is correct (it will find it immediately).
-        let slice = &body[ybegin_rel..];
-        let (block, yend_rel_in_slice, is_error) = decode_one_block(slice);
+        // Decode only this block's lines: through its `=yend ` line, or up
+        // to the next `=ybegin ` line when there is none. Handing
+        // yencoding::decode() the whole rest of the body would make every
+        // unterminated block read to the end of the body — quadratic over
+        // a body of many `=ybegin` lines.
+        let rest = &body[ybegin_rel..];
+        let (extent, has_yend) = block_extent(rest);
+        let (block, yend_rel_in_slice, is_error) = decode_one_block(&rest[..extent], has_yend);
 
         // Absolute offset in `raw` of this block's =ybegin line.
         let abs_begin = offset_u32.saturating_add(u32::try_from(ybegin_rel).unwrap_or(u32::MAX));
@@ -260,42 +263,26 @@ fn find_ybegin(body: &[u8], start: usize) -> Option<usize> {
     None
 }
 
-/// Decode one yEnc block starting at the beginning of `slice`.
+/// Decode one yEnc block: `slice` starts with its `=ybegin` line and ends
+/// after its `=yend ` line when `has_yend` (see [`block_extent`]).
 ///
 /// Returns `(DecodedPart, bytes_consumed, is_error)` where:
 /// - `bytes_consumed` is how many bytes of `slice` this block spans
 /// - `is_error` is `true` when `yencoding::decode` returned `Err`
-fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
+fn decode_one_block(slice: &[u8], has_yend: bool) -> (yencoding::DecodedPart, usize, bool) {
     match yencoding::decode(slice) {
+        Ok(part) if has_yend => (part, slice.len(), false),
         Ok(part) => {
-            // Find where =yend line ends within slice so the caller knows
-            // how many bytes to skip.
-            //
-            // If yencoding::decode() succeeded, =yend was definitely in the
-            // slice and find_yend_end() must find it too. If it somehow returns
-            // None that is a logic error: fall back to advancing past =ybegin
-            // only (rather than consuming the whole remaining body) and mark
-            // the block as an encoding problem so the caller is not silently
-            // misled.
-            match find_yend_end(slice) {
-                Some(consumed) => (part, consumed, false),
-                None => {
-                    // yencoding::decode() succeeded, so =yend was definitely
-                    // present in the slice — find_yend_end() returning None
-                    // here is a logic error in this module.  The decoded bytes
-                    // are valid, but we cannot report a correct begin_length
-                    // (consumed = only the =ybegin line, not the full block),
-                    // so the slice invariant would be violated.  Mark as
-                    // is_encoding_problem=true to signal that the offset
-                    // metadata is unreliable.
-                    debug_assert!(
-                        false,
-                        "find_yend_end returned None after successful decode — logic error"
-                    );
-                    let consumed = find_line_end(slice, 0);
-                    (part, consumed, true)
-                }
-            }
+            // yencoding::decode() succeeded, so it found an `=yend ` line,
+            // which block_extent() looks for by the same rule — reaching
+            // here is a logic error in this module.  The decoded bytes are
+            // valid, but begin_length cannot cover the full block, so mark
+            // the block is_encoding_problem to flag the offsets unreliable.
+            debug_assert!(
+                false,
+                "block_extent found no =yend after successful decode — logic error"
+            );
+            (part, find_line_end(slice, 0), true)
         }
         Err(e) => {
             // Build a sentinel DecodedPart for the error case.
@@ -307,37 +294,31 @@ fn decode_one_block(slice: &[u8]) -> (yencoding::DecodedPart, usize, bool) {
     }
 }
 
-/// Find the byte offset just past the `=yend` line in `slice`.
-/// Returns `None` if no `=yend` line is found (truncated article).
+/// Find the extent of the yEnc block whose `=ybegin` line starts `slice`.
 ///
-/// Matches `=yend` only when followed by a space, `\r`, `\n`, or end-of-slice
-/// — the same boundary requirement that `yencoding::decode` uses internally
-/// via `strip_keyword(line, b"=yend ")`.  This guard is a safety margin for
-/// non-compliant encoders: compliant yEnc encoders cannot produce a data line
-/// starting with `=y` because `=` (0x3D) is always escaped, so no well-formed
-/// data line can begin with a literal `=` character.
-fn find_yend_end(slice: &[u8]) -> Option<usize> {
-    let needle = b"=yend";
-    let mut pos = 0;
+/// Returns `(end, true)` with `end` just past the first later line that
+/// starts with `=yend ` (keyword and space), or `(end, false)` with `end`
+/// at the start of the next line starting with `=ybegin `, or at the end of
+/// `slice`, when no `=yend ` line comes first.
+///
+/// `=yend ` with its space is exactly what `yencoding::decode` accepts as
+/// the trailer (`strip_keyword(line, b"=yend ")`): a bare `=yend` line is
+/// a data line to it, so it is one here too. Compliant encoders never start
+/// a data line with `=y` (`=` is always escaped, and no escape decodes from
+/// `y`), so neither keyword appears inside well-formed data.
+fn block_extent(slice: &[u8]) -> (usize, bool) {
+    let mut pos = find_line_end(slice, 0);
     while pos < slice.len() {
-        let rest = &slice[pos..];
-        if rest.starts_with(needle) {
-            // Require the keyword to be followed by a delimiter so we don't
-            // match =yend inside an encoded data line.
-            let after = rest.get(needle.len()).copied();
-            match after {
-                None | Some(b' ') | Some(b'\r') | Some(b'\n') => {
-                    return Some(find_line_end(slice, pos));
-                }
-                _ => {} // false match — continue scanning
-            }
+        let line = &slice[pos..];
+        if line.starts_with(b"=yend ") {
+            return (find_line_end(slice, pos), true);
         }
-        match rest.iter().position(|&b| b == b'\n') {
-            Some(rel) => pos += rel + 1,
-            None => break,
+        if line.starts_with(b"=ybegin ") {
+            return (pos, false);
         }
+        pos = find_line_end(slice, pos);
     }
-    None
+    (slice.len(), false)
 }
 
 /// Return the byte offset just past the end of the line starting at `pos`
@@ -545,6 +526,59 @@ mod tests {
         let blocks = scan_inline_yencode(&raw, &part);
         assert_eq!(blocks.len(), 1);
         assert!(blocks[0].is_encoding_problem);
+    }
+
+    /// A bare `=yend` line (no space) is not the trailer: yEnc keywords end
+    /// in a space, and yencoding decodes such a line as data. Oracle (yEnc
+    /// 1.3 spec, output byte = input - 42, escape `=c` = c - 64 - 42):
+    /// `=y` -> 0x79-106 = 0x0F, `e` -> 0x3B, `n` -> 0x44, `d` -> 0x3A.
+    /// The block, and begin_length, run through `=yend size=4`.
+    #[test]
+    fn bare_yend_line_is_data_not_trailer() {
+        let block: &[u8] = b"=ybegin line=128 size=4 name=x\r\n=yend\r\n=yend size=4\r\n";
+        let (raw, part) = make_part(b"", &[block, b"trailer\r\n"].concat());
+        let blocks = scan_inline_yencode(&raw, &part);
+        assert_eq!(blocks.len(), 1);
+        assert!(!blocks[0].is_encoding_problem);
+        assert_eq!(blocks[0].data, &[0x0F, 0x3B, 0x44, 0x3A]);
+        assert_eq!(blocks[0].begin_offset, 0);
+        assert_eq!(blocks[0].begin_length, block.len() as u32);
+    }
+
+    /// An unterminated block ends at the next `=ybegin ` line, which is
+    /// then decoded as its own block.
+    #[test]
+    fn unterminated_block_then_valid_block() {
+        let open: &[u8] = b"=ybegin line=128 size=3 name=f.bin\r\n*+,\r\n";
+        let (raw, part) = make_part(b"", &[open, BLOCK_012].concat());
+        let blocks = scan_inline_yencode(&raw, &part);
+        assert_eq!(blocks.len(), 2);
+        assert!(blocks[0].is_encoding_problem);
+        assert_eq!(blocks[0].begin_offset, 0);
+        assert!(!blocks[1].is_encoding_problem);
+        assert_eq!(blocks[1].data, &[0u8, 1, 2]);
+        assert_eq!(blocks[1].begin_offset, open.len() as u32);
+        assert_eq!(blocks[1].begin_length, BLOCK_012.len() as u32);
+    }
+
+    /// 8192 unterminated `=ybegin` lines (256 KiB). Each used to be decoded
+    /// against the rest of the body — about 1 GiB of scanning — and is now
+    /// decoded against its own line.
+    #[test]
+    fn many_unterminated_ybegin_lines_scan_linearly() {
+        const LINE: &[u8] = b"=ybegin line=128 size=3 name=x\r\n";
+        let n = 8192;
+        let (raw, part) = make_part(b"", &LINE.repeat(n));
+        let started = std::time::Instant::now();
+        let blocks = scan_inline_yencode(&raw, &part);
+        let elapsed = started.elapsed();
+        assert_eq!(blocks.len(), n);
+        for (i, b) in blocks.iter().enumerate() {
+            assert!(b.is_encoding_problem);
+            assert_eq!(b.begin_offset, (i * LINE.len()) as u32);
+            assert_eq!(b.begin_length, LINE.len() as u32);
+        }
+        assert!(elapsed < std::time::Duration::from_secs(5), "{elapsed:?}");
     }
 
     #[test]
