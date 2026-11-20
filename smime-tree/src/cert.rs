@@ -35,9 +35,11 @@ const MAX_DEPTH: usize = 10;
 ///
 /// # Algorithm support
 ///
-/// Signature verification is performed by `pkix-chain`'s `DefaultVerifier`,
-/// which supports RSA-PKCS1v15-SHA-256 and ECDSA-P-256-SHA-256. Chains whose
-/// CA certificates use ECDSA-P-384 or other algorithms will fail with
+/// Signature verification is performed by `pkix-chain`'s `DefaultVerifier`
+/// with the `rustcrypto` feature, which supports RSA-PKCS1v15 with SHA-256,
+/// SHA-384 and SHA-512, ECDSA-P-256-SHA-256 and ECDSA-P-384-SHA-384. Chains
+/// whose certificates are signed with other algorithms (RSA-PSS, Ed25519,
+/// ECDSA-P-521, or a curve/hash pairing not listed) fail with
 /// `CertChainError::SignatureVerification`.
 pub(crate) fn validate_chain(
     signer_cert: &Certificate,
