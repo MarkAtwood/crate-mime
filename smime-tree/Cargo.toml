@@ -13,7 +13,7 @@ categories = ["cryptography", "email", "encoding"]
 exclude = ["CLAUDE.md", "AGENTS.md"]
 
 [dependencies]
-base64 = { version = "0.22" }
+base64 = { version = "0.23" }
 cms = { version = "=0.3.0-rc.2" }
 crypto-common = { version = "0.2" }
 elliptic-curve = { version = "0.14", features = ["ecdh"] }
