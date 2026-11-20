@@ -117,7 +117,7 @@ const CHAIN_SIG_HEX: &str = "3082090406092a864886f70d010702a08208f5308208f102010
 
 fn from_hex(s: &str) -> Vec<u8> {
     assert!(
-        s.len() % 2 == 0,
+        s.len().is_multiple_of(2),
         "from_hex: hex string must have even length, got {}",
         s.len()
     );

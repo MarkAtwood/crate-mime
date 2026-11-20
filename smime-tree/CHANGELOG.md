@@ -47,6 +47,8 @@ All notable changes to `smime-tree` will be documented here.
 ### Changed
 
 - `base64` 0.23.
+- MSRV is now 1.88 (was declared 1.85, which fresh dependency
+  resolution no longer builds).
 - `rsa` 0.10.0 is not affected by RUSTSEC-2023-0071; the lockfile also
   moves off yanked `crypto-bigint`/`ctutils` versions affected by
   RUSTSEC-2026-0387 / RUSTSEC-2026-0385.

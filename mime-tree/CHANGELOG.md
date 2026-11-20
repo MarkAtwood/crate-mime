@@ -37,6 +37,8 @@ All notable changes to `mime-tree` will be documented here.
 ### Changed
 
 - Requires `uuencoding` 0.3.1 and `yencoding` 0.3.1.
+- MSRV is now 1.88 (was declared 1.85, which fresh dependency
+  resolution no longer builds).
 
 ## [0.6.0] - 2026-11-20
 

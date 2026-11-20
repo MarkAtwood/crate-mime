@@ -2,7 +2,7 @@
 name = "mime-tree"
 version = "0.6.1"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 description = "RFC 5322/MIME parser producing a byte-range-indexed part tree, and the matching message writer"
 authors = ["Mark Atwood <mark@reviewcommit.com>"]
