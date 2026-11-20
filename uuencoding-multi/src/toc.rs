@@ -330,7 +330,7 @@ fn looks_like_filename(s: &str) -> bool {
 ///
 /// Returns `None` if no lines at all parse as TOC entries.
 /// Returns `Some(ParsedToc)` with partial `entries` if at least one line
-/// parses; unparseable lines are omitted without error.
+/// parses; unparsable lines are omitted without error.
 ///
 /// # Format notes
 ///
@@ -423,7 +423,7 @@ mod tests {
     }
 
     // ------------------------------------------------------------------
-    // Unparseable lines mixed in — no panic, still get 1 entry
+    // Unparsable lines mixed in — no panic, still get 1 entry
     // ------------------------------------------------------------------
 
     #[test]

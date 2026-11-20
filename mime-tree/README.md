@@ -230,7 +230,7 @@ match parse_header_typed(HeaderForm::Addresses, raw_value) {
 | `Addresses` | 4.1.2.3 | `Addresses(Vec<EmailAddress>)` — flat list, group structure discarded |
 | `GroupedAddresses` | 4.1.2.4 | `GroupedAddresses(Vec<AddressGroup>)` — groups preserved |
 | `MessageIds` | 4.1.2.5 | `MessageIds(Vec<String>)` — bare ids, no `<>` or CFWS |
-| `Date` | 4.1.2.6 | `DateTime(Option<HeaderDateTime>)` — `None` if unparseable |
+| `Date` | 4.1.2.6 | `DateTime(Option<HeaderDateTime>)` — `None` if unparsable |
 | `URLs` | 4.1.2.7 | `URLs(Vec<String>)` — bare URLs, no `<>` or comments |
 
 `EmailAddress`, `AddressGroup`, `HeaderDateTime`, `HeaderForm`, and

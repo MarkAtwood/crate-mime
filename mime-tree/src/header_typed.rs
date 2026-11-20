@@ -20,7 +20,7 @@
 //!
 //! Parsing is best-effort. On failure the function returns the appropriate
 //! empty value (an empty `Vec`, an empty `Raw` string, or `DateTime(None)`
-//! for an unparseable date) — it never panics and never returns an error.
+//! for an unparsable date) — it never panics and never returns an error.
 //!
 //! These types are independent of the [`crate::ParsedHeader`] surface,
 //! which exposes both a decoded `value` string and the original wire

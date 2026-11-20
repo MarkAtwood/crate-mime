@@ -1,3 +1,5 @@
 [default.extend-words]
 # "caf" is the French prefix for "café" — intentional in QP-encoding test data.
 caf = "caf"
+# "pn" is a part-number loop variable in uuencoding-multi.
+pn = "pn"
