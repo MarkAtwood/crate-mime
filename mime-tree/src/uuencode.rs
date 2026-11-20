@@ -55,7 +55,7 @@ pub struct InlineUUBlock {
     /// `begin_length` is `Some`) yields the complete UU block from the
     /// `begin` line through the `end` line (inclusive).
     ///
-    /// When [`is_encoding_problem`] is `true`, `begin_length` is `None`.
+    /// When [`is_encoding_problem`](Self::is_encoding_problem) is `true`, `begin_length` is `None`.
     /// `begin_offset` still reflects the actual position of the offending
     /// `begin` or `begin-base64` line within `raw`, so it can be used for
     /// diagnostic purposes.
@@ -64,7 +64,7 @@ pub struct InlineUUBlock {
     /// Byte length of the entire UU block: from the start of the `begin` line
     /// through the end of the `end` line (inclusive of its newline).
     ///
-    /// `None` when [`is_encoding_problem`] is `true`, because the block end
+    /// `None` when [`is_encoding_problem`](Self::is_encoding_problem) is `true`, because the block end
     /// boundary is not determined for error items (`begin-base64` and
     /// malformed `begin` lines).
     pub begin_length: Option<u32>,

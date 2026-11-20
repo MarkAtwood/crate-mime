@@ -4,10 +4,10 @@
 //!   - RFC 5322, RFC 2045, RFC 2046, RFC 2047, RFC 2183, RFC 8621 §4.1.4
 //!   - IANA media type registrations
 //!   - Python `base64` / `quopri` modules (values confirmed with:
-//!       python3 -c "import base64; print(base64.b64decode('SGVsbG8sIFdvcmxkIQ=='))"
-//!       → b'Hello, World!'
-//!       python3 -c "import base64; print(base64.b64decode('SGVsbG8='))"
-//!       → b'Hello'
+//!     python3 -c "import base64; print(base64.b64decode('SGVsbG8sIFdvcmxkIQ=='))"
+//!     → b'Hello, World!'
+//!     python3 -c "import base64; print(base64.b64decode('SGVsbG8='))"
+//!     → b'Hello'
 //!   - RFC 2047 encoded-word examples (see tests 9, 10, 11 below)
 //!
 //! None of the expected values are derived from running this crate.

@@ -123,7 +123,7 @@ pub struct ParsedPart {
     /// problem (e.g., invalid base64 padding in the raw transfer encoding).
     ///
     /// This is a parse-time flag, distinct from
-    /// [`DecodedBodyValue::is_encoding_problem`] which is set during
+    /// [`DecodedBodyValue::is_encoding_problem`](crate::DecodedBodyValue::is_encoding_problem) which is set during
     /// charset conversion in `decode_body_value()`.
     pub is_encoding_problem: bool,
 }

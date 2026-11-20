@@ -70,7 +70,7 @@ pub struct InlineYEncBlock {
     /// Byte length of the entire block: from the start of `=ybegin` through
     /// the end of `=yend` (inclusive of its newline).
     ///
-    /// **When [`is_encoding_problem`] is `true`**, this field holds the length
+    /// **When [`is_encoding_problem`](Self::is_encoding_problem) is `true`**, this field holds the length
     /// of the `=ybegin` line only (up to and including its newline), not the
     /// full block through `=yend`.  The `=yend` line could not be located
     /// because decoding failed before it was reached.  Do not rely on
@@ -83,14 +83,14 @@ pub struct InlineYEncBlock {
     /// Not sanitised against path traversal. Callers writing this to disk must
     /// validate against `..` and absolute paths.
     ///
-    /// Empty when [`is_encoding_problem`] is `true` and the block header
+    /// Empty when [`is_encoding_problem`](Self::is_encoding_problem) is `true` and the block header
     /// could not be parsed.
     pub filename: String,
 
     /// Total declared file size in bytes, from `=ybegin size=`. For multi-part
     /// articles this is the size of the complete file, not just this part.
     ///
-    /// When [`is_encoding_problem`] is `true`, this field is `0` and does not
+    /// When [`is_encoding_problem`](Self::is_encoding_problem) is `true`, this field is `0` and does not
     /// reflect a declared size (the header could not be parsed).
     pub file_size: u64,
 

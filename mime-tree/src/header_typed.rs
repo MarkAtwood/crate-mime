@@ -241,8 +241,8 @@ pub enum TzSign {
 /// **except** for `tz_sign`, which is an explicit enum rather than a
 /// bool. This is a deliberate API choice — see `TzSign` — and means
 /// `HeaderDateTime` and `mail_parser::DateTime` are not bit-identical
-/// even though they round-trip via [`HeaderDateTime::from_mail_parser`]
-/// / [`HeaderDateTime::to_mail_parser`].
+/// even though they round-trip via `HeaderDateTime::from_mail_parser`
+/// / `HeaderDateTime::to_mail_parser`.
 ///
 /// # Wire-format dependency on mail-parser
 ///
