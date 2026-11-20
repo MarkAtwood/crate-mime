@@ -5,16 +5,15 @@ use std::time::SystemTime;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use cms::{
-    cert::CertificateChoices,
     content_info::{CmsVersion, ContentInfo},
     signed_data::{
-        CertificateSet, DigestAlgorithmIdentifiers, EncapsulatedContentInfo, SignatureValue,
-        SignedAttributes, SignedData, SignerIdentifier, SignerInfo, SignerInfos,
+        DigestAlgorithmIdentifiers, EncapsulatedContentInfo, SignatureValue, SignedAttributes,
+        SignerIdentifier, SignerInfo, SignerInfos,
     },
 };
 use der::{
     asn1::{ObjectIdentifier, OctetStringRef, SetOfVec},
-    Any, AnyRef, Decode, Encode, Tag,
+    Any, AnyRef, Decode, Encode, Header, Length, Tag, TagNumber,
 };
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use spki::AlgorithmIdentifierOwned;
@@ -29,6 +28,52 @@ use const_oid::db::rfc5912::{
     RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION,
     SHA_512_WITH_RSA_ENCRYPTION,
 };
+
+/// DER-encode a `SignedData` (RFC 5652 §5.1) whose `certificates` field
+/// holds `cert_ders` verbatim.
+///
+/// `cms::signed_data::SignedData::to_der` would re-encode each
+/// `x509_cert::Certificate`, and x509-cert 0.3 writes validity dates before
+/// 2050 as UTCTime even when the issuer signed them as GeneralizedTime, so
+/// the embedded certificate would no longer match its signature.  The other
+/// fields are encoded by `cms`; `crls` is absent.
+///
+/// `cert_ders` is sorted and deduplicated, as DER requires for a SET OF.
+fn encode_signed_data(
+    version: CmsVersion,
+    digest_algorithms: &DigestAlgorithmIdentifiers,
+    encap_content_info: &EncapsulatedContentInfo,
+    mut cert_ders: Vec<Vec<u8>>,
+    signer_infos: &SignerInfos,
+) -> Result<Vec<u8>, SmimeError> {
+    fn push_tlv(out: &mut Vec<u8>, tag: Tag, value: &[u8]) -> Result<(), SmimeError> {
+        Header::new(tag, Length::try_from(value.len())?).encode_to_vec(out)?;
+        out.extend_from_slice(value);
+        Ok(())
+    }
+
+    cert_ders.sort();
+    cert_ders.dedup();
+
+    let mut body = Vec::new();
+    version.encode_to_vec(&mut body)?;
+    digest_algorithms.encode_to_vec(&mut body)?;
+    encap_content_info.encode_to_vec(&mut body)?;
+    // certificates [0] IMPLICIT CertificateSet OPTIONAL
+    push_tlv(
+        &mut body,
+        Tag::ContextSpecific {
+            constructed: true,
+            number: TagNumber(0),
+        },
+        &cert_ders.concat(),
+    )?;
+    signer_infos.encode_to_vec(&mut body)?;
+
+    let mut out = Vec::new();
+    push_tlv(&mut out, Tag::Sequence, &body)?;
+    Ok(out)
+}
 
 /// Sign MIME content. Returns `multipart/signed` outer MIME bytes.
 ///
@@ -78,12 +123,12 @@ pub fn sign(
     // Accumulator state shared across iterations:
     //   signer_infos_set  — the SET OF SignerInfo for SignedData
     //   digest_alg_set    — deduplicated SET of digest AlgorithmIdentifiers (RFC 5652 §5.1)
-    //   cert_choices      — deduplicated CertificateSet (one cert per signer)
+    //   cert_ders         — DER of each signer's certificate, as issued (see Step 7)
     //   any_ski           — true if any SignerInfo used SubjectKeyIdentifier (affects SD version)
     //   micalg_parts      — deduplicated, first-seen-order list of micalg strings (RFC 5751 §3.4.3.2)
     let mut signer_infos_set: SignerInfos = SignerInfos(SetOfVec::new());
     let mut digest_alg_set: DigestAlgorithmIdentifiers = SetOfVec::new();
-    let mut cert_choices: CertificateSet = CertificateSet(SetOfVec::new());
+    let mut cert_ders: Vec<Vec<u8>> = Vec::new();
     let mut any_ski = false;
     // micalg_parts: Vec preserving first-seen order; entries are unique.
     let mut micalg_parts: Vec<&'static str> = Vec::new();
@@ -175,9 +220,7 @@ pub fn sign(
         // Accumulate: SetOfVec::insert() silently ignores duplicates.
         signer_infos_set.0.insert(signer_info)?;
         digest_alg_set.insert(digest_algorithm)?;
-        cert_choices
-            .0
-            .insert(CertificateChoices::Certificate(cert.clone()))?;
+        cert_ders.push(crate::cert::certificate_der(cert)?);
 
         // Accumulate micalg in first-seen order (deduplicated).
         let micalg_str = micalg_param(&digest_alg);
@@ -194,17 +237,15 @@ pub fn sign(
         CmsVersion::V1
     };
 
-    let signed_data = SignedData {
-        version: signed_data_version,
-        digest_algorithms: digest_alg_set,
-        encap_content_info: eci,
-        certificates: Some(cert_choices),
-        crls: None,
-        signer_infos: signer_infos_set,
-    };
+    let sd_der = encode_signed_data(
+        signed_data_version,
+        &digest_alg_set,
+        &eci,
+        cert_ders,
+        &signer_infos_set,
+    )?;
 
     // --- Step 8: wrap in ContentInfo and DER-encode ---
-    let sd_der = signed_data.to_der()?;
     let content_ref = AnyRef::try_from(sd_der.as_slice())?;
     let content_info = ContentInfo {
         content_type: const_oid::db::rfc5911::ID_SIGNED_DATA,

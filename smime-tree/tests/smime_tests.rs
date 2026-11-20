@@ -2306,3 +2306,101 @@ fn test_regress_unsupported_cert_signature_algorithm_not_reported_as_forgery() {
     );
     assert!(!err.contains("does not match"), "{err}");
 }
+
+/// PKCS#8 DER of the private key of GT_VALIDITY_LEAF_CERT_HEX
+/// (`openssl pkcs8 -topk8 -nocrypt -in gt.key -outform DER`).
+const GT_VALIDITY_LEAF_KEY_PKCS8_HEX: &str = "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104201767f43fe7501d763506a12f1ea96b5cb6e48b6abb000ba6096297c13ef57d6da144034200043780448b9b7926b66d578d6b2fb3cbfee871dd61af2eb175ee78a59dfb42ba80e240393de05cc2d72dba8d7a97e03b8af83709de6287783a77426927a434ff0e";
+
+/// Split `sign()` output into the signed content and the DER `SignedData`.
+fn split_signed(signed_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
+    use base64::Engine as _;
+    let parsed = mime_tree::parse(signed_bytes).expect("parse sign() output");
+    let part1 = parsed
+        .part_index
+        .find_by_id("1")
+        .expect("signed content part");
+    let content = signed_bytes
+        [part1.header_range.0 as usize..(part1.body_range.0 + part1.body_range.1) as usize]
+        .to_vec();
+    let part2 = parsed.part_index.find_by_id("2").expect("signature part");
+    let b64: Vec<u8> = signed_bytes
+        [part2.body_range.0 as usize..(part2.body_range.0 + part2.body_range.1) as usize]
+        .iter()
+        .copied()
+        .filter(|&b| b != b'\r' && b != b'\n')
+        .collect();
+    let der = base64::engine::general_purpose::STANDARD
+        .decode(&b64)
+        .expect("signature part is base64");
+    (content, der)
+}
+
+/// `sign()` embeds the signer certificate exactly as it was issued.  Signing
+/// with the GeneralizedTime-validity leaf must not re-encode its validity
+/// times as UTCTime (which x509-cert 0.3 does when it encodes a
+/// `Certificate`): the embedded copy must be byte-identical to the original
+/// DER, and the resulting message must verify with smime-tree and OpenSSL.
+#[test]
+fn test_regress_sign_embeds_generalized_time_cert_unchanged() {
+    let cert_der = from_hex(GT_VALIDITY_LEAF_CERT_HEX);
+    let key = TestEcP256SigningKey {
+        signing_key: p256::ecdsa::SigningKey::from_pkcs8_der(&from_hex(
+            GT_VALIDITY_LEAF_KEY_PKCS8_HEX,
+        ))
+        .expect("parse GT leaf key"),
+        cert: Certificate::from_der(&cert_der).expect("parse GT leaf"),
+    };
+    let signed = sign(REGRESS_MSG, &[&key as &dyn SigningKey], regress_now()).expect("sign");
+    let (content, sd_der) = split_signed(&signed);
+    assert_eq!(content, REGRESS_MSG);
+
+    let ci = cms::content_info::ContentInfo::from_der(&sd_der).expect("parse ContentInfo");
+    let sd: cms::signed_data::SignedData = ci.content.decode_as().expect("parse SignedData");
+    assert_eq!(sd.certificates.expect("certificates present").0.len(), 1);
+    assert!(
+        sd_der
+            .windows(cert_der.len())
+            .any(|w| w == cert_der.as_slice()),
+        "the embedded signer certificate must be byte-identical to the original DER"
+    );
+
+    let ca = Certificate::from_der(&from_hex(REGRESS_GT_CA_CERT_HEX)).expect("parse GT CA");
+    let r = verify(&content, &sd_der, &[ca], regress_now(), &NoRevocationCheck);
+    assert!(
+        matches!(&r, Ok(v) if v.all_verified()),
+        "smime-tree must verify its own output: {r:?}"
+    );
+
+    if !openssl_available() {
+        eprintln!("SKIP openssl oracle step: openssl not found in PATH");
+        return;
+    }
+    use std::io::Write;
+    let write = |bytes: &[u8]| {
+        let mut f = tempfile::NamedTempFile::new().expect("temp file");
+        f.write_all(bytes).expect("write temp file");
+        f
+    };
+    let sd_file = write(&sd_der);
+    let msg_file = write(&content);
+    let ca_pem = format!(
+        "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
+        base64_encode_pem(&from_hex(REGRESS_GT_CA_CERT_HEX))
+    );
+    let ca_file = write(ca_pem.as_bytes());
+    let out = std::process::Command::new("openssl")
+        .args(["cms", "-verify", "-binary", "-inform", "DER", "-in"])
+        .arg(sd_file.path())
+        .arg("-content")
+        .arg(msg_file.path())
+        .arg("-CAfile")
+        .arg(ca_file.path())
+        .args(["-attime", "1893456000", "-out", "/dev/null"])
+        .output()
+        .expect("run openssl");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        out.status.success() && stderr.contains("Verification successful"),
+        "openssl cms -verify must accept sign() output; stderr: {stderr}"
+    );
+}

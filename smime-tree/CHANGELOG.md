@@ -35,6 +35,12 @@ All notable changes to `smime-tree` will be documented here.
   as GeneralizedTime verifies. The DER bridge re-encoded them as UTCTime,
   so the certificate no longer matched its issuer's signature and failed
   with `CertChainError::SignatureVerification`.
+- `sign()` embeds each signer certificate in the `SignedData` exactly as
+  issued. It used to re-encode the certificate with x509-cert 0.3, which
+  rewrote GeneralizedTime validity dates before 2050 as UTCTime, so for
+  such a certificate the embedded copy no longer matched its issuer's
+  signature and the message failed to verify, in smime-tree and in
+  OpenSSL alike.
 - A chain certificate signed with an unsupported algorithm (for example
   `ecdsa-with-SHA1`) is reported as `CertChainError::SignatureNotVerified`
   instead of `CertChainError::SignatureVerification`, which claimed the

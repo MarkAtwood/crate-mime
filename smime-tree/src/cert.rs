@@ -177,6 +177,30 @@ fn check_signer_purpose(leaf: &Certificate) -> Result<(), SmimeError> {
 }
 
 // ---------------------------------------------------------------------------
+// Certificate encoding
+// ---------------------------------------------------------------------------
+
+/// The DER encoding of `cert` as its issuer signed it.
+///
+/// Use this, not `cert.to_der()`, to emit a certificate.  x509-cert 0.3
+/// encodes validity dates before 2050 as UTCTime even when they were parsed
+/// from GeneralizedTime, which changes the signed `TBSCertificate`.
+/// [`pkix_chain::pkix_path::tbs_certificate_der`] keeps each time in its
+/// parsed form; the other fields re-encode to their original bytes for any
+/// DER certificate (x509-cert rejects non-DER input).
+pub(crate) fn certificate_der(cert: &Certificate) -> Result<Vec<u8>, SmimeError> {
+    let mut body = pkix_chain::pkix_path::tbs_certificate_der(cert)
+        .map_err(|e| SmimeError::Other(format!("certificate DER encode: {e}")))?;
+    cert.signature_algorithm().encode_to_vec(&mut body)?;
+    cert.signature().encode_to_vec(&mut body)?;
+    let mut out = Vec::new();
+    der::Header::new(der::Tag::Sequence, der::Length::try_from(body.len())?)
+        .encode_to_vec(&mut out)?;
+    out.extend_from_slice(&body);
+    Ok(out)
+}
+
+// ---------------------------------------------------------------------------
 // Chain assembly
 // ---------------------------------------------------------------------------
 
@@ -341,7 +365,7 @@ fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_chain, check_signer_purpose, map_pkix_error};
+    use super::{build_chain, certificate_der, check_signer_purpose, map_pkix_error};
     use crate::error::{CertChainError, SmimeError};
     use der::Decode as _;
     use x509_cert::Certificate;
@@ -510,5 +534,17 @@ mod tests {
             }
         );
         assert_eq!(map(PE::PathTooLong), CertChainError::TooDeep);
+    }
+
+    /// `certificate_der` reproduces the issued bytes of ordinary (UTCTime)
+    /// certificates.  The GeneralizedTime case, where `to_der()` does not, is
+    /// covered by `test_regress_sign_embeds_generalized_time_cert_unchanged`.
+    #[test]
+    fn certificate_der_reproduces_original_bytes() {
+        for hex in [TLS_SERVER_CERT_HEX, SELF_SIGNED_CERT_HEX] {
+            let der = from_hex(hex);
+            let cert = Certificate::from_der(&der).expect("parse cert");
+            assert_eq!(certificate_der(&cert).expect("encode"), der);
+        }
     }
 }
