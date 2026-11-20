@@ -205,6 +205,55 @@ fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, Smim
 }
 
 // ---------------------------------------------------------------------------
+// Error mapping
+// ---------------------------------------------------------------------------
+
+/// Map a `pkix_chain::Error` to `SmimeError`, using the rc chain for
+/// subject/not_after strings in structured error variants.
+fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
+    use pkix_chain::pkix_path::Error as PE;
+    use pkix_chain::Error as CE;
+
+    let subject_at = |i: usize| -> String {
+        chain
+            .get(i)
+            .map(|c| c.tbs_certificate().subject().to_string())
+            .unwrap_or_default()
+    };
+
+    let chain_err = match e {
+        CE::Path(PE::NoTrustedPath) | CE::Path(PE::ChainBroken { .. }) => {
+            let issuer = chain
+                .last()
+                .map(|c| c.tbs_certificate().issuer().to_string())
+                .unwrap_or_default();
+            CertChainError::NoMatchingIssuer { issuer }
+        }
+        CE::Path(PE::PathTooLong) => CertChainError::TooDeep,
+        CE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
+            subject: subject_at(index),
+        },
+        CE::Path(PE::NotCA { index }) | CE::Path(PE::KeyUsageMissing { index }) => {
+            CertChainError::NotACa {
+                subject: subject_at(index),
+            }
+        }
+        CE::Path(PE::ValidityPeriod { index }) => {
+            if let Some(cert) = chain.get(index) {
+                CertChainError::CertificateExpired {
+                    subject: cert.tbs_certificate().subject().to_string(),
+                    not_after: cert.tbs_certificate().validity().not_after.to_string(),
+                }
+            } else {
+                CertChainError::Other(format!("{e}"))
+            }
+        }
+        other => CertChainError::Other(format!("{other}")),
+    };
+    SmimeError::CertChain(chain_err)
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -263,7 +312,7 @@ mod tests {
         let der = from_hex(SELF_SIGNED_CERT_HEX);
         let cert = Certificate::from_der(&der).expect("parse self-signed cert");
 
-        let chain = build_chain(&cert, &[], &[cert.clone()])
+        let chain = build_chain(&cert, &[], std::slice::from_ref(&cert))
             .expect("build_chain must succeed when signer cert is its own trust anchor");
 
         assert_eq!(
@@ -273,53 +322,4 @@ mod tests {
             chain.len()
         );
     }
-}
-
-// ---------------------------------------------------------------------------
-// Error mapping
-// ---------------------------------------------------------------------------
-
-/// Map a `pkix_chain::Error` to `SmimeError`, using the rc chain for
-/// subject/not_after strings in structured error variants.
-fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
-    use pkix_chain::pkix_path::Error as PE;
-    use pkix_chain::Error as CE;
-
-    let subject_at = |i: usize| -> String {
-        chain
-            .get(i)
-            .map(|c| c.tbs_certificate().subject().to_string())
-            .unwrap_or_default()
-    };
-
-    let chain_err = match e {
-        CE::Path(PE::NoTrustedPath) | CE::Path(PE::ChainBroken { .. }) => {
-            let issuer = chain
-                .last()
-                .map(|c| c.tbs_certificate().issuer().to_string())
-                .unwrap_or_default();
-            CertChainError::NoMatchingIssuer { issuer }
-        }
-        CE::Path(PE::PathTooLong) => CertChainError::TooDeep,
-        CE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
-            subject: subject_at(index),
-        },
-        CE::Path(PE::NotCA { index }) | CE::Path(PE::KeyUsageMissing { index }) => {
-            CertChainError::NotACa {
-                subject: subject_at(index),
-            }
-        }
-        CE::Path(PE::ValidityPeriod { index }) => {
-            if let Some(cert) = chain.get(index) {
-                CertChainError::CertificateExpired {
-                    subject: cert.tbs_certificate().subject().to_string(),
-                    not_after: cert.tbs_certificate().validity().not_after.to_string(),
-                }
-            } else {
-                CertChainError::Other(format!("{e}"))
-            }
-        }
-        other => CertChainError::Other(format!("{other}")),
-    };
-    SmimeError::CertChain(chain_err)
 }

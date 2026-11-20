@@ -1057,7 +1057,7 @@ fn test_encrypt_p256_kari_structure_is_valid() {
 
     let inner_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nKARI probe\r\n";
     let encrypted_bytes =
-        encrypt(inner_mime, &[cert.clone()]).expect("encrypt() must succeed for P-256");
+        encrypt(inner_mime, std::slice::from_ref(&cert)).expect("encrypt() must succeed for P-256");
 
     let der_bytes = mime_body_to_der(&encrypted_bytes);
 
@@ -1741,7 +1741,8 @@ fn test_encrypt_decrypt_gcm_roundtrip_rsa() {
 
     let inner_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nGCM roundtrip test\r\n";
 
-    let encrypted_bytes = encrypt(inner_mime, &[cert.clone()]).expect("encrypt() must succeed");
+    let encrypted_bytes =
+        encrypt(inner_mime, std::slice::from_ref(&cert)).expect("encrypt() must succeed");
 
     // Verify the MIME Content-Type uses authEnveloped-data.
     let mime_str = std::str::from_utf8(&encrypted_bytes).expect("MIME output must be UTF-8");
@@ -1777,7 +1778,8 @@ fn test_encrypt_decrypt_gcm_roundtrip_p256() {
 
     let inner_mime: &[u8] = b"Content-Type: text/plain\r\n\r\nGCM P-256 roundtrip\r\n";
 
-    let encrypted_bytes = encrypt(inner_mime, &[cert.clone()]).expect("encrypt() must succeed");
+    let encrypted_bytes =
+        encrypt(inner_mime, std::slice::from_ref(&cert)).expect("encrypt() must succeed");
 
     let der_bytes = mime_body_to_der(&encrypted_bytes);
 

@@ -115,7 +115,7 @@ mod tests {
         // lines: [begin, data, `, end, ""]
         assert_eq!(lines.len(), 5, "unexpected line count: {:?}", lines.len());
         assert!(
-            lines[1].starts_with(&[b'M']),
+            lines[1].starts_with(b"M"),
             "length char should be 'M' (45+32=77=0x4d='M')"
         );
     }

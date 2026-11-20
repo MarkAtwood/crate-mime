@@ -159,7 +159,7 @@ fn missing_middle_part() {
 
     let err = assembler.finish().unwrap_err();
     assert!(
-        matches!(err, AssemblyError::Incomplete { ref missing } if missing == &[30u64..60]),
+        matches!(err, AssemblyError::Incomplete { ref missing } if missing.len() == 1 && missing[0] == (30u64..60)),
         "unexpected error: {:?}",
         err
     );
@@ -297,7 +297,7 @@ fn total_size_larger_than_assembled_data() {
 
     let err = assembler.finish().unwrap_err();
     assert!(
-        matches!(err, AssemblyError::Incomplete { ref missing } if missing == &[30u64..60]),
+        matches!(err, AssemblyError::Incomplete { ref missing } if missing.len() == 1 && missing[0] == (30u64..60)),
         "expected Incomplete, got: {:?}",
         err
     );
