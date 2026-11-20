@@ -36,7 +36,7 @@ pub const DEFAULT_LINE_LENGTH: u8 = 128;
 ///
 /// - `data` — raw bytes to encode. May be empty.
 /// - `filename` — written verbatim to the `name=` field of `=ybegin`.
-///   No validation is performed; a CR or LF injects extra lines.
+///   Control characters (including CR and LF) are replaced with `_`.
 /// - `line_length` — maximum number of encoded bytes per line (1–255).
 ///   Values below 2 are clamped to 2 (escape pairs are 2 bytes and must
 ///   fit on one line). Pass `DEFAULT_LINE_LENGTH` (128) for the standard value.
@@ -53,8 +53,9 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
     // =ybegin header (single-part: no part= or total= fields)
     out.extend_from_slice(
         format!(
-            "=ybegin line={line_length} size={} name={filename}\r\n",
-            data.len()
+            "=ybegin line={line_length} size={} name={}\r\n",
+            data.len(),
+            sanitize_filename(filename)
         )
         .as_bytes(),
     );
@@ -66,6 +67,20 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
     out.extend_from_slice(format!("=yend size={} crc32={crc:08x}\r\n", data.len()).as_bytes());
 
     out
+}
+
+/// `filename` with each control character (CR, LF and the rest) replaced by
+/// `_`, so it stays on the `=ybegin` line.
+fn sanitize_filename(filename: &str) -> std::borrow::Cow<'_, str> {
+    if filename.chars().any(char::is_control) {
+        filename
+            .chars()
+            .map(|c| if c.is_control() { '_' } else { c })
+            .collect::<String>()
+            .into()
+    } else {
+        filename.into()
+    }
 }
 
 /// Encode one part of a multi-part yEnc series.
@@ -93,7 +108,8 @@ pub fn encode_part(
     out.extend_from_slice(
         format!(
             "=ybegin part={part} total={total_parts} line={line_length} \
-             size={total_size} name={filename}\r\n"
+             size={total_size} name={}\r\n",
+            sanitize_filename(filename)
         )
         .as_bytes(),
     );
@@ -205,6 +221,21 @@ fn end_line(out: &mut Vec<u8>, col: usize) {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn filename_control_chars_are_replaced() {
+        // A CR/LF must not end the =ybegin line and inject a forged =yend.
+        let out = encode(b"x", "a.bin\r\n=yend size=0\u{0}", 128);
+        let text = String::from_utf8_lossy(&out);
+        assert!(
+            text.starts_with("=ybegin line=128 size=1 name=a.bin__=yend size=0_\r\n"),
+            "{text}"
+        );
+        assert_eq!(text.matches("\r\n").count(), 3);
+        let part = encode_part(b"x", "p\nq", 1, 1, 1, 1, 1, 0, 128);
+        assert!(String::from_utf8_lossy(&part).contains("name=p_q\r\n"));
+    }
+
     use super::*;
     use crate::decode::decode;
 

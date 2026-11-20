@@ -261,17 +261,11 @@ pub fn decode_limited(input: &[u8], max_bytes: Option<usize>) -> Result<DecodedB
 /// # Parameters
 ///
 /// - `data` — the raw bytes to encode. May be empty.
-/// - `filename` — recorded verbatim on the `begin` line. No validation is
-///   performed; embedded spaces and special characters are passed through.
-///   Trailing whitespace is lost on decoding (the decoder trims it).
-///
-/// # Security — line injection
-///
-/// A `filename` containing `\n` or `\r` is written as-is, which ends the
-/// `begin` line early and lets the rest of the filename appear as extra lines
-/// in the output — including forged data lines or a premature `end`. If the
-/// filename comes from an untrusted source, reject or strip CR and LF (and
-/// preferably all control characters) before calling this function.
+/// - `filename` — recorded on the `begin` line. Spaces and other printable
+///   characters are passed through; each control character (including CR
+///   and LF) is replaced with `_`, so a filename cannot end the `begin` line
+///   early and inject forged data lines or a premature `end`. Trailing
+///   whitespace is lost on decoding (the decoder trims it).
 /// - `mode` — Unix permission bits written as a zero-padded three-digit octal
 ///   number on the `begin` line (e.g. `0o644` → `644`).
 ///

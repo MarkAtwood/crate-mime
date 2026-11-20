@@ -285,11 +285,9 @@ pub fn decode(input: &[u8]) -> Result<DecodedPart, YencError> {
 /// # Parameters
 ///
 /// - `data` — raw bytes to encode. May be empty.
-/// - `filename` — written verbatim to `name=` on `=ybegin`. It is not
-///   validated or escaped: a CR or LF in it ends the `=ybegin` line early and
-///   injects the rest of the string as extra lines (e.g. forged data or a
-///   forged `=yend`). Callers passing untrusted names must reject or strip
-///   control characters first.
+/// - `filename` — written to `name=` on `=ybegin`. Each control character
+///   (including CR and LF) is replaced with `_`, so a filename cannot end
+///   the `=ybegin` line early and inject forged data or a forged `=yend`.
 /// - `line_length` — encoded bytes per line. Values below 2 are clamped to 2.
 ///   Use [`DEFAULT_LINE_LENGTH`] (128) unless you have a specific reason to deviate.
 ///
@@ -340,10 +338,10 @@ pub fn encode(data: &[u8], filename: &str, line_length: u8) -> Vec<u8> {
 /// ```
 #[derive(Debug, Clone)]
 pub struct EncodePartOptions<'a> {
-    /// Verbatim filename for `=ybegin name=`.
+    /// Filename for `=ybegin name=`.
     ///
-    /// Not validated or escaped: a CR or LF in it injects extra lines into
-    /// the article. See [`encode`].
+    /// Control characters (including CR and LF) are replaced with `_`, as
+    /// for [`encode`].
     pub filename: &'a str,
     /// Size of the **entire** file, written to `=ybegin size=`.
     pub total_size: u64,
@@ -372,8 +370,8 @@ pub struct EncodePartOptions<'a> {
 /// Returns the complete part article body including `=ybegin`, `=ypart`,
 /// encoded data, and `=yend` with `pcrc32=` and `crc32=`.
 ///
-/// `opts.filename` is written verbatim; a CR or LF in it injects extra lines
-/// into the article (see [`encode`]). Whitespace and `.` are escaped at line
+/// Control characters in `opts.filename` are replaced with `_` (see
+/// [`encode`]). Whitespace and `.` are escaped at line
 /// boundaries as described for [`encode`].
 #[must_use]
 pub fn encode_part(data: &[u8], opts: &EncodePartOptions<'_>) -> Vec<u8> {

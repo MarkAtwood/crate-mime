@@ -11,6 +11,20 @@ fn encode_char(v: u8) -> u8 {
     }
 }
 
+/// `filename` with each control character (CR, LF and the rest) replaced by
+/// `_`, so it stays on the `begin` line.
+fn sanitize_filename(filename: &str) -> std::borrow::Cow<'_, str> {
+    if filename.chars().any(char::is_control) {
+        filename
+            .chars()
+            .map(|c| if c.is_control() { '_' } else { c })
+            .collect::<String>()
+            .into()
+    } else {
+        filename.into()
+    }
+}
+
 /// Encode `data` as a UU block with the given `filename` and Unix `mode`.
 ///
 /// Returns the complete encoded block as a byte vector including `begin` and
@@ -27,7 +41,9 @@ pub fn encode(data: &[u8], filename: &str, mode: u32) -> Vec<u8> {
     let mut out = Vec::new();
 
     // begin line
-    out.extend_from_slice(format!("begin {:03o} {}\n", mode, filename).as_bytes());
+    out.extend_from_slice(
+        format!("begin {:03o} {}\n", mode, sanitize_filename(filename)).as_bytes(),
+    );
 
     // data lines: one per 45-byte chunk
     for chunk in data.chunks(45) {
@@ -173,6 +189,14 @@ mod tests {
         // Just verify it starts with "begin " and doesn't panic.
         assert!(result.starts_with(b"begin "));
         assert!(result.ends_with(b"end\n"));
+    }
+
+    #[test]
+    fn encode_filename_control_chars_are_replaced() {
+        // A CR/LF must not end the begin line and inject a forged `end`.
+        let result = encode(b"x", "a.bin\nend\r\n\u{7f}", 0o600);
+        assert!(result.starts_with(b"begin 600 a.bin_end___\n"));
+        assert_eq!(result.iter().filter(|&&b| b == b'\n').count(), 4);
     }
 
     #[test]
