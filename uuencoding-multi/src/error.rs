@@ -20,7 +20,8 @@ pub enum MultiUuError {
     EmptyCollection,
 
     /// A UUdecode error was returned by the `uuencoding` crate while decoding
-    /// one of the part bodies. Reassembly stops at the first failing part.
+    /// the concatenated part bodies: no `begin` line was found in any present
+    /// part, or the first one was `begin-base64`.
     DecodeError(uuencoding::UuError),
 
     /// Two calls to [`PartCollection::add`][crate::PartCollection::add] provided

@@ -100,15 +100,25 @@ fn re_format3_prefix() -> &'static Regex {
 fn re_format2() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        Regex::new(r"(?i)^([^ \t\r\n]+)[ \t]*\([ \t]*([0-9]+)[ \t]*(bytes?|b|kb|mb)[ \t]*\)[ \t]*$")
+        Regex::new(
+            r"(?i)^([^ \t\r\n]+)[ \t]*\([ \t]*([0-9][0-9,]*(?:\.[0-9]+)?)[ \t]*(bytes?|b|kb|mb)[ \t]*\)[ \t]*$",
+        )
             .unwrap()
     })
 }
 
-/// Size token: one or more digits followed by a unit.
+/// Size token: a number (digits, optionally comma-grouped, optionally with a
+/// decimal fraction) followed by a unit.
+///
+/// The number must not be preceded by a word character, `.` or `,`, so that
+/// the regex cannot start matching in the middle of `1.5` or `1,234,567`
+/// (the `regex` crate has no look-behind, hence the explicit prefix group).
+/// The captured number is validated by [`parse_size`].
 fn re_size_token() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)\b([0-9]+)[ \t]*(bytes?|b|kb|mb)\b").unwrap())
+    RE.get_or_init(|| {
+        Regex::new(r"(?i)(?:^|[^\w.,])([0-9][0-9,]*(?:\.[0-9]+)?)[ \t]*(bytes?|b|kb|mb)\b").unwrap()
+    })
 }
 
 /// "parts N-M" token.
@@ -121,22 +131,66 @@ fn re_parts_token() -> &'static Regex {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Convert a size value + unit string to bytes.
-/// Returns `None` only if the multiplication would overflow `u64`.
-fn parse_size(digits: u64, unit: &str) -> Option<u64> {
-    match unit.to_lowercase().trim_end_matches('s') {
-        "byte" | "b" => Some(digits),
-        "kb" => digits.checked_mul(1024),
-        "mb" => digits.checked_mul(1024 * 1024),
-        _ => None,
+/// Convert a size number + unit string to bytes.
+///
+/// `number` is plain digits (`1234567`), comma-grouped digits with groups of
+/// three (`1,234,567`), either optionally followed by a decimal fraction
+/// (`1.5`). KB and MB fractions are rounded down to whole bytes
+/// (`1.5 KB` = 1536). Returns `None` — never a wrong number — when the
+/// number is malformed (`1,23`, `1,2345`, `1.`), when a byte count has a
+/// non-zero fraction, or when the result would overflow `u64`.
+fn parse_size(number: &str, unit: &str) -> Option<u64> {
+    let mult: u128 = match unit.to_lowercase().trim_end_matches('s') {
+        "byte" | "b" => 1,
+        "kb" => 1024,
+        "mb" => 1024 * 1024,
+        _ => return None,
+    };
+
+    let (int_part, frac_part) = match number.split_once('.') {
+        Some((i, f)) => (i, Some(f)),
+        None => (number, None),
+    };
+
+    let int_digits: String = if int_part.contains(',') {
+        let mut groups = int_part.split(',');
+        let first = groups.next()?;
+        let first_ok = (1..=3).contains(&first.len());
+        let all_ok = first_ok && groups.all(|g| g.len() == 3);
+        if !all_ok {
+            return None;
+        }
+        int_part.chars().filter(|&c| c != ',').collect()
+    } else {
+        int_part.to_string()
+    };
+    if int_digits.is_empty() || !int_digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
     }
+    let int_value: u128 = int_digits.parse().ok()?;
+    let mut bytes = int_value.checked_mul(mult)?;
+
+    if let Some(frac) = frac_part {
+        // 30 digits keep `frac_value * mult` well inside u128.
+        if frac.is_empty() || frac.len() > 30 || !frac.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        let frac_value: u128 = frac.parse().ok()?;
+        let scale = 10u128.checked_pow(u32::try_from(frac.len()).ok()?)?;
+        let frac_scaled = frac_value * mult;
+        if mult == 1 && frac_scaled % scale != 0 {
+            return None; // fractional number of bytes
+        }
+        bytes = bytes.checked_add(frac_scaled / scale)?;
+    }
+
+    u64::try_from(bytes).ok()
 }
 
 /// Try to extract a size value from an arbitrary text fragment.
 fn extract_size(text: &str) -> Option<u64> {
     let caps = re_size_token().captures(text)?;
-    let digits: u64 = caps[1].parse().ok()?;
-    parse_size(digits, &caps[2])
+    parse_size(&caps[1], &caps[2])
 }
 
 /// Try to extract a part range from an arbitrary text fragment.
@@ -186,8 +240,9 @@ fn parse_line(line: &str) -> Option<TocEntry> {
         if !looks_like_filename(&filename) {
             return None;
         }
-        let digits: u64 = caps[2].parse().ok()?;
-        let size_bytes = parse_size(digits, &caps[3]);
+        // The size is this format's only content: skip the line when the
+        // number is malformed or overflows, rather than return an empty entry.
+        let size_bytes = Some(parse_size(&caps[2], &caps[3])?);
         return Some(TocEntry {
             filename,
             size_bytes,
@@ -281,6 +336,10 @@ fn looks_like_filename(s: &str) -> bool {
 ///
 /// - Size units `bytes`/`b`, `KB`, and `MB` are recognised case-insensitively.
 ///   KB and MB are converted to bytes using powers of 1 024.
+/// - Size numbers may be comma-grouped (`1,234,567 bytes`) and may have a
+///   decimal fraction (`1.5 MB`; KB/MB fractions round down to whole bytes).
+///   A malformed number (e.g. `1,23 MB`) yields no size rather than a wrong
+///   one.
 /// - Part ranges use an inclusive dash notation (`N-M`). Inverted ranges
 ///   where `N > M` are rejected and produce `None` for that field.
 /// - Non-UTF-8 bytes in `body_bytes` are replaced via lossy conversion and
@@ -586,5 +645,56 @@ mod tests {
         assert!(looks_like_filename("file.bin"));
         assert!(looks_like_filename("archive.tar.gz"));
         assert!(looks_like_filename("1.txt"));
+    }
+
+    // ------------------------------------------------------------------
+    // Decimal and comma-grouped sizes (regression: "1.5 MB" was read as
+    // 5 MB and "1,234,567 bytes" as 567).
+    // ------------------------------------------------------------------
+
+    fn size_of(line: &str) -> Option<u64> {
+        parse_toc(line.as_bytes()).and_then(|t| t.entries.first().and_then(|e| e.size_bytes))
+    }
+
+    #[test]
+    fn size_decimal_mb() {
+        // 1.5 * 1_048_576 = 1_572_864
+        assert_eq!(size_of("file.bin 1.5 MB\n"), Some(1_572_864));
+        assert_eq!(size_of("file.bin (1.5 MB)\n"), Some(1_572_864));
+        assert_eq!(size_of("01-03 file.bin 1.5 MB\n"), Some(1_572_864));
+    }
+
+    #[test]
+    fn size_decimal_kb_rounds_down() {
+        // 2.25 * 1024 = 2304 exactly; 0.001 * 1024 = 1.024 -> 1
+        assert_eq!(size_of("file.bin 2.25 KB\n"), Some(2304));
+        assert_eq!(size_of("file.bin 0.001 KB\n"), Some(1));
+    }
+
+    #[test]
+    fn size_comma_grouped() {
+        assert_eq!(size_of("file.bin 1,234,567 bytes\n"), Some(1_234_567));
+        assert_eq!(size_of("file.bin (1,234,567 bytes)\n"), Some(1_234_567));
+        assert_eq!(size_of("file.bin 1,234.5 KB\n"), Some(1_264_128));
+    }
+
+    #[test]
+    fn size_malformed_numbers_yield_no_size() {
+        for line in [
+            "file.bin 1,23 MB parts 1-2\n",
+            "file.bin 1,2345 bytes parts 1-2\n",
+            "file.bin 1.5.3 MB parts 1-2\n",
+            "file.bin 1.5 bytes parts 1-2\n",
+            "file.bin v1.5 MB parts 1-2\n",
+            "file.bin x5 MB parts 1-2\n",
+        ] {
+            let toc = parse_toc(line.as_bytes()).expect("parts range still parses");
+            assert_eq!(toc.entries[0].size_bytes, None, "{line:?}");
+            assert_eq!(toc.entries[0].parts, Some(1..=2), "{line:?}");
+        }
+        // Integral "bytes" with a zero fraction is still a whole number.
+        assert_eq!(size_of("file.bin 12.0 bytes\n"), Some(12));
+        // Parenthesised form: a malformed size skips the line entirely.
+        assert!(parse_toc(b"file.bin (1,23 MB)\n").is_none());
     }
 }

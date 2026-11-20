@@ -2,6 +2,9 @@ use std::collections::BTreeMap;
 
 use crate::MultiUuError;
 
+/// Maximum number of entries [`PartCollection::missing_parts`] returns.
+const MISSING_PARTS_CAP: usize = 1_000_000;
+
 /// A single collected part awaiting reassembly.
 ///
 /// The caller is responsible for extracting `body_bytes` from the MIME or
@@ -30,7 +33,8 @@ pub struct PartEntry {
     /// contribute to the sequential `1..=total` count used during reassembly.
     pub part_number: u32,
     /// Raw bytes of this part's UU body, already extracted from the MIME layer
-    /// by the caller. Passed verbatim to `uuencoding::decode` during reassembly.
+    /// by the caller. During reassembly the bodies of all parts are joined in
+    /// part order and decoded together (see [`reassemble`][crate::reassemble()]).
     pub body_bytes: Vec<u8>,
     /// Original `Subject` header value, kept for diagnostics and logging.
     /// Not used during reassembly.
@@ -231,6 +235,19 @@ impl PartCollection {
     ///
     /// Returns an empty `Vec` when `total` is `None`.
     ///
+    /// # Length cap
+    ///
+    /// At most the **first 1 000 000** missing part numbers are returned
+    /// (4 MB), so that a hostile or bogus total such as `u32::MAX` cannot
+    /// exhaust memory. Real series are far smaller, and
+    /// [`parse_subject`][crate::parse_subject] never yields a total above
+    /// 999 999, so the list is complete for any total it produces. When the
+    /// list is non-empty, at least one part is missing either way. Use
+    /// [`is_complete`][Self::is_complete] for a completeness check; it never
+    /// allocates.
+    ///
+    /// Cost is O(present parts + returned length), not O(`total`).
+    ///
     /// # Example
     ///
     /// ```
@@ -243,10 +260,25 @@ impl PartCollection {
     /// assert_eq!(coll.missing_parts(), vec![2, 4]);
     /// ```
     pub fn missing_parts(&self) -> Vec<u32> {
-        match self.total {
-            None => vec![],
-            Some(t) => (1..=t).filter(|n| !self.parts.contains_key(n)).collect(),
+        let Some(total) = self.total else {
+            return Vec::new();
+        };
+        let mut missing = Vec::new();
+        // Walk the gaps between consecutive present keys in 1..=total.
+        // `next` is u64 so that `key + 1` cannot overflow for key == u32::MAX.
+        let mut next: u64 = 1;
+        let present = self.parts.range(1..=total).map(|(&k, _)| u64::from(k));
+        for gap_end in present.chain(std::iter::once(u64::from(total) + 1)) {
+            for n in next..gap_end {
+                if missing.len() >= MISSING_PARTS_CAP {
+                    return missing;
+                }
+                // n < gap_end <= total + 1, so n <= total fits in u32.
+                missing.push(n as u32);
+            }
+            next = gap_end + 1;
         }
+        missing
     }
 
     /// Returns `true` iff the total is known and every part in `1..=total` is
@@ -278,7 +310,9 @@ impl PartCollection {
     pub fn is_complete(&self) -> bool {
         match self.total {
             None => false,
-            Some(_) => self.missing_parts().is_empty(),
+            // Keys are unique, so all of 1..=t are present iff the map holds
+            // exactly t keys in that range. No allocation; O(present parts).
+            Some(t) => self.parts.range(1..=t).count() as u64 == u64::from(t),
         }
     }
 
@@ -530,5 +564,56 @@ mod tests {
             c.is_complete(),
             "single part in a no-total collection is considered complete"
         );
+    }
+
+    /// A bogus part number of u32::MAX must not make is_complete or
+    /// missing_parts allocate 4 GiB (this used to abort the process).
+    #[test]
+    fn huge_part_number_is_bounded() {
+        let mut c = PartCollection::new();
+        c.add(part(u32::MAX)).unwrap();
+        assert_eq!(c.total(), Some(u32::MAX));
+        assert!(!c.is_complete());
+
+        let missing = c.missing_parts();
+        assert_eq!(missing.len(), super::MISSING_PARTS_CAP);
+        assert_eq!(&missing[..3], &[1, 2, 3]);
+        assert_eq!(*missing.last().unwrap(), 1_000_000);
+    }
+
+    #[test]
+    fn huge_total_with_low_parts_present() {
+        let mut c = PartCollection::with_total(u32::MAX);
+        c.add(part(1)).unwrap();
+        c.add(part(3)).unwrap();
+        assert!(!c.is_complete());
+        let missing = c.missing_parts();
+        assert_eq!(missing.len(), super::MISSING_PARTS_CAP);
+        assert_eq!(&missing[..3], &[2, 4, 5]);
+    }
+
+    /// Gaps at the start, middle and end, plus a TOC part that must be
+    /// ignored; compared with the obvious definition.
+    #[test]
+    fn missing_parts_matches_naive_definition() {
+        let present = [0u32, 3, 4, 7, 10];
+        let mut c = PartCollection::with_total(12);
+        for &n in &present {
+            c.add(part(n)).unwrap();
+        }
+        let naive: Vec<u32> = (1..=12).filter(|n| !present.contains(n)).collect();
+        assert_eq!(c.missing_parts(), naive);
+        assert_eq!(c.missing_parts(), vec![1, 2, 5, 6, 8, 9, 11, 12]);
+        assert!(!c.is_complete());
+    }
+
+    #[test]
+    fn complete_with_toc_and_max_part() {
+        let mut c = PartCollection::with_total(2);
+        c.add(part(0)).unwrap();
+        c.add(part(1)).unwrap();
+        c.add(part(2)).unwrap();
+        assert!(c.is_complete());
+        assert!(c.missing_parts().is_empty());
     }
 }

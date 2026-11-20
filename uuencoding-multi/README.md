@@ -14,7 +14,9 @@ individual parts.
 - Parse 5 real-world subject line formats to extract part number and total
 - Accumulate parts via `PartCollection` with gap detection and `is_complete()` check
 - Best-effort TOC (table-of-contents) parsing for part-0 summary posts
-- `reassemble()` — decode each part and concatenate into the original file bytes
+- `reassemble()` — concatenate the parts' UU text in order and decode it into the
+  original file bytes; works whether only part 1 has `begin` and only the last part
+  has `end` (classic Usenet layout) or every part has its own `begin`/`end`
 - Partial reassembly when parts are missing (`is_truncated` flag, `missing_parts` list)
 - No panics on any input
 - No unsafe code
@@ -75,8 +77,9 @@ if file.is_truncated {
         // Gap in the collection — these parts were absent
         eprintln!("missing parts: {:?}", file.missing_parts);
     } else {
-        // All parts present but at least one had a truncated UU body
-        eprintln!("per-part encoding problem");
+        // All parts present but the UU text itself was defective
+        // (e.g. no final `end`, or an undecodable line)
+        eprintln!("encoding problem");
     }
 }
 ```
@@ -95,7 +98,8 @@ if file.is_truncated {
 pub enum MultiUuError {
     /// reassemble() called on a collection with no parts where part_number >= 1.
     EmptyCollection,
-    /// uuencoding::decode failed on one of the part bodies.
+    /// uuencoding::decode failed on the concatenated part bodies
+    /// (no `begin` line in any present part, or `begin-base64`).
     DecodeError(uuencoding::UuError),
     /// Two parts with the same part_number were added.
     DuplicatePart { part_number: u32 },
@@ -108,8 +112,8 @@ Reassembled `data` is raw bytes which may be a compressed archive. Any decompres
 is the caller's responsibility and must be independently guarded against decompression
 bombs. This crate does not decompress.
 
-The `filename` field of `ReassembledFile` comes from the email subject line or the
-UU `begin` line and is **not sanitised**. Real-world UU archives have been observed
+The `filename` field of `ReassembledFile` comes from the UU `begin` line and is
+**not sanitised**. Real-world UU archives have been observed
 with filenames containing `../` sequences. **Sanitise the filename before using it
 as a filesystem path** to prevent directory traversal attacks (e.g. reject names
 containing `/`, `\`, or `..` path components, and resolve the final path against

@@ -196,7 +196,9 @@ pub fn parse_subject(subject: &str) -> Option<SubjectParts> {
         return None;
     }
 
-    let stripped = strip_prefixes(subject).trim();
+    // Trim first: leading whitespace (e.g. from header unfolding) would
+    // otherwise stop the anchored Re:/Fwd: prefix regex from matching.
+    let stripped = strip_prefixes(subject.trim()).trim();
 
     if stripped.is_empty() {
         return None;
@@ -543,5 +545,16 @@ mod tests {
         assert!(parse_subject("Re: ").is_none());
         assert!(parse_subject("Fwd: Re: ").is_none());
         assert!(parse_subject("   ").is_none());
+    }
+
+    /// Leading whitespace must not defeat Re:/Fwd: stripping.
+    #[test]
+    fn leading_whitespace_before_reply_prefix() {
+        for subject in [" Re: file (1/2)", "\t Fwd: Re: file (1/2)", "  file (1/2)"] {
+            let sp = parse_subject(subject).unwrap();
+            assert_eq!(sp.base_subject, "file", "{subject:?}");
+            assert_eq!(sp.part_index, Some(1), "{subject:?}");
+            assert_eq!(sp.part_total, Some(2), "{subject:?}");
+        }
     }
 }
