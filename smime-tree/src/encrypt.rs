@@ -236,9 +236,11 @@ fn encrypt_aes_gcm(
     ),
     SmimeError,
 > {
-    let mut cek_buf = vec![0u8; key_len];
+    // Wrapped from creation so the CEK is scrubbed on every exit path,
+    // including the early error returns below.
+    let mut cek_buf = Zeroizing::new(vec![0u8; key_len]);
     let mut nonce_buf = [0u8; 12];
-    getrandom::fill(&mut cek_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
+    getrandom::fill(cek_buf.as_mut_slice()).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
     getrandom::fill(&mut nonce_buf).map_err(|e| SmimeError::RngFailure(format!("{e}")))?;
 
     // Encrypt with AES-GCM. The crate returns ciphertext || 16-byte tag.
@@ -269,8 +271,6 @@ fn encrypt_aes_gcm(
     let ct = ct_with_tag[..tag_start].to_vec();
     let tag = ct_with_tag[tag_start..].to_vec();
 
-    let cek_bytes = Zeroizing::new(cek_buf);
-
     // Build GCMParameters per RFC 5084 §3.2.
     let gcm_params = GcmParameters {
         aes_nonce: OctetString::new(nonce_buf.as_slice())?,
@@ -283,7 +283,7 @@ fn encrypt_aes_gcm(
         parameters: Some(params_any),
     };
 
-    Ok((alg, ct, tag, cek_bytes))
+    Ok((alg, ct, tag, cek_buf))
 }
 
 /// Inspect a certificate's SPKI and return the appropriate `RecipientInfo`.

@@ -13,8 +13,8 @@ use cms::{
 use const_oid::db::{
     rfc5911::{ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST},
     rfc5912::{
-        ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ID_SHA_256, ID_SHA_384, ID_SHA_512, RSA_ENCRYPTION,
-        SHA_256_WITH_RSA_ENCRYPTION, SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
+        ID_SHA_256, ID_SHA_384, ID_SHA_512, RSA_ENCRYPTION, SHA_256_WITH_RSA_ENCRYPTION,
+        SHA_384_WITH_RSA_ENCRYPTION, SHA_512_WITH_RSA_ENCRYPTION,
     },
 };
 use der::{asn1::OctetString, Decode, Encode};
@@ -26,17 +26,24 @@ use crate::{
     cert::validate_chain,
     error::{SignerResult, VerificationResult},
     key::RevocationChecker,
-    sig_verify, SmimeError,
+    sig_verify::{self, EcdsaHash},
+    SmimeError,
 };
 
-/// Maximum number of certificates accepted from the certificate bag in
-/// untrusted `SignedData`.  A typical S/MIME message includes 1–3 certs
-/// (leaf + intermediates).  100 is generous while preventing memory DoS.
+/// Maximum number of certificates taken from the certificate bag of untrusted
+/// `SignedData`; any further certificates are ignored.  A typical S/MIME
+/// message includes 1–3 certs (leaf + intermediates).
+///
+/// This bounds the per-signer chain-building work, not memory: the limit is
+/// applied after the whole `SignedData` (including every bag certificate) has
+/// been DER-decoded.  Callers must bound the length of `signature_der`.
 const MAX_BAG_CERTS: usize = 100;
 
 /// Maximum number of `SignerInfo` entries accepted.  RFC 5652 allows
 /// multiple signers but real-world S/MIME rarely exceeds 2–3.  32 is
-/// generous while preventing CPU DoS from signature verification.
+/// generous while bounding the number of signature verifications and chain
+/// validations performed.  Like [`MAX_BAG_CERTS`], it is checked only after
+/// the whole input has been DER-decoded, so it does not bound memory use.
 const MAX_SIGNER_INFOS: usize = 32;
 
 // ---------------------------------------------------------------------------
@@ -51,6 +58,11 @@ const MAX_SIGNER_INFOS: usize = 32;
 ///   using `mime-tree` byte ranges; must match what was signed byte-for-byte).
 /// * `signature_der`  — DER-encoded `ContentInfo` wrapping a `SignedData`
 ///   (the `application/pkcs7-signature` MIME part, after base64 decoding).
+///   Only DER is accepted: BER that is not also DER, such as the
+///   indefinite-length output of `openssl cms -sign -stream` or
+///   `openssl smime -sign -stream`, fails with `SmimeError::Der`.  The whole
+///   blob is decoded into memory, so bound its length before calling this
+///   function if it comes from an untrusted source.
 /// * `trust_anchors`  — caller-supplied trust anchors; chain validation fails
 ///   if this slice is empty.
 /// * `now`            — current time used for certificate validity-period checks.
@@ -59,6 +71,23 @@ const MAX_SIGNER_INFOS: usize = 32;
 /// * `revocation`     — revocation checker invoked for each certificate in the
 ///   chain.  Pass `&NoRevocationCheck` to skip revocation checking.  Implement
 ///   [`RevocationChecker`] to inject OCSP or CRL validation.
+///
+/// # Signer certificate
+///
+/// The signer certificate named by each `SignerInfo` is looked up first in the
+/// `SignedData` certificate bag and then among `trust_anchors`.  After its
+/// chain validates, it must also be usable for S/MIME signing (RFC 8550
+/// §4.4.2, §4.4.4): if it has a keyUsage extension, `digitalSignature` or
+/// `nonRepudiation` must be set, and if it has an extKeyUsage extension, it
+/// must include `id-kp-emailProtection` or `anyExtendedKeyUsage`.  Otherwise
+/// that signer fails with `CertChainError::UnsuitableSignerCertificate`.
+///
+/// # Signature algorithms
+///
+/// RSA PKCS#1 v1.5 (`sha256/384/512WithRSAEncryption`, or `rsaEncryption`
+/// with the hash from `digestAlgorithm`) and ECDSA (`ecdsa-with-SHA256/384/512`)
+/// with a P-256 or P-384 signer key, in any hash/curve combination: the curve
+/// is taken from the signer's key, the hash from the signature algorithm.
 ///
 /// # Certificate name matching
 ///
@@ -109,8 +138,9 @@ pub fn verify(
         ));
     }
 
-    // Collect the certificate bag, bounded to prevent memory DoS from
-    // a crafted SignedData with thousands of embedded certificates.
+    // Collect the certificate bag, bounded to limit chain-building work for
+    // a crafted SignedData with thousands of embedded certificates.  (The
+    // certificates are already decoded; this does not bound memory.)
     let bag_certs: Vec<Certificate> = sd
         .certificates
         .as_ref()
@@ -125,8 +155,8 @@ pub fn verify(
         })
         .unwrap_or_default();
 
-    // Bound the number of SignerInfo entries to prevent CPU DoS from
-    // a crafted SignedData forcing thousands of signature verifications.
+    // Bound the number of SignerInfo entries to limit CPU use from a crafted
+    // SignedData forcing thousands of signature verifications.
     let signer_count = sd.signer_infos.0.len();
     if signer_count > MAX_SIGNER_INFOS {
         return Err(SmimeError::MalformedInput(format!(
@@ -391,6 +421,13 @@ fn verify_sig(
     // arms (they are runtime values, not compile-time literals).  The guard
     // form `x if x == CONST` is idiomatic and consistent with `compute_digest`.
     let e = |msg: String| SmimeError::Other(msg);
+
+    // ecdsa-with-SHA256/384/512 name only the hash; the curve comes from the
+    // signer's public key (see `sig_verify::verify_ecdsa_raw`).
+    if let Some(hash) = EcdsaHash::from_sig_alg_oid_bytes(sig_alg_oid.as_bytes()) {
+        return sig_verify::verify_ecdsa(cert, hash, tbs_bytes, sig_bytes, e);
+    }
+
     match *sig_alg_oid {
         x if x == SHA_256_WITH_RSA_ENCRYPTION => {
             sig_verify::verify_rsa_pkcs1::<Sha256>(cert, tbs_bytes, sig_bytes, e)
@@ -419,12 +456,6 @@ fn verify_sig(
                     "rsaEncryption with digest OID {digest_alg_oid}"
                 ))),
             }
-        }
-        x if x == ECDSA_WITH_SHA_256 => {
-            sig_verify::verify_ecdsa_p256(cert, tbs_bytes, sig_bytes, e)
-        }
-        x if x == ECDSA_WITH_SHA_384 => {
-            sig_verify::verify_ecdsa_p384(cert, tbs_bytes, sig_bytes, e)
         }
         _ => Err(SmimeError::UnsupportedAlgorithm(format!(
             "signature algorithm OID {sig_alg_oid}"

@@ -43,7 +43,7 @@ src/
   verify.rs       — verify(): parse SignedData, validate cert chain, check signature
   decrypt.rs      — decrypt(): parse EnvelopedData, find recipient, unwrap CEK, decrypt
   sign.rs         — sign(): build SignedData, produce multipart/signed bytes
-  encrypt.rs      — encrypt(): build EnvelopedData, encrypt CEK per recipient
+  encrypt.rs      — encrypt(): build AuthEnvelopedData (AES-128-GCM / AES-256-GCM), encrypt CEK per recipient
   cert.rs         — certificate chain validation utilities
 ```
 

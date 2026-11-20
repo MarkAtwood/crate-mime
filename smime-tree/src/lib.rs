@@ -38,7 +38,12 @@
 //!   [`NoRevocationCheck`] to skip OCSP/CRL.
 //! - **No async**: all operations are synchronous.
 //! - **Supported algorithms**:
-//!   - Sign/verify: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA P-256 (SHA-256 only), P-384 (SHA-384 only). P-521 is not supported.
+//!   - Sign: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA with SHA-256 or SHA-384
+//!     (by default P-256 → SHA-256, P-384 → SHA-384).
+//!   - Verify (message and certificate signatures): RSA PKCS#1 v1.5
+//!     (SHA-256/384/512); ECDSA with a P-256 or P-384 key and SHA-256, SHA-384
+//!     or SHA-512 in any combination (the curve comes from the key, the hash
+//!     from the signature algorithm).  P-521 is not supported.
 //!   - Encrypt: AES-128-GCM (RSA/P-256 recipients), AES-256-GCM (P-384 recipients) via `AuthEnvelopedData` (RFC 5083).
 //!   - Decrypt: AES-128/256-GCM (`AuthEnvelopedData`) and AES-128/256-CBC (`EnvelopedData`, legacy).
 //!   - Key transport: RSA PKCS#1 v1.5 (`KeyTransRecipientInfo`).
@@ -52,6 +57,10 @@
 //!   with existing S/MIME deployments but exposes callers to padding oracle and
 //!   EFAIL-class (CVE-2017-17688) risks. See the [`decrypt`] function-level docs
 //!   for mitigation guidance.
+//! * **DER only.** `verify()` and `decrypt()` accept DER-encoded CMS only;
+//!   indefinite-length BER (e.g. `openssl cms -stream` output) is rejected
+//!   with `SmimeError::Der`.  Both decode the whole input into memory before
+//!   applying their size/count limits, so callers must bound input length.
 //! * **RSA-PSS signatures are not supported** for certificate chain validation.
 //!   Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
 //!   signatures are rare in practice. File an issue if you need it.

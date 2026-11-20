@@ -1,11 +1,14 @@
 //! Certificate chain validation for S/MIME verify.
 //!
-//! Delegates RFC 5280 path validation to [`pkix_chain::verify_chain_default`].
+//! Delegates RFC 5280 path validation to [`pkix_chain::verify_chain`] with
+//! [`SmimeChainVerifier`] as the signature backend, then applies the S/MIME
+//! signer-certificate purpose checks of RFC 8550 §4.4 to the leaf.
 //!
 //! Because the `cms` crate requires x509-cert 0.3 and
 //! `pkix-chain` requires x509-cert 0.2, all certificates are bridged
 //! via DER round-trip in [`bridge_cert`] before being passed to pkix.
 
+use const_oid::db::rfc5912::{ANY_EXTENDED_KEY_USAGE, ID_KP_EMAIL_PROTECTION};
 use der::Encode;
 use der_stable::Decode as _;
 use std::collections::{HashMap, HashSet};
@@ -14,6 +17,7 @@ use x509_cert::Certificate;
 
 use crate::error::{CertChainError, SmimeError};
 use crate::key::RevocationChecker;
+use crate::sig_verify::{self, EcdsaHash};
 
 /// Maximum chain depth (leaf + intermediates, excluding the trust anchor).
 /// Must match `ValidationPolicy::max_path_len` set in `validate_chain`.
@@ -31,15 +35,22 @@ const MAX_DEPTH: usize = 10;
 ///
 /// # Errors
 ///
-/// Returns `SmimeError::CertChain` if the chain cannot be built or validated.
+/// Returns `SmimeError::CertChain` if the chain cannot be built or validated,
+/// or `CertChainError::UnsuitableSignerCertificate` if the chain is valid but
+/// the leaf is not usable for S/MIME signing (see [`check_signer_purpose`]).
 ///
 /// # Algorithm support
 ///
-/// Signature verification is performed by `pkix-chain`'s `DefaultVerifier`
-/// with the `rustcrypto` feature, which supports RSA-PKCS1v15 with SHA-256,
-/// SHA-384 and SHA-512, ECDSA-P-256-SHA-256 and ECDSA-P-384-SHA-384. Chains
-/// whose certificates are signed with other algorithms (RSA-PSS, Ed25519,
-/// ECDSA-P-521, or a curve/hash pairing not listed) fail with
+/// Certificate signatures are verified by [`SmimeChainVerifier`]:
+///
+/// - ECDSA (`ecdsa-with-SHA256`, `ecdsa-with-SHA384`, `ecdsa-with-SHA512`) with
+///   an issuer key on P-256 or P-384, in any hash/curve combination — the
+///   curve is taken from the issuer key, the hash from the signature OID.
+/// - RSA PKCS#1 v1.5 with SHA-256, SHA-384 or SHA-512, delegated to
+///   `pkix-chain`'s `DefaultVerifier`.
+///
+/// Chains containing certificates signed with any other algorithm (RSA-PSS,
+/// Ed25519, ECDSA with a P-521 issuer key, ...) fail with
 /// `CertChainError::SignatureVerification`.
 pub(crate) fn validate_chain(
     signer_cert: &Certificate,
@@ -67,7 +78,7 @@ pub(crate) fn validate_chain(
         .collect::<Result<_, _>>()?;
 
     // Step 3: Validate via pkix-chain (signatures, validity, chain linkage).
-    // NoRevocation: revocation is applied in step 4 on the signature-verified chain.
+    // NoRevocation: revocation is applied in step 5 on the signature-verified chain.
     // max_path_len is set explicitly to match build_chain::MAX_DEPTH so both limits
     // stay in sync if either changes.
     let now_unix = now
@@ -80,20 +91,139 @@ pub(crate) fn validate_chain(
         .as_secs();
     let mut policy = pkix_chain::ValidationPolicy::new(now_unix);
     policy.max_path_len = MAX_DEPTH as u8;
-    pkix_chain::verify_chain_default(
+    pkix_chain::verify_chain(
         &chain_stable,
         &anchors_stable,
         &policy,
+        &SmimeChainVerifier,
         &pkix_chain::NoRevocation,
+        &pkix_chain::NoAiaFetcher,
     )
     .map_err(|e| map_pkix_error(e, &chain))?;
 
-    // Step 4: Run the caller's revocation checker over the signature-verified chain.
+    // Step 4: The chain is valid; check that the leaf may sign S/MIME messages.
+    check_signer_purpose(signer_cert)?;
+
+    // Step 5: Run the caller's revocation checker over the signature-verified chain.
     for cert in &chain {
         revocation.check(cert)?;
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Signer certificate purpose (RFC 8550 §4.4)
+// ---------------------------------------------------------------------------
+
+/// Check that `leaf` may be used to verify an S/MIME message signature.
+///
+/// - **keyUsage** (RFC 8550 §4.4.2): if present, at least one of
+///   `digitalSignature` or `nonRepudiation` (`contentCommitment`) must be set.
+/// - **extKeyUsage** (RFC 8550 §4.4.4): if present, it must contain
+///   `id-kp-emailProtection` or `anyExtendedKeyUsage`.  An absent extension
+///   places no restriction.
+///
+/// A leaf with `basicConstraints cA=TRUE` is *not* rejected on that basis
+/// alone.  RFC 8550 §4.4.1 only says end-entity certificates SHOULD NOT carry
+/// the extension and places no requirement on receivers, OpenSSL's S/MIME
+/// signer purpose check accepts such certificates, and self-signed signer
+/// certificates made with `openssl req -x509` carry `cA=TRUE` by default.  A
+/// typical CA certificate is still rejected by the keyUsage rule, because its
+/// keyUsage is limited to `keyCertSign`/`cRLSign`.
+///
+/// An extension that is present but cannot be decoded (or appears more than
+/// once) is treated as failing the check.
+fn check_signer_purpose(leaf: &Certificate) -> Result<(), SmimeError> {
+    use x509_cert::ext::pkix::{ExtendedKeyUsage, KeyUsage};
+
+    let tbs = leaf.tbs_certificate();
+    let unsuitable = |reason: String| {
+        SmimeError::CertChain(CertChainError::UnsuitableSignerCertificate {
+            subject: tbs.subject().to_string(),
+            reason,
+        })
+    };
+
+    match tbs.get_extension::<KeyUsage>() {
+        Ok(None) => {}
+        Ok(Some((_critical, ku))) => {
+            if !(ku.digital_signature() || ku.non_repudiation()) {
+                return Err(unsuitable(
+                    "keyUsage permits neither digitalSignature nor nonRepudiation".into(),
+                ));
+            }
+        }
+        Err(e) => return Err(unsuitable(format!("keyUsage extension is invalid: {e}"))),
+    }
+
+    match tbs.get_extension::<ExtendedKeyUsage>() {
+        Ok(None) => {}
+        Ok(Some((_critical, eku))) => {
+            if !eku
+                .0
+                .iter()
+                .any(|oid| *oid == ID_KP_EMAIL_PROTECTION || *oid == ANY_EXTENDED_KEY_USAGE)
+            {
+                return Err(unsuitable(
+                    "extKeyUsage contains neither id-kp-emailProtection nor anyExtendedKeyUsage"
+                        .into(),
+                ));
+            }
+        }
+        Err(e) => return Err(unsuitable(format!("extKeyUsage extension is invalid: {e}"))),
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Certificate signature verification backend
+// ---------------------------------------------------------------------------
+
+/// [`pkix_chain::SignatureVerifier`] that selects the ECDSA curve from the
+/// issuer's key.
+///
+/// `pkix-chain`'s `DefaultVerifier` dispatches on the signature OID alone and
+/// assumes `ecdsa-with-SHA256` means P-256 and `ecdsa-with-SHA384` means P-384,
+/// so it rejects, for example, a certificate issued by a P-384 CA with
+/// `ecdsa-with-SHA256` (the OpenSSL default digest).  This verifier handles
+/// `ecdsa-with-SHA256/384/512` itself via [`sig_verify::verify_ecdsa_raw`],
+/// reading the curve from the issuer SPKI's `namedCurve` and building the key
+/// from the raw SEC1 point with `p256`/`p384`, and delegates every other
+/// algorithm (RSA PKCS#1 v1.5) to `DefaultVerifier`.
+struct SmimeChainVerifier;
+
+impl pkix_chain::SignatureVerifier for SmimeChainVerifier {
+    fn verify_signature(
+        &self,
+        algorithm: x509_cert_stable::spki::AlgorithmIdentifierRef<'_>,
+        issuer_spki: x509_cert_stable::spki::SubjectPublicKeyInfoRef<'_>,
+        message: &[u8],
+        signature: &[u8],
+    ) -> Result<(), signature_stable::Error> {
+        let Some(hash) = EcdsaHash::from_sig_alg_oid_bytes(algorithm.oid.as_bytes()) else {
+            return pkix_chain::DefaultVerifier.verify_signature(
+                algorithm,
+                issuer_spki,
+                message,
+                signature,
+            );
+        };
+        let curve = issuer_spki.algorithm.parameters.and_then(|p| {
+            p.decode_as::<x509_cert_stable::spki::ObjectIdentifier>()
+                .ok()
+        });
+        sig_verify::verify_ecdsa_raw(
+            issuer_spki.algorithm.oid.as_bytes(),
+            curve.as_ref().map(|c| c.as_bytes()),
+            issuer_spki.subject_public_key.raw_bytes(),
+            hash,
+            message,
+            signature,
+        )
+        .map_err(|_| signature_stable::Error::new())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -261,9 +391,42 @@ fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
 
 #[cfg(test)]
 mod tests {
-    use super::build_chain;
+    use super::{build_chain, check_signer_purpose};
+    use crate::error::{CertChainError, SmimeError};
     use der::Decode as _;
     use x509_cert::Certificate;
+
+    /// TLS server certificate `/CN=Regress tls` (P-384 key; keyUsage=critical,
+    /// keyEncipherment; extKeyUsage=serverAuth; basicConstraints=CA:FALSE),
+    /// generated with OpenSSL 3.0:
+    ///
+    /// ```text
+    /// openssl ecparam -name secp384r1 -genkey -noout -out tls.key
+    /// openssl req -new -key tls.key -subj "/CN=Regress tls" -out tls.csr
+    /// printf 'keyUsage=critical,keyEncipherment\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n' > tls.ext
+    /// openssl x509 -req -in tls.csr -CA ca.pem -CAkey ca.key -CAcreateserial \
+    ///   -sha384 -days 3650 -extfile tls.ext -outform DER -out tls.der
+    /// ```
+    ///
+    /// `openssl cms -verify` rejects a message signed with it as "unsuitable
+    /// certificate purpose" (see the regression section of
+    /// `tests/smime_tests.rs`).
+    const TLS_SERVER_CERT_HEX: &str = concat!(
+        "308201e130820167a00302010202147b219f40db40f21e2f4507fe59a3ff52fa6e1770",
+        "300a06082a8648ce3d040303301a3118301606035504030c0f52656772657373205033",
+        "3834204341301e170d3236313132303036323030385a170d3336313131373036323030",
+        "385a30163114301206035504030c0b5265677265737320746c733076301006072a8648",
+        "ce3d020106052b81040022036200044725aa72706baa25f3f3e4d72b487909b89561ea",
+        "c9d47a97de03cbef912d93bbb649e0817575eb71be24208736e32a7e294a9e5d130ac2",
+        "a68e86e502c6e6cb59c84709cd72f0dcaf91e08007f11e95cf7d000d3e68f62e6a6a99",
+        "efd133a3a609a3723070300e0603551d0f0101ff04040302052030130603551d25040c",
+        "300a06082b0601050507030130090603551d1304023000301d0603551d0e041604149c",
+        "50399d12862d0e068f423f31bdfb17d1738190301f0603551d23041830168014c1ea03",
+        "e27d7ff202f16c14e1a2dcef28709457f2300a06082a8648ce3d040303036800306502",
+        "3100e8a20ab00a1710b3f0d3ff1f6c84922bb98c57251e66b2ab7bafb50d4bbef601eb",
+        "82f4d864d78b2f7a5b026a8b495d27023044588e5c7aa1674a2243f429a30e71cd6186",
+        "f8312111050e257fd7145f82f3d44b09c1c0119841b559a0cd8951292fbb",
+    );
 
     /// Self-signed CA cert DER (hex). Issuer == subject, so it serves as its
     /// own trust anchor.  Identical fixture to CA_CERT_HEX in smime_tests.rs.
@@ -323,5 +486,32 @@ mod tests {
             "chain must contain exactly the signer cert; got {} element(s)",
             chain.len()
         );
+    }
+
+    /// RFC 8550 §4.4.2 / §4.4.4: a TLS server certificate is rejected as an
+    /// S/MIME signer with the dedicated error variant, citing keyUsage (the
+    /// first rule it fails).
+    #[test]
+    fn signer_purpose_rejects_tls_server_cert() {
+        let cert = Certificate::from_der(&from_hex(TLS_SERVER_CERT_HEX)).expect("parse TLS cert");
+        match check_signer_purpose(&cert) {
+            Err(SmimeError::CertChain(CertChainError::UnsuitableSignerCertificate {
+                subject,
+                reason,
+            })) => {
+                assert_eq!(subject, "CN=Regress tls");
+                assert!(reason.contains("keyUsage"), "{reason}");
+            }
+            other => panic!("expected UnsuitableSignerCertificate, got {other:?}"),
+        }
+    }
+
+    /// A certificate without keyUsage or extKeyUsage passes the purpose check
+    /// even though it has basicConstraints cA=TRUE (see `check_signer_purpose`
+    /// for why cA=TRUE alone is not rejected).
+    #[test]
+    fn signer_purpose_accepts_cert_without_usage_extensions() {
+        let cert = Certificate::from_der(&from_hex(SELF_SIGNED_CERT_HEX)).expect("parse cert");
+        assert_eq!(check_signer_purpose(&cert), Ok(()));
     }
 }

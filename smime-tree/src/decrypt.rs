@@ -31,8 +31,12 @@ use crate::key::{
 
 /// Maximum size of encrypted content accepted by [`decrypt`], in bytes.
 ///
-/// Ciphertext exceeding this limit is rejected before allocation to prevent
-/// memory-DoS from crafted `EnvelopedData` blobs.  The 64 MiB default is
+/// Ciphertext exceeding this limit is rejected before the plaintext buffer is
+/// allocated and before any content decryption is attempted.  The check runs
+/// only *after* the whole input has been DER-decoded, so by then the
+/// ciphertext itself is already in memory: this limit does **not** protect
+/// against memory exhaustion from a hostile input.  Callers must bound the
+/// length of `enveloped_der` before calling [`decrypt`].  The 64 MiB value is
 /// generous for email (RFC 5321 recommends a 10 MB message size limit;
 /// encrypted content adds ~33% overhead for base64 but is DER-decoded here,
 /// so the binary content is smaller than the wire form).
@@ -69,6 +73,28 @@ fn default_icv_len() -> u8 {
 /// `enveloped_der` must be a DER-encoded `ContentInfo` wrapping either an
 /// `EnvelopedData` (RFC 5652 section 6, AES-CBC) or an `AuthEnvelopedData`
 /// (RFC 5083, AES-GCM).  Returns the inner plaintext bytes.
+///
+/// Only DER is accepted.  BER encodings that are not also DER — notably the
+/// indefinite-length form produced by streaming encoders such as
+/// `openssl cms -encrypt -stream` or `openssl smime -stream` — fail with
+/// `SmimeError::Der`; re-encode such input as DER first (for example with
+/// `openssl cms -cmsout -inform DER -outform DER`).
+///
+/// The whole input is decoded into memory before any size check runs (the
+/// 64 MiB encrypted-content limit only caps the plaintext allocation), so
+/// bound the length of `enveloped_der` before calling this function if it
+/// comes from an untrusted source.
+///
+/// # Errors
+///
+/// Once a recipient matches, every failure that depends on the recovered CEK
+/// — a `decrypt_cek` failure, a CEK of the wrong length for the content
+/// cipher, bad CBC padding, or a GCM authentication failure — is reported as
+/// the same `SmimeError::DecryptionFailed` value, so callers cannot (and
+/// attackers observing the error cannot) tell them apart.  The exceptions are
+/// `UnsupportedAlgorithm` and `RngFailure` returned by `decrypt_cek`, which are
+/// passed through unchanged.  Errors from [`DecryptionKey::agree_ecdh`] are
+/// passed through unchanged.
 ///
 /// Supported recipient types:
 /// - **KTRI** (`KeyTransRecipientInfo`): RSA PKCS#1 v1.5 and RSA-OAEP.
@@ -132,9 +158,9 @@ pub fn decrypt(enveloped_der: &[u8], key: &dyn DecryptionKey) -> Result<Vec<u8>,
         .ok_or_else(|| SmimeError::MalformedInput("EnvelopedData has no encrypted content".into()))?
         .as_bytes();
 
-    // Reject oversized ciphertext before allocating the decryption buffer.
-    // Without this check, a crafted EnvelopedData with a multi-gigabyte
-    // OctetString causes OOM.
+    // Reject oversized ciphertext before allocating the plaintext buffer.
+    // The ciphertext is already in memory (DER decode is complete), so this
+    // bounds only the additional allocation; callers bound the input size.
     if ct.len() > MAX_ENCRYPTED_CONTENT_SIZE {
         return Err(SmimeError::MalformedInput(format!(
             "encrypted content too large: {} bytes exceeds {} byte limit",
@@ -239,24 +265,26 @@ fn decrypt_auth_enveloped(
     let nonce_arr = aes_gcm::Nonce::<aes_gcm::aead::consts::U12>::try_from(nonce)
         .map_err(|_| SmimeError::MalformedInput("GCM nonce length mismatch".into()))?;
 
+    // A CEK of the wrong length is reported exactly like a wrong CEK of the
+    // right length (see `content_decryption_failed`).
     if content_enc_oid == ID_AES_128_GCM {
         let key_arr: &[u8; 16] = cek
             .as_slice()
             .try_into()
-            .map_err(|_| SmimeError::MalformedInput("AES-128-GCM CEK must be 16 bytes".into()))?;
+            .map_err(|_| content_decryption_failed())?;
         let cipher = aes_gcm::Aes128Gcm::new(key_arr.into());
         cipher
             .decrypt(&nonce_arr, ct_with_tag.as_ref())
-            .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+            .map_err(|_| content_decryption_failed())
     } else if content_enc_oid == ID_AES_256_GCM {
         let key_arr: &[u8; 32] = cek
             .as_slice()
             .try_into()
-            .map_err(|_| SmimeError::MalformedInput("AES-256-GCM CEK must be 32 bytes".into()))?;
+            .map_err(|_| content_decryption_failed())?;
         let cipher = aes_gcm::Aes256Gcm::new(key_arr.into());
         cipher
             .decrypt(&nonce_arr, ct_with_tag.as_ref())
-            .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+            .map_err(|_| content_decryption_failed())
     } else {
         Err(SmimeError::UnsupportedAlgorithm(format!(
             "AuthEnvelopedData content encryption OID {}",
@@ -291,9 +319,17 @@ fn find_and_decrypt_cek(
                     continue;
                 }
                 let alg = map_ktri_alg(ktri)?;
+                // Fold every ciphertext-dependent failure into the generic
+                // content-decryption error (see `content_decryption_failed`).
+                // UnsupportedAlgorithm and RngFailure describe the key or
+                // the platform, not the ciphertext, and pass through.
                 return key
                     .decrypt_cek(ktri.enc_key.as_bytes(), &alg)
-                    .map(Zeroizing::new);
+                    .map(Zeroizing::new)
+                    .map_err(|e| match e {
+                        e @ (SmimeError::UnsupportedAlgorithm(_) | SmimeError::RngFailure(_)) => e,
+                        _ => content_decryption_failed(),
+                    });
             }
 
             RecipientInfo::Kari(kari) => {
@@ -352,16 +388,18 @@ fn extract_cbc_iv(env_data: &EnvelopedData) -> Result<Vec<u8>, SmimeError> {
 /// to prevent padding oracle attacks.  Do not include the underlying
 /// `UnpadError` detail — it reveals whether padding was valid, which is
 /// sufficient for a Bleichenbacher-style adaptive-chosen-ciphertext attack.
+///
+/// The IV (public, attacker-chosen) is checked before the CEK, and a CEK of
+/// the wrong length yields the same error as a bad padding, so the error does
+/// not reveal anything about the recovered CEK.
 fn decrypt_aes128_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
-    let key: &[u8; 16] = cek
-        .try_into()
-        .map_err(|_| SmimeError::MalformedInput("AES-128 CEK must be 16 bytes".into()))?;
     let iv: &[u8; 16] = iv
         .try_into()
         .map_err(|_| SmimeError::MalformedInput("AES-128-CBC IV must be 16 bytes".into()))?;
+    let key: &[u8; 16] = cek.try_into().map_err(|_| content_decryption_failed())?;
     cbc::Decryptor::<Aes128>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+        .map_err(|_| content_decryption_failed())
 }
 
 /// Convert a CMS `RecipientIdentifier` (from the `cms` crate's ASN.1 types) into the
@@ -416,12 +454,14 @@ fn try_decrypt_kari(
     // different key-lookup path not modelled by the current trait.
     let ephemeral_bytes = match &kari.originator {
         OriginatorIdentifierOrKey::OriginatorKey(orig) => {
-            // Validate that the originator key declares id-ecPublicKey with a
-            // curve OID matching the KDF scheme. Without this check, a crafted
-            // KARI could supply a P-384 point in a P-256 context, enabling
-            // invalid-curve or small-subgroup attacks.
-            validate_originator_curve(&orig.algorithm, kari)?;
-            orig.public_key.raw_bytes().to_vec()
+            // Validate that the originator key is an id-ecPublicKey point on
+            // the curve implied by the KDF scheme. Without this check, a
+            // crafted KARI could supply a P-384 point in a P-256 context, or
+            // a point not on the curve at all, enabling invalid-curve or
+            // small-subgroup attacks against `agree_ecdh` implementations.
+            let point = orig.public_key.raw_bytes();
+            validate_originator_key(&orig.algorithm, point, kari.key_enc_alg.oid)?;
+            point.to_vec()
         }
         _ => {
             return Err(SmimeError::UnsupportedAlgorithm(
@@ -439,16 +479,23 @@ fn try_decrypt_kari(
     Ok(Some(Zeroizing::new(cek)))
 }
 
-/// Validate that the originator public key's curve OID matches the KDF scheme.
+/// Validate the ephemeral originator public key of a KARI.
 ///
-/// The KARI's `keyEncryptionAlgorithm.oid` declares which KDF scheme is in use
-/// (P-256 via SHA-256 KDF or P-384 via SHA-384 KDF). The originator's
-/// `AlgorithmIdentifier` should declare `id-ecPublicKey` with a curve OID
-/// parameter matching the declared scheme. A mismatch means the ephemeral key
-/// is on the wrong curve, which enables invalid-curve attacks.
-fn validate_originator_curve(
+/// The KARI's `keyEncryptionAlgorithm.oid` declares which KDF scheme is in use,
+/// and this crate pairs each scheme with one curve (SHA-256 KDF with P-256,
+/// SHA-384 KDF with P-384; see [`KariKeyAgreement`]).  The originator's
+/// `AlgorithmIdentifier` must be `id-ecPublicKey`, and per RFC 5753 §3.1.1 its
+/// parameters "MUST be absent, ECParameters, or NULL" (ECParameters being a
+/// `namedCurve` OID).  Absent and NULL parameters — OpenSSL omits them — mean
+/// the curve is the one implied by the KDF scheme; a `namedCurve` that names
+/// a different curve, or any other parameter value, is rejected.
+///
+/// Finally `point` must decode as a valid SEC1 point on that curve, so an
+/// off-curve or wrong-length point never reaches [`DecryptionKey::agree_ecdh`].
+fn validate_originator_key(
     orig_alg: &AlgorithmIdentifierOwned,
-    kari: &KeyAgreeRecipientInfo,
+    point: &[u8],
+    kdf_scheme_oid: der::asn1::ObjectIdentifier,
 ) -> Result<(), SmimeError> {
     // The originator key must use id-ecPublicKey.
     if orig_alg.oid != ID_EC_PUBLIC_KEY {
@@ -458,30 +505,44 @@ fn validate_originator_curve(
         )));
     }
 
-    // Extract the curve OID from the parameters.
-    let curve_oid = orig_alg
-        .parameters
-        .as_ref()
-        .and_then(|p| p.decode_as::<der::asn1::ObjectIdentifier>().ok())
-        .ok_or_else(|| {
-            SmimeError::MalformedInput("originator key missing curve OID parameter".into())
-        })?;
-
     // Determine the expected curve from the KDF scheme OID.
-    let ecdh_oid = kari.key_enc_alg.oid;
-    let expected_curve = if ecdh_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_256_KDF_SCHEME {
+    let expected_curve = if kdf_scheme_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_256_KDF_SCHEME {
         SECP_256_R_1
-    } else if ecdh_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_384_KDF_SCHEME {
+    } else if kdf_scheme_oid == rfc5753::DH_SINGLE_PASS_STD_DH_SHA_384_KDF_SCHEME {
         SECP_384_R_1
     } else {
         // Unknown KDF scheme — map_kari_alg will reject it later.
         return Ok(());
     };
 
-    if curve_oid != expected_curve {
+    // Absent or NULL parameters: the curve is the one implied by the KDF
+    // scheme.  Otherwise the parameters must be a namedCurve OID naming it.
+    match orig_alg.parameters.as_ref() {
+        None => {}
+        Some(p) if p.is_null() => {}
+        Some(p) => {
+            let curve_oid = p.decode_as::<der::asn1::ObjectIdentifier>().map_err(|_| {
+                SmimeError::MalformedInput(
+                    "originator key parameters must be absent, NULL, or a namedCurve OID".into(),
+                )
+            })?;
+            if curve_oid != expected_curve {
+                return Err(SmimeError::MalformedInput(format!(
+                    "originator key curve {} does not match KDF scheme (expected {})",
+                    curve_oid, expected_curve
+                )));
+            }
+        }
+    }
+
+    let on_curve = if expected_curve == SECP_256_R_1 {
+        p256::PublicKey::from_sec1_bytes(point).is_ok()
+    } else {
+        p384::PublicKey::from_sec1_bytes(point).is_ok()
+    };
+    if !on_curve {
         return Err(SmimeError::MalformedInput(format!(
-            "originator key curve {} does not match KDF scheme (expected {})",
-            curve_oid, expected_curve
+            "originator key is not a valid point on curve {expected_curve}"
         )));
     }
 
@@ -547,13 +608,125 @@ fn kari_rid_to_owned(rid: &KeyAgreeRecipientIdentifier) -> Result<RecipientIdent
 ///
 /// See [`decrypt_aes128_cbc`] for the rationale behind the generic error message.
 fn decrypt_aes256_cbc(cek: &[u8], iv: &[u8], ct: &[u8]) -> Result<Vec<u8>, SmimeError> {
-    let key: &[u8; 32] = cek
-        .try_into()
-        .map_err(|_| SmimeError::MalformedInput("AES-256 CEK must be 32 bytes".into()))?;
     let iv: &[u8; 16] = iv
         .try_into()
         .map_err(|_| SmimeError::MalformedInput("AES-256-CBC IV must be 16 bytes".into()))?;
+    let key: &[u8; 32] = cek.try_into().map_err(|_| content_decryption_failed())?;
     cbc::Decryptor::<Aes256>::new(key.into(), iv.into())
         .decrypt_padded_vec::<Pkcs7>(ct)
-        .map_err(|_| SmimeError::DecryptionFailed("content decryption failed".into()))
+        .map_err(|_| content_decryption_failed())
+}
+
+/// The single error returned for every failure that depends on the
+/// recovered CEK: content padding or authentication-tag failure, a CEK of the
+/// wrong length for the content cipher, and a `decrypt_cek` failure for the
+/// matched KTRI recipient (see [`find_and_decrypt_cek`]).
+///
+/// Returning one indistinguishable error for all of these is what keeps an
+/// RSA PKCS#1 v1.5 key-transport recipient from becoming a Bleichenbacher
+/// oracle: if a well-formed PKCS#1 block holding a CEK of the wrong length
+/// produced a different error than one holding a wrong CEK of the right
+/// length, an attacker could tell valid from invalid padding (RFC 3218 §2.3).
+fn content_decryption_failed() -> SmimeError {
+    SmimeError::DecryptionFailed("content decryption failed".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_originator_key;
+    use crate::error::SmimeError;
+    use const_oid::db::{
+        rfc5753,
+        rfc5912::{ID_EC_PUBLIC_KEY, SECP_256_R_1, SECP_384_R_1},
+    };
+    use der::{asn1::Null, Any};
+    use spki::AlgorithmIdentifierOwned;
+
+    /// Ephemeral P-256 point (uncompressed SEC1) from the originatorKey of an
+    /// `openssl cms -encrypt -aes-128-cbc -recip ec256.pem -keyopt
+    /// ecdh_kdf_md:sha256` message (the KARI_OPENSSL_P256_DER_HEX fixture in
+    /// `tests/smime_tests.rs`).
+    const OPENSSL_P256_EPHEMERAL_HEX: &str = concat!(
+        "04",
+        "1602582029538b65df65e19302e4acd97d0879ff416a5214c2778f9753944911",
+        "2fec6c07693868dee0e940256a9f199b60712be2561d500f38f4e9d64e5a59c5"
+    );
+
+    fn point() -> Vec<u8> {
+        let h = OPENSSL_P256_EPHEMERAL_HEX;
+        (0..h.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&h[i..i + 2], 16).expect("hex"))
+            .collect()
+    }
+
+    fn ec_alg(parameters: Option<Any>) -> AlgorithmIdentifierOwned {
+        AlgorithmIdentifierOwned {
+            oid: ID_EC_PUBLIC_KEY,
+            parameters,
+        }
+    }
+
+    const SHA256_KDF: der::asn1::ObjectIdentifier =
+        rfc5753::DH_SINGLE_PASS_STD_DH_SHA_256_KDF_SCHEME;
+
+    /// RFC 5753 §3.1.1: parameters "MUST be absent, ECParameters, or NULL".
+    /// Absent (what OpenSSL emits), NULL, and the matching namedCurve are all
+    /// accepted.
+    #[test]
+    fn accepts_absent_null_and_matching_named_curve() {
+        let p = point();
+        for params in [
+            None,
+            Some(Any::encode_from(&Null).expect("NULL")),
+            Some(Any::encode_from(&SECP_256_R_1).expect("OID")),
+        ] {
+            let alg = ec_alg(params.clone());
+            assert_eq!(
+                validate_originator_key(&alg, &p, SHA256_KDF),
+                Ok(()),
+                "{params:?}"
+            );
+        }
+    }
+
+    /// A namedCurve that disagrees with the KDF scheme's curve is rejected.
+    #[test]
+    fn rejects_mismatching_named_curve() {
+        let alg = ec_alg(Some(Any::encode_from(&SECP_384_R_1).expect("OID")));
+        let err = validate_originator_key(&alg, &point(), SHA256_KDF).expect_err("mismatch");
+        assert!(
+            matches!(&err, SmimeError::MalformedInput(m) if m.contains("does not match")),
+            "{err:?}"
+        );
+    }
+
+    /// Parameters that are neither absent, NULL, nor an OID are rejected.
+    #[test]
+    fn rejects_other_parameter_types() {
+        let alg = ec_alg(Some(Any::encode_from(&5u8).expect("INTEGER")));
+        let err = validate_originator_key(&alg, &point(), SHA256_KDF).expect_err("INTEGER");
+        assert!(matches!(err, SmimeError::MalformedInput(_)), "{err:?}");
+    }
+
+    /// The point itself must be on the curve, even when parameters are absent.
+    #[test]
+    fn rejects_off_curve_point() {
+        let mut p = point();
+        let last = p.len() - 1;
+        p[last] ^= 0x01;
+        let err = validate_originator_key(&ec_alg(None), &p, SHA256_KDF).expect_err("off curve");
+        assert!(
+            matches!(&err, SmimeError::MalformedInput(m) if m.contains("not a valid point")),
+            "{err:?}"
+        );
+        // A P-256 point is also not a valid P-384 point.
+        let err = validate_originator_key(
+            &ec_alg(None),
+            &point(),
+            rfc5753::DH_SINGLE_PASS_STD_DH_SHA_384_KDF_SCHEME,
+        )
+        .expect_err("wrong curve");
+        assert!(matches!(err, SmimeError::MalformedInput(_)), "{err:?}");
+    }
 }

@@ -90,7 +90,15 @@ impl fmt::Display for EcCurve {
 pub enum KeyEncryptionAlgorithm {
     /// RSA PKCS#1 v1.5 key transport (RFC 8017).
     RsaPkcs1v15,
-    /// RSA-OAEP key transport (RFC 8017).
+    /// RSA-OAEP key transport (RFC 8017, `id-RSAES-OAEP`).
+    ///
+    /// This variant carries **no OAEP parameters**: the hash function, mask
+    /// generation function and label (`RSAES-OAEP-params`, RFC 8017 §A.2.1)
+    /// from the recipient's `keyEncryptionAlgorithm` are not passed to
+    /// [`DecryptionKey::decrypt_cek`].  Implementations must assume the
+    /// parameters they expect (the RFC 8017 / RFC 3560 defaults are SHA-1,
+    /// MGF1 with SHA-1, and an empty label); a message that used different
+    /// parameters will fail to decrypt.
     RsaOaep,
     /// Reserved for future ECDH-ES key agreement support. Never produced by
     /// the current implementation of `decrypt()`; present for forward
@@ -201,6 +209,28 @@ impl fmt::Display for DigestAlgorithm {
 /// algorithm that was used to wrap it, return the raw CEK bytes.
 pub trait DecryptionKey {
     /// Decrypt an encrypted content-encryption key.
+    ///
+    /// Called for the first KTRI (`KeyTransRecipientInfo`) entry for which
+    /// [`matches_recipient`](Self::matches_recipient) returns `true`; return
+    /// the raw CEK bytes.
+    ///
+    /// # Security — do not leak padding failures
+    ///
+    /// For [`KeyEncryptionAlgorithm::RsaPkcs1v15`] the decryption is a
+    /// potential Bleichenbacher padding oracle.  Implementations should not
+    /// reveal *why* decryption failed: no distinct error variants or messages
+    /// for bad padding versus other failures, and ideally no observable timing
+    /// difference.  The recommended mitigation (RFC 3218 §2.3.2) is, on a
+    /// padding failure, to return a random CEK instead of an error, so that
+    /// the failure surfaces later as an ordinary content-decryption failure.
+    ///
+    /// To limit the damage when an implementation does not do this,
+    /// [`decrypt`](crate::decrypt) replaces any error returned here — other
+    /// than `SmimeError::UnsupportedAlgorithm` and `SmimeError::RngFailure`,
+    /// which are passed through — with the same generic
+    /// `SmimeError::DecryptionFailed` it returns when the recovered CEK has
+    /// the wrong length or fails to decrypt the content.  Reserve those two
+    /// variants for failures that do not depend on `encrypted_key`.
     fn decrypt_cek(
         &self,
         encrypted_key: &[u8],
@@ -244,28 +274,40 @@ pub trait DecryptionKey {
     /// entry that matches this key (as determined by `matches_recipient`).
     ///
     /// The implementor must:
-    /// 1. Perform ECDH using the recipient's private key and
-    ///    `ephemeral_public_key_bytes` (SEC1 uncompressed EC point) to obtain
-    ///    the shared secret *Z*.
-    /// 2. Apply the X9.63 KDF (RFC 5753 §3.6.1): hash *Z* concatenated with a
-    ///    counter and the `EccCmsSharedInfo` structure to derive the
-    ///    key-encryption key (KEK).  `SharedInfo` encodes `alg.key_wrap` OID in
-    ///    `keyInfo` and, when `ukm` is `Some`, the UKM bytes in
-    ///    `entityUInfo [0] EXPLICIT`.  When `ukm` is `None` (which is always
-    ///    the case when this crate's `encrypt()` produced the message, as this
-    ///    crate never generates UKM), omit `entityUInfo`.
-    /// 3. Unwrap `enc_cek` with AES-128-KW or AES-256-KW (per `alg.key_wrap`)
+    /// 1. Parse `ephemeral_public_key_bytes` (a SEC1 EC point, normally
+    ///    uncompressed) as a public key on the curve of `alg.key_agreement`.
+    ///    These bytes come from the untrusted message.  Before calling this
+    ///    method, `decrypt()` has already checked that the originator key is
+    ///    `id-ecPublicKey` on the curve implied by the KDF scheme and that the
+    ///    bytes decode as a valid point on that curve; implementations should
+    ///    nevertheless use a validating parser (such as
+    ///    `p256::PublicKey::from_sec1_bytes`), never raw coordinates.
+    /// 2. Perform ECDH with the recipient's private key and that point to
+    ///    obtain the shared secret *Z*.
+    /// 3. Apply the X9.63 KDF (RFC 5753 §3.6.1) with the hash named by
+    ///    `alg.key_agreement`: hash *Z* concatenated with a 32-bit counter and
+    ///    the DER-encoded `ECC-CMS-SharedInfo` (RFC 5753 §7.2) to derive the
+    ///    key-encryption key (KEK).  `ECC-CMS-SharedInfo` contains
+    ///    - `keyInfo`: the `alg.key_wrap` AlgorithmIdentifier (OID, no
+    ///      parameters);
+    ///    - `entityUInfo [0] EXPLICIT OCTET STRING`: the UKM bytes, only when
+    ///      `ukm` is `Some` (this crate's `encrypt()` never generates a UKM,
+    ///      so omit it in that case);
+    ///    - `suppPubInfo [2] EXPLICIT OCTET STRING`: the KEK length **in
+    ///      bits** as a 4-byte big-endian integer (`00 00 00 80` for
+    ///      AES-128-KW, `00 00 01 00` for AES-256-KW).
+    /// 4. Unwrap `enc_cek` with AES-128-KW or AES-256-KW (per `alg.key_wrap`)
     ///    using the derived KEK.
-    /// 4. Return the raw CEK bytes.
+    /// 5. Return the raw CEK bytes.
     ///
     /// # Default — IMPORTANT for EC key implementors
     ///
     /// Returns `Err(SmimeError::UnsupportedAlgorithm(...))`.  **EC key
     /// implementors MUST override this method** or KARI-encrypted messages
-    /// will silently fail to decrypt (the error is caught per-recipient
-    /// and the next `RecipientInfo` is tried; if no other recipient matches,
-    /// `NoMatchingRecipient` is returned with no indication that ECDH was
-    /// attempted).  RSA-only keys can leave the default.
+    /// cannot be decrypted.  `decrypt()` records the error and goes on to try
+    /// later `RecipientInfo` entries; if no later entry matches this key, it
+    /// returns that `UnsupportedAlgorithm` error (not `NoMatchingRecipient`).
+    /// RSA-only keys can leave the default.
     fn agree_ecdh(
         &self,
         ephemeral_public_key_bytes: &[u8],

@@ -96,14 +96,16 @@ pub fn decrypt(
     key: &dyn DecryptionKey,
 ) -> Result<Vec<u8>, SmimeError>;
 
-/// Sign MIME content. Returns multipart/signed outer MIME bytes.
-/// Digest algorithm is selected from the key's certificate (P-256→SHA-256,
-/// P-384→SHA-384, P-521→SHA-512, RSA→SHA-256); override via
+/// Sign MIME content with one or more keys (one SignerInfo per key).
+/// Returns multipart/signed outer MIME bytes.
+/// Digest algorithm is selected from each key's certificate (P-256→SHA-256,
+/// P-384→SHA-384, RSA→SHA-256; P-521 is unsupported); override via
 /// SigningKey::preferred_digest_algorithm().
-pub fn sign(content_mime: &[u8], key: &dyn SigningKey, now: std::time::SystemTime) -> Result<Vec<u8>, SmimeError>;
+pub fn sign(content_mime: &[u8], keys: &[&dyn SigningKey], now: std::time::SystemTime) -> Result<Vec<u8>, SmimeError>;
 
-/// Encrypt MIME content to one or more recipients.
-/// Returns application/pkcs7-mime; smime-type=enveloped-data bytes.
+/// Encrypt MIME content to one or more recipients as AuthEnvelopedData
+/// (RFC 5083): AES-128-GCM, or AES-256-GCM when any recipient is P-384.
+/// Returns application/pkcs7-mime; smime-type=authEnveloped-data bytes.
 pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>, SmimeError>;
 ```
 
@@ -115,7 +117,7 @@ pub fn encrypt(inner_mime: &[u8], recipients: &[Certificate]) -> Result<Vec<u8>,
 | `x509-cert` | Certificate type, chain validation | Yes (`Certificate`) |
 | `rsa` | RSA key transport (`KeyTransRecipientInfo`) | No |
 | `p256` / `p384` | ECDH key agreement (`KeyAgreeRecipientInfo`) | No |
-| `aes` + mode crates | Content encryption (AES-128-CBC, AES-256-CBC, AES-256-GCM) | No |
+| `aes` + mode crates | Content encryption: AES-128/256-GCM (encrypt and decrypt), AES-128/256-CBC (decrypt only) | No |
 | `sha2` | Digest algorithms | No |
 | `der` | DER encode/decode (transitive from `cms`) | No |
 | `mime-tree` | `ParsedPart` byte ranges for `verify()` | No |

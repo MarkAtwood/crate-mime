@@ -43,13 +43,34 @@ tree. If the result is itself S/MIME, loop — this crate does not recurse.
 2. For each `SignerInfo`, recomputes the message digest over the supplied content
    bytes (RFC 5652 §5.4) and checks it against the `messageDigest` signed attribute.
 3. Verifies the `SignerInfo` signature over the DER-encoded `SignedAttributes` SET.
-4. Locates the signer's certificate in the `SignedData` certificate bag and walks
-   the chain to a caller-supplied trust anchor (RFC 5280 §6.1).
-5. Returns a `VerificationResult` with one `SignerResult` per `SignerInfo` — all
+   ECDSA signatures may use SHA-256, SHA-384 or SHA-512 with a P-256 or P-384
+   key in any combination; the curve is taken from the signer's key.
+4. Locates the signer's certificate in the `SignedData` certificate bag or, failing
+   that, among the caller-supplied trust anchors, and walks the chain to a trust
+   anchor (RFC 5280 §6.1).
+5. Checks that the signer certificate may sign S/MIME messages (RFC 8550 §4.4):
+   a keyUsage extension, if present, must allow `digitalSignature` or
+   `nonRepudiation`, and an extKeyUsage extension, if present, must include
+   `id-kp-emailProtection` or `anyExtendedKeyUsage`. A TLS server certificate,
+   for example, is rejected.
+6. Returns a `VerificationResult` with one `SignerResult` per `SignerInfo` — all
    failures are reported, not just the first.
 
 The caller extracts the exact signed bytes using `mime-tree` byte ranges. Using
 the wrong byte slice (e.g. re-encoded content) will cause digest mismatch.
+
+### Input encoding and size
+
+`verify()` and `decrypt()` accept **DER only**. Indefinite-length BER, as
+produced by streaming encoders (`openssl cms -sign -stream`,
+`openssl smime -encrypt -stream`, ...), is rejected with `SmimeError::Der`;
+convert such input to DER first, e.g.
+`openssl cms -cmsout -inform DER -in in.p7m -outform DER -out out.der`.
+
+Both functions decode the entire input into memory before applying their
+internal limits (certificate count, signer count, encrypted-content size).
+Those limits bound work, not memory: bound the length of untrusted input
+before calling them.
 
 ### Decrypt
 
@@ -78,7 +99,7 @@ MIME structure. It:
 
 ### Encrypt
 
-`encrypt()` builds a CMS `EnvelopedData` with one `RecipientInfo` per certificate:
+`encrypt()` builds a CMS `AuthEnvelopedData` with one `RecipientInfo` per certificate:
 
 - RSA certificates → `KeyTransRecipientInfo` (RSA PKCS#1 v1.5 key transport).
 - EC P-256/P-384 certificates → `KeyAgreeRecipientInfo` (ECDH-ES + AES key wrap).

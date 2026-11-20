@@ -144,6 +144,17 @@ pub enum CertChainError {
     },
     /// Certificate chain exceeds the maximum allowed depth.
     TooDeep,
+    /// The signer certificate chains to a trust anchor but its key usage does
+    /// not permit S/MIME message signing (RFC 8550 §4.4.2 / §4.4.4): a
+    /// `keyUsage` extension without `digitalSignature` or `nonRepudiation`,
+    /// or an `extKeyUsage` extension without `id-kp-emailProtection` or
+    /// `anyExtendedKeyUsage` — for example, a TLS server certificate.
+    UnsuitableSignerCertificate {
+        /// Subject DN of the signer certificate.
+        subject: String,
+        /// Which usage rule the certificate fails.
+        reason: String,
+    },
     /// Other chain validation error (DER encoding failures, etc.).
     Other(String),
 }
@@ -186,6 +197,10 @@ impl fmt::Display for CertChainError {
             CertChainError::TooDeep => {
                 write!(f, "certificate chain exceeds the maximum allowed depth")
             }
+            CertChainError::UnsuitableSignerCertificate { subject, reason } => write!(
+                f,
+                "certificate '{subject}' is not usable for S/MIME signing: {reason}"
+            ),
             CertChainError::Other(msg) => write!(f, "{msg}"),
         }
     }
