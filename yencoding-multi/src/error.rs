@@ -65,11 +65,13 @@ pub enum AssemblyError {
         total_size: u64,
     },
 
-    /// A decoded part has `part_begin` set but `part_end` absent, or vice versa.
+    /// A decoded part has `part_begin` set but `part_end` absent, or vice
+    /// versa, or has `part_begin == Some(0)`.
     ///
-    /// yEnc `=ypart begin=/end=` always provides both values or neither.
-    /// A `DecodedPart` with only one of the two fields set indicates a corrupt
-    /// or incorrectly constructed part.
+    /// yEnc `=ypart begin=/end=` always provides both values or neither, and
+    /// `begin=` is a 1-based offset, so it is never 0. A `DecodedPart`
+    /// violating either rule indicates a corrupt or incorrectly constructed
+    /// part.
     MalformedPartRange,
 
     /// Two parts carry conflicting whole-file CRC32 values.
@@ -139,7 +141,8 @@ impl std::fmt::Display for AssemblyError {
             ),
             AssemblyError::MalformedPartRange => write!(
                 f,
-                "part_begin and part_end must both be Some or both be None"
+                "malformed part range: part_begin and part_end must both be Some or both be None, \
+                 and part_begin must be at least 1 (yEnc offsets are 1-based)"
             ),
             AssemblyError::InconsistentCrc { first, new } => write!(
                 f,

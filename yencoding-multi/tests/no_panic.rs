@@ -138,7 +138,7 @@ fn max_total_size_cap_boundary() {
 }
 
 #[test]
-fn begin_equals_end_multipart_is_rejected() {
+fn end_one_before_begin_zero_length_multipart_is_rejected() {
     // begin=5, end=4 in 1-based → begin_0=4, end_0=4 → zero-length range
     let mut a = Assembler::new(100).unwrap();
     let part = make_part(&[], Some(5), Some(4));

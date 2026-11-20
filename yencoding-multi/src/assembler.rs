@@ -49,6 +49,16 @@ pub struct Assembler {
     /// Converted from yEnc's 1-based inclusive `begin`/`end` by `begin - 1` and `end`.
     covered: BTreeMap<u64, u64>,
 
+    /// Total number of bytes covered by the intervals in `covered`.
+    ///
+    /// Invariant: equals the sum of `end - start` over `covered`. Because the
+    /// intervals are disjoint and lie within `[0, total_size)`, the file is
+    /// complete exactly when this equals `total_size`, which makes
+    /// [`is_complete`][Self::is_complete] O(1). Intervals are only ever
+    /// inserted (never removed), so `add_part` is the only place that must
+    /// update it.
+    covered_bytes: u64,
+
     /// Whole-file CRC32, if known. Set by `set_expected_crc32()` or extracted
     /// from the first part's `=yend crc32=` field by `add_part()`.
     expected_crc32: Option<u32>,
@@ -89,6 +99,7 @@ impl Assembler {
             buffer: vec![0u8; size],
             total_size,
             covered: BTreeMap::new(),
+            covered_bytes: 0,
             expected_crc32: None,
         })
     }
@@ -122,8 +133,12 @@ impl Assembler {
     ///
     /// # Errors
     ///
+    /// - [`AssemblyError::MalformedPartRange`] — exactly one of
+    ///   `part_begin`/`part_end` is set, or `part_begin` is `Some(0)` (yEnc
+    ///   offsets are 1-based).
     /// - [`AssemblyError::OutOfRange`] — the part's byte range extends beyond
-    ///   `total_size` or the begin/end offsets are missing.
+    ///   `total_size`, or `part_end < part_begin` (which includes the
+    ///   zero-length range `part_end == part_begin - 1`).
     /// - [`AssemblyError::OverlappingPart`] — the part's range overlaps with
     ///   a previously added part.
     /// - [`AssemblyError::DataLengthMismatch`] — the part's decoded data length
@@ -156,6 +171,18 @@ impl Assembler {
     /// Parts may be added in any order. A part with no `part_begin`/`part_end`
     /// (i.e. a single-part article passed to the assembler) is written starting
     /// at offset 0.
+    ///
+    /// An **empty** single-part article (no `part_begin`/`part_end` and empty
+    /// `data`) is accepted as a no-op: it returns `Ok(())` without changing the
+    /// assembler at all — it covers no bytes, cannot overlap anything, and its
+    /// `whole_file_crc32` is **not** recorded. A zero-length range carries no
+    /// data, so recording it would only cause harm: as an interval at offset 0
+    /// it would make every later part starting at offset 0 fail with
+    /// [`AssemblyError::OverlappingPart`], and its CRC (that of empty data,
+    /// `00000000`, when produced by `yencoding::decode`) would conflict with
+    /// the real whole-file CRC of a non-empty file. Rejecting it was not
+    /// chosen because it is a well-formed article for an empty file, and a
+    /// zero-size assembler is already complete without it.
     pub fn add_part(&mut self, part: &yencoding::DecodedPart) -> Result<(), AssemblyError> {
         // Convert 1-based yEnc offsets to 0-based internal offsets.
         // A single-part article has no =ypart, so begin/end are both None.
@@ -211,6 +238,13 @@ impl Assembler {
             });
         }
 
+        // A zero-length range (only reachable for an empty single-part article;
+        // multi-part zero-length ranges were rejected above) covers nothing.
+        // Do not record its interval or CRC; see the method docs.
+        if range_len == 0 {
+            return Ok(());
+        }
+
         // Check for overlap with any existing covered interval.
         // A new interval [begin_0, end_0) overlaps an existing [a, b) if
         // begin_0 < b AND end_0 > a.
@@ -254,8 +288,10 @@ impl Assembler {
         let start = begin_0 as usize;
         self.buffer[start..start + range_len].copy_from_slice(&part.data);
 
-        // Record the covered interval.
+        // Record the covered interval. It is non-empty and disjoint from all
+        // existing intervals (checked above), so the byte count simply adds.
         self.covered.insert(begin_0, end_0);
+        self.covered_bytes += end_0 - begin_0;
 
         Ok(())
     }
@@ -264,19 +300,14 @@ impl Assembler {
     ///
     /// When `total_size` is 0 this always returns `true` (a zero-byte file
     /// needs no parts).
+    ///
+    /// Runs in O(1), so it is cheap to poll after every
+    /// [`add_part`][Self::add_part].
     #[must_use]
     pub fn is_complete(&self) -> bool {
-        if self.total_size == 0 {
-            return true; // edge case: zero-byte file is always complete
-        }
-        let mut cursor: u64 = 0;
-        for (&start, &end) in &self.covered {
-            if start > cursor {
-                return false; // gap found
-            }
-            cursor = end;
-        }
-        cursor >= self.total_size
+        // Covered intervals are disjoint and within [0, total_size), so their
+        // total length reaches total_size only when there is no gap.
+        self.covered_bytes == self.total_size
     }
 
     /// Returns the 0-based byte ranges within `[0, total_size)` not yet covered
@@ -809,6 +840,121 @@ mod tests {
         // CRC should have been auto-extracted; finish() must succeed.
         let result = a.finish().unwrap();
         assert_eq!(result, data);
+    }
+
+    // -----------------------------------------------------------------------
+    // Empty single-part articles
+    // -----------------------------------------------------------------------
+
+    /// A hand-built empty single-part article, as yEnc 1.3 describes it:
+    /// no data lines, `size=0`, and the CRC32 of zero bytes (`00000000`).
+    fn empty_single_part() -> DecodedPart {
+        let part = yencoding::decode(
+            b"=ybegin line=128 size=0 name=empty.bin\r\n=yend size=0 crc32=00000000\r\n",
+        )
+        .unwrap();
+        assert!(part.data.is_empty());
+        assert_eq!(part.part_begin, None);
+        assert_eq!(part.whole_file_crc32, Some(0));
+        part
+    }
+
+    #[test]
+    fn empty_single_part_does_not_block_offset_zero() {
+        let mut a = Assembler::new(10).unwrap();
+        a.add_part(&empty_single_part()).unwrap();
+        assert!(!a.is_complete());
+        assert_eq!(a.missing_ranges(), vec![0..10]);
+        let data: Vec<u8> = (0u8..10).collect();
+        a.add_part(&make_part(&data, 1, 10)).unwrap();
+        assert!(a.is_complete());
+        assert_eq!(a.finish().unwrap(), data);
+    }
+
+    #[test]
+    fn empty_single_part_after_real_part_is_accepted() {
+        let mut a = Assembler::new(4).unwrap();
+        a.add_part(&make_part(&[1, 2, 3, 4], 1, 4)).unwrap();
+        a.add_part(&empty_single_part()).unwrap();
+        assert!(a.is_complete());
+        assert_eq!(a.finish().unwrap(), vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn empty_single_part_crc_is_not_recorded() {
+        // The empty part's crc32=00000000 must not become the expected CRC of
+        // a non-empty file, nor conflict with the real one.
+        let data = [1u8, 2, 3, 4];
+        let real_crc = crc32fast::hash(&data);
+        assert_ne!(real_crc, 0);
+        let mut a = Assembler::new(4).unwrap();
+        a.add_part(&empty_single_part()).unwrap();
+        let mut p = make_part(&data, 1, 4);
+        p.whole_file_crc32 = Some(real_crc);
+        a.add_part(&p).unwrap();
+        assert_eq!(a.finish().unwrap(), data);
+    }
+
+    #[test]
+    fn empty_single_part_into_zero_size_assembler() {
+        let mut a = Assembler::new(0).unwrap();
+        a.add_part(&empty_single_part()).unwrap();
+        a.add_part(&empty_single_part()).unwrap();
+        assert!(a.is_complete());
+        assert!(a.finish().unwrap().is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // is_complete consistency with missing_ranges
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn is_complete_agrees_with_missing_ranges_including_rejected_parts() {
+        // Insert 1-byte and 2-byte parts in a scrambled order, interleaved
+        // with parts that must be rejected (overlap, out of range, length
+        // mismatch). After every call, is_complete() must equal
+        // missing_ranges().is_empty().
+        let total = 40u64;
+        let mut a = Assembler::new(total).unwrap();
+        let check = |a: &Assembler| {
+            assert_eq!(a.is_complete(), a.missing_ranges().is_empty());
+        };
+        // Visit offsets 0..40 in the order k*7 mod 40 (7 is coprime to 40).
+        for k in 0..total {
+            let off = (k * 7) % total; // 0-based
+            let len = if off % 3 == 0 && off + 2 <= total {
+                2
+            } else {
+                1
+            };
+            let res = a.add_part(&make_part(&vec![0xAA; len as usize], off + 1, off + len));
+            if res.is_err() {
+                // Overlap with a previously added 2-byte part; fall back to
+                // the single byte if it is still free.
+                let _ = a.add_part(&make_part(&[0xAA], off + 1, off + 1));
+            }
+            check(&a);
+            // Rejected parts must not change completeness.
+            let _ = a.add_part(&make_part(&[0], total + 1, total + 1)); // out of range
+            let _ = a.add_part(&make_part(&[0, 0], off + 1, off + 1)); // length mismatch
+            let _ = a.add_part(&make_part(&[0], off + 1, off + 1)); // overlap
+            check(&a);
+        }
+        assert!(a.is_complete());
+        assert_eq!(a.finish().unwrap(), vec![0xAA; total as usize]);
+    }
+
+    #[test]
+    fn is_complete_false_until_last_of_many_parts() {
+        // Reverse-order insertion of 10_000 one-byte parts: incomplete until
+        // the part at offset 0 arrives last.
+        let n = 10_000u64;
+        let mut a = Assembler::new(n).unwrap();
+        for i in (0..n).rev() {
+            assert!(!a.is_complete());
+            a.add_part(&make_part(&[0], i + 1, i + 1)).unwrap();
+        }
+        assert!(a.is_complete());
     }
 
     // -----------------------------------------------------------------------
