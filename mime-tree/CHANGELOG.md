@@ -2,6 +2,34 @@
 
 All notable changes to `mime-tree` will be documented here.
 
+## [0.6.0] - Unreleased
+
+### Added
+
+- RFC 5322 / MIME message writer, the inverse of `parse()`, moved from
+  `jmap-mime` (crate-jmap). `write_message(headers, body)` writes the
+  given `Header` fields, then `MIME-Version: 1.0`, then the content
+  headers and body of a `Part` tree. Header values are a `HeaderValue`:
+  `unstructured` text, `Mailbox` lists, address lists with `Group`s,
+  `msg-id` lists, or raw text. Bodies are a `Body`: quoted-printable text,
+  base64 bytes, unencoded bytes labelled `7bit` / `8bit`, or multipart
+  children.
+  - Header fields fold at whitespace before column 78 (RFC 5322 §2.1.1).
+  - Non-ASCII text and display names become RFC 2047 `B` encoded words of
+    at most 75 characters; non-ASCII parameter values use RFC 2231
+    `attr*=utf-8''...` encoding.
+  - Multipart boundaries are the first `=_N` absent from every encoded
+    child (RFC 2046 §5.1.1).
+  - `WriteError` rejects an invalid field name (RFC 5322 §2.2) and a CR or
+    LF in any value written without encoding, so a value cannot inject a
+    header field.
+  - All writer types are owned and `Serialize + Deserialize`, like the
+    parser's.
+
+### Fixed
+
+- `cargo doc` with `-D warnings` no longer fails on broken intra-doc links.
+
 ## [0.5.0] - 2026-06-16
 
 ### Breaking Changes

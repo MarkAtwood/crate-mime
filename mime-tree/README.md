@@ -5,7 +5,9 @@
 
 RFC 5322 / MIME parser that produces a walkable, byte-range-indexed part tree.
 Given raw message bytes, it returns a `ParsedMessage` with the full MIME structure,
-RFC 8621-compatible body views, and on-demand body decoding.
+RFC 8621-compatible body views, and on-demand body decoding. It also writes
+messages: `write_message` turns header fields and a MIME part tree into
+RFC 5322 bytes.
 
 ## Why this crate exists
 
@@ -236,6 +238,78 @@ match parse_header_typed(HeaderForm::Addresses, raw_value) {
 Parsing is best-effort: malformed input yields the empty result for the
 requested form (empty `Vec`, empty string, or `DateTime(None)`) — never an
 error and never a panic.
+
+## Writing messages
+
+`write_message(headers, body)` is the inverse of `parse()`. It writes the
+given header fields, then `MIME-Version: 1.0`, then the content headers and
+body of a `Part` tree, with CRLF line ends throughout (RFC 5322 §2.1).
+
+```rust
+use mime_tree::{write_message, Body, Header, HeaderValue, Mailbox, Part};
+
+let headers = [
+    Header::new(
+        "From",
+        HeaderValue::Mailboxes(vec![Mailbox {
+            name: Some("Alice".into()),
+            address: "alice@example.com".into(),
+        }]),
+    ),
+    Header::new("Subject", HeaderValue::Text("Hello".into())),
+];
+let body = Part {
+    content_type: "multipart/alternative".into(),
+    params: Vec::new(),
+    disposition: None,
+    headers: Vec::new(),
+    body: Body::Multipart(vec![
+        Part {
+            content_type: "text/plain".into(),
+            params: vec![("charset".into(), "utf-8".into())],
+            disposition: None,
+            headers: Vec::new(),
+            body: Body::Text("Hi".into()),
+        },
+        Part {
+            content_type: "text/html".into(),
+            params: vec![("charset".into(), "utf-8".into())],
+            disposition: None,
+            headers: Vec::new(),
+            body: Body::Text("<p>Hi</p>".into()),
+        },
+    ]),
+};
+let raw: Vec<u8> = write_message(&headers, &body)?;
+```
+
+| Type | Role |
+|---|---|
+| `Header` | One header field: name and `HeaderValue` |
+| `HeaderValue` | `Text` (RFC 5322 §3.2.5 `unstructured`), `Mailboxes`, `Groups` (§3.4), `MessageIds` (§3.6.4), or `Raw` (verbatim) |
+| `Mailbox` / `Group` | An RFC 5322 §3.4 `mailbox` and `group` |
+| `Part` | One MIME entity (RFC 2045 §2.4): media type, parameters, disposition (RFC 2183), extra headers, body |
+| `Body` | `Text` (quoted-printable, RFC 2045 §6.7), `Binary` (base64, §6.8), `Unencoded` (`7bit` / `8bit`), or `Multipart` children (RFC 2046 §5.1) |
+| `WriteError` | Invalid field name, or CR / LF in a value written without encoding |
+
+Encoding rules:
+
+- Header fields fold at whitespace before a line passes 78 characters
+  (RFC 5322 §2.1.1); a single longer token stays on its own line.
+- Non-ASCII `unstructured` text and display names become RFC 2047 `B`
+  encoded words of UTF-8, each at most 75 characters. Display names that
+  are not atoms are quoted.
+- Parameter values are tokens, quoted-strings, or, when non-ASCII, RFC 2231
+  `attr*=utf-8''...` extended values.
+- Each multipart gets the first boundary `=_0`, `=_1`, ... that occurs
+  nowhere in its encoded children (RFC 2046 §5.1.1).
+- `write_message` returns `WriteError` instead of emitting a CR or LF from
+  a raw value, an addr-spec, a `msg-id`, or a media or disposition type, so
+  caller data cannot inject a header field. Line breaks inside `Text`
+  values are carried inside encoded words.
+- `Body::Unencoded` is labelled `7bit` when every byte is ASCII, else
+  `8bit`; it never checks for NUL or lines past 998 bytes, so callers must
+  not pass such content there.
 
 ## Design invariants
 

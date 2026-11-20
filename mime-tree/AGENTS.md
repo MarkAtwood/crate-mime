@@ -18,6 +18,9 @@ pub fn decode_body_value(
     max_bytes: Option<usize>,
 ) -> Result<DecodedBodyValue, ParseError>;
 
+// Write header fields and a MIME part tree as RFC 5322 bytes (inverse of parse)
+pub fn write_message(headers: &[Header], body: &Part) -> Result<Vec<u8>, WriteError>;
+
 // Public fields on ParsedMessage — access directly, no methods
 pub struct ParsedMessage {
     pub part_index: ParsedPart,       // MIME part tree rooted at the message
@@ -52,6 +55,7 @@ src/
   walk.rs         — RFC 8621 §4.1.4 body structure algorithm
   decode.rs       — decode_body_value(): slice + transfer-decode + encoding_rs
   error.rs        — ParseError type
+  writer.rs       — write_message(): RFC 5322 / MIME writer (RFC 2047, RFC 2231 encoding)
 ```
 
 ## Standards Reference
