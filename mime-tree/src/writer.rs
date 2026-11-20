@@ -93,7 +93,14 @@ impl Header {
 pub struct Part {
     /// Media type as `type/subtype` (RFC 2045 §5.1).
     pub content_type: String,
-    /// Content-Type parameters. The writer adds `boundary` to a multipart.
+    /// Content-Type parameters.
+    ///
+    /// For a [`Body::Multipart`] body the writer chooses the boundary itself
+    /// and adds it as the `boundary` parameter; a `boundary` given here (in
+    /// any letter case) is dropped, since the writer can only guarantee that
+    /// its own boundary is absent from the children. For a [`Body::Text`]
+    /// body without a `charset` parameter (in any letter case) the writer
+    /// adds `charset=utf-8`, the charset it encodes the text in.
     pub params: Vec<(String, String)>,
     /// Content-Disposition type and parameters (RFC 2183), if any.
     pub disposition: Option<(String, Vec<(String, String)>)>,
@@ -107,7 +114,8 @@ pub struct Part {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Body {
     /// Text written quoted-printable as UTF-8. Each LF or CRLF in the text
-    /// becomes a CRLF line break.
+    /// becomes a CRLF line break. The part is labelled `charset=utf-8`
+    /// unless [`Part::params`] already has a `charset`.
     Text(String),
     /// Bytes written base64.
     Binary(Vec<u8>),
@@ -168,7 +176,17 @@ pub fn write_message(headers: &[Header], body: &Part) -> Result<Vec<u8>, WriteEr
 fn write_part(out: &mut Vec<u8>, part: &Part) -> Result<(), WriteError> {
     let mut params = part.params.clone();
     let (encoding, body) = match &part.body {
-        Body::Text(text) => (Some("quoted-printable"), quoted_printable(text)),
+        Body::Text(text) => {
+            // RFC 2045 §5.2 defaults an unlabelled text body to US-ASCII,
+            // but the text is encoded as UTF-8, so say so.
+            if !params
+                .iter()
+                .any(|(name, _)| name.eq_ignore_ascii_case("charset"))
+            {
+                params.push(("charset".into(), "utf-8".into()));
+            }
+            (Some("quoted-printable"), quoted_printable(text))
+        }
         Body::Binary(bytes) => (Some("base64"), base64(bytes)),
         Body::Unencoded(bytes) => {
             // ponytail: never labels `binary`; a body with NUL or lines past
@@ -184,10 +202,7 @@ fn write_part(out: &mut Vec<u8>, part: &Part) -> Result<(), WriteError> {
                     write_part(&mut buf, child).map(|()| buf)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let boundary = (0..)
-                .map(|n| format!("=_{n}"))
-                .find(|b| !encoded.iter().any(|c| contains(c, b.as_bytes())))
-                .expect("an unbounded counter yields a boundary absent from finite input");
+            let boundary = format!("=_{}", unused_boundary_number(&encoded));
             let mut buf = Vec::new();
             for child in &encoded {
                 buf.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
@@ -195,6 +210,9 @@ fn write_part(out: &mut Vec<u8>, part: &Part) -> Result<(), WriteError> {
                 buf.extend_from_slice(b"\r\n");
             }
             buf.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+            // A caller's boundary would be written alongside ours, and a
+            // reader may pick it instead, so only ours is kept.
+            params.retain(|(name, _)| !name.eq_ignore_ascii_case("boundary"));
             params.push(("boundary".into(), boundary));
             (None, buf)
         }
@@ -229,8 +247,41 @@ fn write_part(out: &mut Vec<u8>, part: &Part) -> Result<(), WriteError> {
     Ok(())
 }
 
-fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|w| w == needle)
+/// The smallest `n` such that the boundary `=_{n}` occurs in none of
+/// `children` (RFC 2046 §5.1.1).
+///
+/// One pass over the children: every `=_` followed by decimal digits
+/// contains `=_{n}` for each leading run of those digits that is a canonical
+/// decimal numeral (no leading zero unless it is `0`), so those `n` are
+/// taken. Any other `n` does not occur, since `=_{n}` can only match at a
+/// `=_` followed by exactly the digits of `n`.
+fn unused_boundary_number(children: &[Vec<u8>]) -> u64 {
+    let mut taken = std::collections::HashSet::new();
+    for child in children {
+        let mut rest = child.as_slice();
+        while let Some(at) = rest.windows(2).position(|w| w == b"=_") {
+            rest = &rest[at + 2..];
+            let digits = rest.iter().take_while(|b| b.is_ascii_digit()).count();
+            let mut n: u64 = 0;
+            for (i, &d) in rest[..digits].iter().enumerate() {
+                if i == 1 && n == 0 {
+                    // `=_0` was taken; `=_0d…` is no canonical numeral.
+                    break;
+                }
+                match n
+                    .checked_mul(10)
+                    .and_then(|m| m.checked_add(u64::from(d - b'0')))
+                {
+                    Some(m) => n = m,
+                    // Past u64::MAX: larger than any boundary chosen below.
+                    None => break,
+                }
+                taken.insert(n);
+            }
+        }
+    }
+    // At most `taken.len()` numbers are taken, so this ends by then.
+    (0..).find(|n| !taken.contains(n)).unwrap_or(u64::MAX)
 }
 
 /// Render `value; p1=v1; p2=v2` with RFC 2045 §5.1 / RFC 2231 parameter
@@ -872,6 +923,121 @@ mod tests {
                 Err(WriteError::InvalidFieldName(name.into()))
             );
         }
+    }
+
+    fn leaf(content_type: &str, params: Vec<(String, String)>, body: Body) -> Part {
+        Part {
+            content_type: content_type.into(),
+            params,
+            disposition: None,
+            headers: Vec::new(),
+            body,
+        }
+    }
+
+    /// A caller-supplied `boundary` (any case) is dropped in favour of the
+    /// writer's own, so a child line `--x` stays body text. Before the fix
+    /// the header read `boundary=x; boundary="=_0"`.
+    #[test]
+    fn caller_boundary_param_is_replaced() {
+        let body = leaf(
+            "multipart/mixed",
+            vec![
+                ("BOUNDARY".into(), "x".into()),
+                ("boundary".into(), "y".into()),
+            ],
+            Body::Multipart(vec![leaf(
+                "text/plain",
+                Vec::new(),
+                Body::Unencoded(b"a\r\n--x\r\nb".to_vec()),
+            )]),
+        );
+        assert_eq!(
+            written(&[], &body),
+            "MIME-Version: 1.0\r\n\
+             Content-Type: multipart/mixed; boundary=\"=_0\"\r\n\
+             \r\n\
+             --=_0\r\n\
+             Content-Type: text/plain\r\n\
+             Content-Transfer-Encoding: 7bit\r\n\
+             \r\n\
+             a\r\n--x\r\nb\r\n\
+             --=_0--\r\n"
+        );
+    }
+
+    /// `Body::Text` is UTF-8, so an unlabelled one gets `charset=utf-8`
+    /// (RFC 2045 §5.2 would otherwise read it as US-ASCII). `caf=C3=A9` is
+    /// Python `quopri.encodestring("café".encode())`.
+    #[test]
+    fn text_body_without_charset_is_labelled_utf8() {
+        let part = leaf("text/plain", Vec::new(), Body::Text("café".into()));
+        assert_eq!(
+            written(&[], &part),
+            "MIME-Version: 1.0\r\n\
+             Content-Type: text/plain; charset=utf-8\r\n\
+             Content-Transfer-Encoding: quoted-printable\r\n\
+             \r\n\
+             caf=C3=A9"
+        );
+    }
+
+    /// A caller's `charset` (any case) is kept and none is added.
+    #[test]
+    fn text_body_keeps_caller_charset() {
+        let part = leaf(
+            "text/plain",
+            vec![("Charset".into(), "us-ascii".into())],
+            Body::Text("hi".into()),
+        );
+        assert!(written(&[], &part).contains("Content-Type: text/plain; Charset=us-ascii\r\n"));
+    }
+
+    /// `=_N` must not occur anywhere in a child (RFC 2046 §5.1.1), counting
+    /// occurrences inside longer strings: `=_10` contains `=_1`, `=_01`
+    /// contains `=_0` but not `=_1`.
+    #[test]
+    fn boundary_skips_numbers_occurring_in_children() {
+        let boundary_for = |child: &[u8]| {
+            let body = leaf(
+                "multipart/mixed",
+                Vec::new(),
+                Body::Multipart(vec![leaf(
+                    "application/octet-stream",
+                    Vec::new(),
+                    Body::Unencoded(child.to_vec()),
+                )]),
+            );
+            let out = written(&[], &body);
+            let start = out.find("boundary=\"").unwrap() + "boundary=\"".len();
+            let end = start + out[start..].find('"').unwrap();
+            out[start..end].to_owned()
+        };
+        assert_eq!(boundary_for(b"plain"), "=_0");
+        assert_eq!(boundary_for(b"=_0 =_1 =_2"), "=_3");
+        assert_eq!(boundary_for(b"=_10 x=_0"), "=_2");
+        assert_eq!(boundary_for(b"=_01"), "=_1");
+        assert_eq!(boundary_for(b"=_=_0=_1"), "=_2");
+        assert_eq!(boundary_for(b"=_99999999999999999999999 =_0"), "=_1");
+    }
+
+    /// A child listing `=_0` … `=_15999` forces boundary `=_16000`. The
+    /// old per-candidate rescan took seconds here; one pass is instant.
+    #[test]
+    fn boundary_choice_is_linear_in_child_size() {
+        let mut child = Vec::new();
+        for n in 0..16_000 {
+            child.extend_from_slice(format!("=_{n}\r\n").as_bytes());
+        }
+        let body = leaf(
+            "multipart/mixed",
+            Vec::new(),
+            Body::Multipart(vec![leaf("text/plain", Vec::new(), Body::Unencoded(child))]),
+        );
+        let started = std::time::Instant::now();
+        let out = written(&[], &body);
+        assert!(out.contains("boundary=\"=_16000\""));
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
     }
 
     #[test]
