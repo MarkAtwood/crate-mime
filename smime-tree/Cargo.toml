@@ -36,16 +36,9 @@ getrandom = { version = "0.4", features = ["sys_rng"] }
 serde = { version = "1", features = ["derive"] }
 subtle = { version = "2" }
 zeroize = { version = "1", features = ["zeroize_derive"] }
-# Certificate chain validation via the PKIX crate family.
-# pkix-chain still uses x509-cert 0.2, while the rest of smime-tree uses
-# x509-cert 0.3 (required by the `cms` crate). Certificates are bridged
-# via DER round-trip in cert.rs (GitHub issue #2).
-pkix-chain = { version = "0.4", features = ["rustcrypto"] }
-x509-cert-stable = { package = "x509-cert", version = "0.2" }
-der-stable = { package = "der", version = "0.7" }
-# signature 2.x is the error type of pkix-chain's `SignatureVerifier` trait,
-# implemented by `cert::SmimeChainVerifier`.
-signature-stable = { package = "signature", version = "2" }
+# Certificate chain validation via the PKIX crate family (x509-cert 0.3,
+# der 0.8, signature 3 — the same stack as `cms`).
+pkix-chain = { version = "0.5", features = ["rustcrypto"] }
 
 [dev-dependencies]
 mime-tree = { version = "0.6.1", path = "../mime-tree" }

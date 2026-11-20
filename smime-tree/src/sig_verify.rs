@@ -1,8 +1,9 @@
-//! Shared signature-verification helpers used by both `cert` (issuer-sig chain
-//! validation) and `verify` (CMS SignerInfo signature verification).
+//! Signature-verification helpers for CMS `SignerInfo` signatures, used by
+//! `verify`.  (Certificate signatures in the chain are verified by
+//! `pkix_chain::DefaultVerifier`; see `cert`.)
 //!
-//! Each function accepts an error-constructor closure so the caller can map
-//! failures to the appropriate `SmimeError` variant (`CertChain` or `Other`).
+//! Each function accepts an error-constructor closure so the caller can choose
+//! the `SmimeError` variant for an invalid signature.
 
 use const_oid::db::rfc5912::{
     ECDSA_WITH_SHA_256, ECDSA_WITH_SHA_384, ECDSA_WITH_SHA_512, ID_EC_PUBLIC_KEY, SECP_256_R_1,
@@ -59,8 +60,6 @@ impl EcdsaHash {
     /// Map the DER content octets of a signature algorithm OID to the hash it
     /// names, or `None` if the OID is not `ecdsa-with-SHA256/384/512`.
     ///
-    /// Takes raw OID bytes so callers using either the `der` 0.7 or 0.8
-    /// `ObjectIdentifier` type can share this function.
     pub(crate) fn from_sig_alg_oid_bytes(oid: &[u8]) -> Option<Self> {
         if oid == ECDSA_WITH_SHA_256.as_bytes() {
             Some(Self::Sha256)

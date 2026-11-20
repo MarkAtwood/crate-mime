@@ -1,23 +1,24 @@
 //! Certificate chain validation for S/MIME verify.
 //!
 //! Delegates RFC 5280 path validation to [`pkix_chain::verify_chain`] with
-//! [`SmimeChainVerifier`] as the signature backend, then applies the S/MIME
-//! signer-certificate purpose checks of RFC 8550 §4.4 to the leaf.
+//! [`pkix_chain::DefaultVerifier`] as the signature backend, then applies the
+//! S/MIME signer-certificate purpose checks of RFC 8550 §4.4 to the leaf.
 //!
-//! Because the `cms` crate requires x509-cert 0.3 and
-//! `pkix-chain` requires x509-cert 0.2, all certificates are bridged
-//! via DER round-trip in [`bridge_cert`] before being passed to pkix.
+//! `pkix-chain` and `cms` share x509-cert 0.3, so the certificates parsed from
+//! the CMS `SignedData` are handed to pkix as they are.  They must not be
+//! re-encoded on the way: x509-cert 0.3 encodes validity times before 2050 as
+//! `UTCTime`, which would invalidate the signature of a certificate whose
+//! issuer used `GeneralizedTime` for them.  pkix verifies certificate
+//! signatures over the times as parsed.
 
 use const_oid::db::rfc5912::{ANY_EXTENDED_KEY_USAGE, ID_KP_EMAIL_PROTECTION};
 use der::Encode;
-use der_stable::Decode as _;
 use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 use x509_cert::Certificate;
 
 use crate::error::{CertChainError, SmimeError};
 use crate::key::RevocationChecker;
-use crate::sig_verify::{self, EcdsaHash};
 
 /// Maximum chain depth (leaf + intermediates, excluding the trust anchor).
 /// Must match `ValidationPolicy::max_path_len` set in `validate_chain`.
@@ -41,17 +42,18 @@ const MAX_DEPTH: usize = 10;
 ///
 /// # Algorithm support
 ///
-/// Certificate signatures are verified by [`SmimeChainVerifier`]:
+/// Certificate signatures are verified by [`pkix_chain::DefaultVerifier`]:
 ///
 /// - ECDSA (`ecdsa-with-SHA256`, `ecdsa-with-SHA384`, `ecdsa-with-SHA512`) with
-///   an issuer key on P-256 or P-384, in any hash/curve combination — the
-///   curve is taken from the issuer key, the hash from the signature OID.
-/// - RSA PKCS#1 v1.5 with SHA-256, SHA-384 or SHA-512, delegated to
-///   `pkix-chain`'s `DefaultVerifier`.
+///   an issuer key on P-256, P-384 or P-521, in any hash/curve combination —
+///   the curve is taken from the issuer key, the hash from the signature OID.
+/// - RSA PKCS#1 v1.5 and RSASSA-PSS with SHA-256, SHA-384 or SHA-512.
+/// - Ed25519.
 ///
-/// Chains containing certificates signed with any other algorithm (RSA-PSS,
-/// Ed25519, ECDSA with a P-521 issuer key, ...) fail with
-/// `CertChainError::SignatureVerification`.
+/// A certificate whose signature does not verify fails with
+/// `CertChainError::SignatureVerification`; one whose signature cannot be
+/// checked (any other algorithm or issuer key, or a malformed issuer key)
+/// fails with `CertChainError::SignatureNotVerified`.
 pub(crate) fn validate_chain(
     signer_cert: &Certificate,
     bag: &[Certificate],
@@ -66,16 +68,13 @@ pub(crate) fn validate_chain(
     // Step 1: Order intermediates from the bag into a leaf-first chain.
     let chain = build_chain(signer_cert, bag, trust_anchors)?;
 
-    // Step 2: Bridge to x509-cert 0.2 (required by pkix-chain).
-    let chain_stable: Vec<x509_cert_stable::Certificate> = chain
+    // Step 2: pkix-chain takes owned certificates and anchors.  Clone the
+    // parsed values; do not round-trip them through DER (see the module docs).
+    let chain_owned: Vec<Certificate> = chain.iter().map(|c| (*c).clone()).collect();
+    let anchors: Vec<pkix_chain::TrustAnchor> = trust_anchors
         .iter()
-        .map(|c| bridge_cert(c))
-        .collect::<Result<_, _>>()?;
-
-    let anchors_stable: Vec<pkix_chain::TrustAnchor> = trust_anchors
-        .iter()
-        .map(|a| bridge_cert(a).map(pkix_chain::TrustAnchor::from_cert))
-        .collect::<Result<_, _>>()?;
+        .map(|a| pkix_chain::TrustAnchor::from_cert(a.clone()))
+        .collect();
 
     // Step 3: Validate via pkix-chain (signatures, validity, chain linkage).
     // NoRevocation: revocation is applied in step 5 on the signature-verified chain.
@@ -92,10 +91,10 @@ pub(crate) fn validate_chain(
     let mut policy = pkix_chain::ValidationPolicy::new(now_unix);
     policy.max_path_len = MAX_DEPTH as u8;
     pkix_chain::verify_chain(
-        &chain_stable,
-        &anchors_stable,
+        &chain_owned,
+        &anchors,
         &policy,
-        &SmimeChainVerifier,
+        &pkix_chain::DefaultVerifier,
         &pkix_chain::NoRevocation,
         &pkix_chain::NoAiaFetcher,
     )
@@ -175,55 +174,6 @@ fn check_signer_purpose(leaf: &Certificate) -> Result<(), SmimeError> {
     }
 
     Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Certificate signature verification backend
-// ---------------------------------------------------------------------------
-
-/// [`pkix_chain::SignatureVerifier`] that selects the ECDSA curve from the
-/// issuer's key.
-///
-/// `pkix-chain`'s `DefaultVerifier` dispatches on the signature OID alone and
-/// assumes `ecdsa-with-SHA256` means P-256 and `ecdsa-with-SHA384` means P-384,
-/// so it rejects, for example, a certificate issued by a P-384 CA with
-/// `ecdsa-with-SHA256` (the OpenSSL default digest).  This verifier handles
-/// `ecdsa-with-SHA256/384/512` itself via [`sig_verify::verify_ecdsa_raw`],
-/// reading the curve from the issuer SPKI's `namedCurve` and building the key
-/// from the raw SEC1 point with `p256`/`p384`, and delegates every other
-/// algorithm (RSA PKCS#1 v1.5) to `DefaultVerifier`.
-struct SmimeChainVerifier;
-
-impl pkix_chain::SignatureVerifier for SmimeChainVerifier {
-    fn verify_signature(
-        &self,
-        algorithm: x509_cert_stable::spki::AlgorithmIdentifierRef<'_>,
-        issuer_spki: x509_cert_stable::spki::SubjectPublicKeyInfoRef<'_>,
-        message: &[u8],
-        signature: &[u8],
-    ) -> Result<(), signature_stable::Error> {
-        let Some(hash) = EcdsaHash::from_sig_alg_oid_bytes(algorithm.oid.as_bytes()) else {
-            return pkix_chain::DefaultVerifier.verify_signature(
-                algorithm,
-                issuer_spki,
-                message,
-                signature,
-            );
-        };
-        let curve = issuer_spki.algorithm.parameters.and_then(|p| {
-            p.decode_as::<x509_cert_stable::spki::ObjectIdentifier>()
-                .ok()
-        });
-        sig_verify::verify_ecdsa_raw(
-            issuer_spki.algorithm.oid.as_bytes(),
-            curve.as_ref().map(|c| c.as_bytes()),
-            issuer_spki.subject_public_key.raw_bytes(),
-            hash,
-            message,
-            signature,
-        )
-        .map_err(|_| signature_stable::Error::new())
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -319,29 +269,12 @@ fn build_chain<'a>(
 }
 
 // ---------------------------------------------------------------------------
-// DER bridge
-// ---------------------------------------------------------------------------
-
-/// DER-encode an x509-cert 0.3 `Certificate` and re-parse as x509-cert 0.2.
-///
-/// Both crate versions represent the same RFC 5280 ASN.1 structure; the
-/// round-trip is lossless. This bridge is needed because `cms` (and the
-/// rest of smime-tree) uses x509-cert 0.3 while
-/// `pkix-chain` requires x509-cert 0.2.
-fn bridge_cert(cert: &Certificate) -> Result<x509_cert_stable::Certificate, SmimeError> {
-    let der = cert.to_der().map_err(|e| {
-        SmimeError::CertChain(CertChainError::Other(format!("cert DER encode: {e}")))
-    })?;
-    x509_cert_stable::Certificate::from_der(&der)
-        .map_err(|e| SmimeError::CertChain(CertChainError::Other(format!("cert DER bridge: {e}"))))
-}
-
-// ---------------------------------------------------------------------------
 // Error mapping
 // ---------------------------------------------------------------------------
 
-/// Map a `pkix_chain::Error` to `SmimeError`, using the rc chain for
-/// subject/not_after strings in structured error variants.
+/// Map a `pkix_chain::Error` to `SmimeError`, taking the subject and
+/// `notAfter` strings of the structured variants from `chain`, the leaf-first
+/// chain that was passed to pkix (pkix error indices index into it).
 fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
     use pkix_chain::pkix_path::Error as PE;
     use pkix_chain::Error as CE;
@@ -365,6 +298,23 @@ fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
         CE::Path(PE::SignatureInvalid { index }) => CertChainError::SignatureVerification {
             subject: subject_at(index),
         },
+        // The verifier could not check the signature (unsupported algorithm
+        // or issuer key, malformed issuer key).  Not evidence of forgery, so
+        // not reported as `SignatureVerification`.
+        CE::Path(PE::SignatureNotVerified { index, reason }) => {
+            CertChainError::SignatureNotVerified {
+                subject: subject_at(index),
+                reason: reason.to_string(),
+            }
+        }
+        CE::Path(PE::MalformedCertificate { index }) => CertChainError::MalformedCertificate {
+            subject: subject_at(index),
+        },
+        CE::Path(PE::NameConstraintViolation { index }) => {
+            CertChainError::NameConstraintViolation {
+                subject: subject_at(index),
+            }
+        }
         CE::Path(PE::NotCA { index }) | CE::Path(PE::KeyUsageMissing { index }) => {
             CertChainError::NotACa {
                 subject: subject_at(index),
@@ -391,7 +341,7 @@ fn map_pkix_error(e: pkix_chain::Error, chain: &[&Certificate]) -> SmimeError {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_chain, check_signer_purpose};
+    use super::{build_chain, check_signer_purpose, map_pkix_error};
     use crate::error::{CertChainError, SmimeError};
     use der::Decode as _;
     use x509_cert::Certificate;
@@ -513,5 +463,52 @@ mod tests {
     fn signer_purpose_accepts_cert_without_usage_extensions() {
         let cert = Certificate::from_der(&from_hex(SELF_SIGNED_CERT_HEX)).expect("parse cert");
         assert_eq!(check_signer_purpose(&cert), Ok(()));
+    }
+
+    /// pkix error variants map to the `CertChainError` naming the certificate
+    /// at the reported chain index; a signature that could not be checked is
+    /// not reported as a signature mismatch.
+    #[test]
+    fn map_pkix_error_variants() {
+        use pkix_chain::pkix_path::Error as PE;
+        use pkix_chain::{Error as CE, VerificationErrorKind};
+
+        let leaf = Certificate::from_der(&from_hex(TLS_SERVER_CERT_HEX)).expect("parse leaf");
+        let ca = Certificate::from_der(&from_hex(SELF_SIGNED_CERT_HEX)).expect("parse ca");
+        let chain = [&leaf, &ca];
+        let map = |e: PE| match map_pkix_error(CE::Path(e), &chain) {
+            SmimeError::CertChain(c) => c,
+            other => panic!("expected CertChain, got {other:?}"),
+        };
+
+        assert_eq!(
+            map(PE::SignatureNotVerified {
+                index: 1,
+                reason: VerificationErrorKind::UnsupportedAlgorithm,
+            }),
+            CertChainError::SignatureNotVerified {
+                subject: "C=US,O=Test,CN=Test CA".into(),
+                reason: "unsupported signature algorithm".into(),
+            }
+        );
+        assert_eq!(
+            map(PE::SignatureInvalid { index: 0 }),
+            CertChainError::SignatureVerification {
+                subject: "CN=Regress tls".into(),
+            }
+        );
+        assert_eq!(
+            map(PE::MalformedCertificate { index: 0 }),
+            CertChainError::MalformedCertificate {
+                subject: "CN=Regress tls".into(),
+            }
+        );
+        assert_eq!(
+            map(PE::NameConstraintViolation { index: 0 }),
+            CertChainError::NameConstraintViolation {
+                subject: "CN=Regress tls".into(),
+            }
+        );
+        assert_eq!(map(PE::PathTooLong), CertChainError::TooDeep);
     }
 }

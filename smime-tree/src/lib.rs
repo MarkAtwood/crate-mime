@@ -40,10 +40,14 @@
 //! - **Supported algorithms**:
 //!   - Sign: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA with SHA-256 or SHA-384
 //!     (by default P-256 → SHA-256, P-384 → SHA-384).
-//!   - Verify (message and certificate signatures): RSA PKCS#1 v1.5
-//!     (SHA-256/384/512); ECDSA with a P-256 or P-384 key and SHA-256, SHA-384
-//!     or SHA-512 in any combination (the curve comes from the key, the hash
-//!     from the signature algorithm).  P-521 is not supported.
+//!   - Verify, message signatures: RSA PKCS#1 v1.5 (SHA-256/384/512); ECDSA
+//!     with a P-256 or P-384 key and SHA-256, SHA-384 or SHA-512 in any
+//!     combination (the curve comes from the key, the hash from the signature
+//!     algorithm).  P-521, RSA-PSS and Ed25519 signers are not supported.
+//!   - Verify, certificate signatures in the chain (via `pkix-chain`): RSA
+//!     PKCS#1 v1.5 and RSASSA-PSS (SHA-256/384/512); ECDSA with a P-256, P-384
+//!     or P-521 issuer key and SHA-256, SHA-384 or SHA-512 in any combination;
+//!     Ed25519.
 //!   - Encrypt: AES-128-GCM (RSA/P-256 recipients), AES-256-GCM (P-384 recipients) via `AuthEnvelopedData` (RFC 5083).
 //!   - Decrypt: AES-128/256-GCM (`AuthEnvelopedData`) and AES-128/256-CBC (`EnvelopedData`, legacy).
 //!   - Key transport: RSA PKCS#1 v1.5 (`KeyTransRecipientInfo`).
@@ -61,9 +65,10 @@
 //!   indefinite-length BER (e.g. `openssl cms -stream` output) is rejected
 //!   with `SmimeError::Der`.  Both decode the whole input into memory before
 //!   applying their size/count limits, so callers must bound input length.
-//! * **RSA-PSS signatures are not supported** for certificate chain validation.
-//!   Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
-//!   signatures are rare in practice. File an issue if you need it.
+//! * **RSA-PSS, Ed25519 and P-521 message signatures are not supported.**
+//!   A signer using one fails verification with an unsupported-algorithm
+//!   error (certificate chains using them do validate).  File an issue if you
+//!   need it.
 //! * **RSA key transport uses PKCS#1 v1.5** (`ktri`), not RSAES-OAEP. PKCS#1 v1.5 is
 //!   deprecated by RFC 8017 in favour of OAEP and is susceptible to Bleichenbacher
 //!   padding oracle attacks in interactive decryption scenarios.

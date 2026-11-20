@@ -2203,3 +2203,106 @@ fn test_regress_ktri_decrypt_cek_errors_are_uniform() {
         assert_eq!(got, e);
     }
 }
+
+// ===========================================================================
+// Regression tests: pkix-chain 0.5 migration (GitHub issue #2)
+//
+// Fixtures generated with OpenSSL 3.0 (msg.txt as in the section above):
+//
+//   openssl ecparam -name prime256v1 -genkey -noout -out ca.key
+//   openssl req -new -x509 -key ca.key -sha256 -days 3650 -subj "/CN=Regress GT CA" \
+//     -addext basicConstraints=critical,CA:TRUE \
+//     -addext keyUsage=critical,keyCertSign,cRLSign -out ca.pem
+//   leaf gt sha256 "$SM" "$EM"; leaf sha1 sha1 "$SM" "$EM"   # `leaf` as above
+//                                                            # but on prime256v1
+//
+// `gt.der` is `gt.pem` with both validity times rewritten from UTCTime
+// (`YYMMDDhhmmssZ`) to GeneralizedTime (`20YYMMDDhhmmssZ`, same instant) and
+// the new TBSCertificate re-signed with `openssl dgst -sha256 -sign ca.key`,
+// so its notBefore/notAfter are GeneralizedTime dates before 2050.  RFC 5280
+// §4.1.2.5 says CAs MUST NOT do that, but receivers see such certificates and
+// OpenSSL accepts them.
+//
+//   openssl cms -sign -binary -in msg.txt -signer gt.pem -inkey gt.key \
+//     -md sha256 -outform DER -out s_gt.der          # gt.pem = PEM of gt.der
+//   openssl cms -sign -binary -in msg.txt -signer sha1.pem -inkey sha1.key \
+//     -md sha256 -outform DER -out s_sha1.der
+//
+// Oracle: `openssl verify -CAfile ca.pem gt.pem` prints "OK", and
+// `openssl cms -verify -binary -inform DER -in X.der -content msg.txt
+// -CAfile ca.pem` prints "Verification successful" for both messages.
+// `s_sha1` is accepted by OpenSSL but uses `ecdsa-with-SHA1` for the leaf
+// certificate, which pkix-chain does not implement: it must be reported as
+// unverifiable, not as a bad signature.
+//
+// Certificates are valid 2026-11-20 .. 2036-11-17; tests use 2030-01-01.
+// ===========================================================================
+
+const REGRESS_GT_CA_CERT_HEX: &str = "308201953082013ba003020102021467a45cc858b2f302c2185ab9539c0b52160f47d3300a06082a8648ce3d04030230183116301406035504030c0d52656772657373204754204341301e170d3236313132303137343232395a170d3336313131373137343232395a30183116301406035504030c0d526567726573732047542043413059301306072a8648ce3d020106082a8648ce3d030107034200049544e2ff9b3de4e461828f5f5d1b7492d7ad27e94f701a8df1ddfd3877c686f01b6503791d4423a3ebafe6c2738f42d53fe766e8c826c614c4aec77e8aedfbfaa3633061301d0603551d0e0416041461d1eee8494f661fdbf6c48090ca323463852587301f0603551d2304183016801461d1eee8494f661fdbf6c48090ca323463852587300f0603551d130101ff040530030101ff300e0603551d0f0101ff040403020106300a06082a8648ce3d0403020348003045022056b81e2ed7ae931cfc0ebc362c129faca2a9435b647277eb5f96b9d71e20ce8f022100df7b0ee08c5bbad934e66180bbed784f8fdd68be1471a10235eb98b7ac708d62";
+
+const GT_VALIDITY_LEAF_CERT_HEX: &str = "3082019930820140a003020102021424152f342e2a8b33b5ffc335cc401ed4140d9f02300a06082a8648ce3d04030230183116301406035504030c0d526567726573732047542043413022180f32303236313132303137343232395a180f32303336313131373137343232395a30153113301106035504030c0a526567726573732067743059301306072a8648ce3d020106082a8648ce3d030107034200043780448b9b7926b66d578d6b2fb3cbfee871dd61af2eb175ee78a59dfb42ba80e240393de05cc2d72dba8d7a97e03b8af83709de6287783a77426927a434ff0ea3673065300e0603551d0f0101ff04040302078030130603551d25040c300a06082b06010505070304301d0603551d0e04160414131fb953cd72bd339b224cf8d9c0949201725798301f0603551d2304183016801461d1eee8494f661fdbf6c48090ca323463852587300a06082a8648ce3d040302034700304402205ac1a56b3ca205c47e8fba5784eda5ea06ec7357861d4a9857a73428f5e89fb302205c4914c2f773a4a975cc84c24dd90f33b602ea0c9028e6e441c0fc6056431a8e";
+
+const SIG_GT_VALIDITY_LEAF_HEX: &str = "3082035a06092a864886f70d010702a082034b30820347020101310d300b0609608648016503040201300b06092a864886f70d010701a082019d3082019930820140a003020102021424152f342e2a8b33b5ffc335cc401ed4140d9f02300a06082a8648ce3d04030230183116301406035504030c0d526567726573732047542043413022180f32303236313132303137343232395a180f32303336313131373137343232395a30153113301106035504030c0a526567726573732067743059301306072a8648ce3d020106082a8648ce3d030107034200043780448b9b7926b66d578d6b2fb3cbfee871dd61af2eb175ee78a59dfb42ba80e240393de05cc2d72dba8d7a97e03b8af83709de6287783a77426927a434ff0ea3673065300e0603551d0f0101ff04040302078030130603551d25040c300a06082b06010505070304301d0603551d0e04160414131fb953cd72bd339b224cf8d9c0949201725798301f0603551d2304183016801461d1eee8494f661fdbf6c48090ca323463852587300a06082a8648ce3d040302034700304402205ac1a56b3ca205c47e8fba5784eda5ea06ec7357861d4a9857a73428f5e89fb302205c4914c2f773a4a975cc84c24dd90f33b602ea0c9028e6e441c0fc6056431a8e318201833082017f020101303030183116301406035504030c0d52656772657373204754204341021424152f342e2a8b33b5ffc335cc401ed4140d9f02300b0609608648016503040201a081e4301806092a864886f70d010903310b06092a864886f70d010701301c06092a864886f70d010905310f170d3236313132303137343232395a302f06092a864886f70d01090431220420a30bc77910364a1f240bd2a04e8f46cd621f984bf1e5679360444184548575e2307906092a864886f70d01090f316c306a300b060960864801650304012a300b0609608648016503040116300b0609608648016503040102300a06082a864886f70d0307300e06082a864886f70d030202020080300d06082a864886f70d0302020140300706052b0e030207300d06082a864886f70d0302020128300a06082a8648ce3d04030204483046022100e910da5140517e08e700c1dcd4cad583269d68f5d17a13c3bbcad908e02d487302210084327889db30b1e945b40c22299f1254a3b73a860273ab8e3037f57e4a6d6077";
+
+const SIG_SHA1_ISSUED_LEAF_HEX: &str = "3082035606092a864886f70d010702a082034730820343020101310d300b0609608648016503040201300b06092a864886f70d010701a082019a308201963082013da003020102021424152f342e2a8b33b5ffc335cc401ed4140d9f03300906072a8648ce3d040130183116301406035504030c0d52656772657373204754204341301e170d3236313132303137343232395a170d3336313131373137343232395a30173115301306035504030c0c5265677265737320736861313059301306072a8648ce3d020106082a8648ce3d0301070342000460d6dcbfd42394d5aad812dd5ba8faa42504899af5091ee70837a13c33bba3c850404d36564094acc89d859aba83d03f00dd987c1d7a994ad772702f3eecddf7a3673065300e0603551d0f0101ff04040302078030130603551d25040c300a06082b06010505070304301d0603551d0e041604146ee39c2d07c39749dc0541882dd220d272c44603301f0603551d2304183016801461d1eee8494f661fdbf6c48090ca323463852587300906072a8648ce3d04010348003045022100ac1e2cddec270a34d89d953cf12b1a25a288571c12ffaba60c264e5d73d17c26022036d00c188c375ee3ac0e0340df268121ca959a11542898567a83faedf4033754318201823082017e020101303030183116301406035504030c0d52656772657373204754204341021424152f342e2a8b33b5ffc335cc401ed4140d9f03300b0609608648016503040201a081e4301806092a864886f70d010903310b06092a864886f70d010701301c06092a864886f70d010905310f170d3236313132303137343232395a302f06092a864886f70d01090431220420a30bc77910364a1f240bd2a04e8f46cd621f984bf1e5679360444184548575e2307906092a864886f70d01090f316c306a300b060960864801650304012a300b0609608648016503040116300b0609608648016503040102300a06082a864886f70d0307300e06082a864886f70d030202020080300d06082a864886f70d0302020140300706052b0e030207300d06082a864886f70d0302020128300a06082a8648ce3d04030204473045022051f0689eef8f3a438538f3e3972f7ced9f53d1ccdef3c226b8dc2bf70bc498e4022100c5c9d1e7a0d220a6c0c80756a999a2147697005dedd7c687a00feb83a9a79311";
+
+fn regress_gt_verify_error(sig_hex: &str) -> Option<String> {
+    let ca = Certificate::from_der(&from_hex(REGRESS_GT_CA_CERT_HEX)).expect("parse GT CA");
+    match verify(
+        REGRESS_MSG,
+        &from_hex(sig_hex),
+        &[ca],
+        regress_now(),
+        &NoRevocationCheck,
+    ) {
+        Ok(r) => {
+            assert!(r.all_verified(), "Ok result must mean verified: {r:?}");
+            None
+        }
+        Err(SmimeError::AllSignersFailed(signers)) => {
+            assert_eq!(signers.len(), 1);
+            Some(signers[0].error.clone().unwrap_or_default())
+        }
+        Err(e) => panic!("unexpected top-level error: {e}"),
+    }
+}
+
+/// The fixture really exercises the hazard: the leaf's validity times parse as
+/// GeneralizedTime, and re-encoding the parsed certificate with x509-cert 0.3
+/// does not reproduce its bytes (it writes UTCTime), so any DER round-trip of
+/// the certificate before signature verification breaks its signature.
+#[test]
+fn test_regress_generalized_time_fixture_does_not_round_trip() {
+    use x509_cert::time::Time;
+    let der = from_hex(GT_VALIDITY_LEAF_CERT_HEX);
+    let cert = Certificate::from_der(&der).expect("parse GeneralizedTime leaf");
+    let validity = cert.tbs_certificate().validity();
+    assert!(matches!(validity.not_before, Time::GeneralTime(_)));
+    assert!(matches!(validity.not_after, Time::GeneralTime(_)));
+    assert_ne!(cert.to_der().expect("re-encode"), der);
+}
+
+/// A signer certificate with GeneralizedTime validity dates before 2050
+/// verifies.  smime-tree 0.4.0 failed it with
+/// `CertChainError::SignatureVerification`: it bridged the certificate to
+/// pkix-chain through a DER round-trip, which rewrote the times.
+/// OpenSSL: verifies.
+#[test]
+fn test_regress_generalized_time_validity_leaf_verifies() {
+    assert_eq!(regress_gt_verify_error(SIG_GT_VALIDITY_LEAF_HEX), None);
+}
+
+/// A certificate signed with an algorithm the chain validator does not
+/// implement (`ecdsa-with-SHA1`) is reported as
+/// `CertChainError::SignatureNotVerified`, not as a signature mismatch.
+#[test]
+fn test_regress_unsupported_cert_signature_algorithm_not_reported_as_forgery() {
+    let err = regress_gt_verify_error(SIG_SHA1_ISSUED_LEAF_HEX)
+        .expect("ecdsa-with-SHA1 certificate signatures are not supported");
+    assert!(
+        err.contains("issuer signature on 'CN=Regress sha1' could not be checked")
+            && err.contains("unsupported signature algorithm"),
+        "expected SignatureNotVerified for CN=Regress sha1, got: {err}"
+    );
+    assert!(!err.contains("does not match"), "{err}");
+}

@@ -110,9 +110,41 @@ pub enum CertChainError {
         /// Issuer DN for which all matching trust anchors were expired.
         issuer: String,
     },
-    /// Certificate signature does not match the issuer's public key.
+    /// Certificate signature does not match the issuer's public key, or is
+    /// not a well-formed signature value.
+    ///
+    /// A signature that could not be checked at all is reported as
+    /// [`CertChainError::SignatureNotVerified`] instead.
     SignatureVerification {
-        /// Subject DN of the certificate whose signature could not be verified.
+        /// Subject DN of the certificate whose signature did not verify.
+        subject: String,
+    },
+    /// The issuer signature on a certificate could not be checked: its
+    /// algorithm or the issuer's key type, curve or size is not supported, or
+    /// the issuer's public key is malformed.
+    ///
+    /// Unlike [`CertChainError::SignatureVerification`], this does not mean
+    /// the signature is wrong, only that the chain cannot be validated.
+    SignatureNotVerified {
+        /// Subject DN of the certificate whose signature could not be checked.
+        subject: String,
+        /// Why the signature could not be checked, for example
+        /// `"unsupported signature algorithm"`.
+        reason: String,
+    },
+    /// A certificate in the chain is structurally invalid: its outer and
+    /// inner signature algorithm OIDs differ, it carries an extension more
+    /// than once, or a security-relevant extension does not decode
+    /// (RFC 5280 §4.1.1.2, §4.2).
+    MalformedCertificate {
+        /// Subject DN of the malformed certificate.
+        subject: String,
+    },
+    /// A certificate violates the name constraints of a CA above it, or
+    /// carries a name that cannot be checked against a constraint in effect
+    /// (RFC 5280 §4.2.1.10).
+    NameConstraintViolation {
+        /// Subject DN of the certificate that failed the check.
         subject: String,
     },
     /// A `pathLen` constraint in a CA certificate was violated.
@@ -174,6 +206,21 @@ impl fmt::Display for CertChainError {
             ),
             CertChainError::SignatureVerification { subject } => {
                 write!(f, "issuer signature on '{subject}' does not match")
+            }
+            CertChainError::SignatureNotVerified { subject, reason } => {
+                write!(
+                    f,
+                    "issuer signature on '{subject}' could not be checked: {reason}"
+                )
+            }
+            CertChainError::MalformedCertificate { subject } => {
+                write!(f, "certificate '{subject}' is malformed")
+            }
+            CertChainError::NameConstraintViolation { subject } => {
+                write!(
+                    f,
+                    "certificate '{subject}' violates issuer name constraints"
+                )
             }
             CertChainError::PathLenViolated {
                 intermediate_count,
