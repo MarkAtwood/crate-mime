@@ -1,5 +1,12 @@
 # Beads - AI-Native Issue Tracking
 
+> **Not dolt.** This file was generated when beads used a Dolt backend. It now
+> runs the flat-file backend (`bd 1.1.0-flatfile.2`): issues are JSON under
+> `.beads/issues/`, versioned by git like any other file. There is no database
+> server, no separate sync, and no `bd dolt` step in any workflow here — the
+> `bd dolt` subcommands still exist in the CLI and their help text is stale.
+
+
 Welcome to Beads! This repository uses **Beads** for issue tracking - a modern, AI-native tool designed to live directly in your codebase alongside your code.
 
 ## What is Beads?
@@ -26,17 +33,16 @@ bd show <issue-id>
 bd update <issue-id> --claim
 bd update <issue-id> --status done
 
-# Sync with Dolt remote
-bd dolt push
 ```
 
 ### Working with Issues
 
 Issues in Beads are:
-- **Git-native**: Stored in Dolt database with version control and branching
+- **Git-native**: stored as JSON under `.beads/issues/` and committed with the
+  repo, so `git push` is the whole of syncing them
 - **AI-friendly**: CLI-first design works perfectly with AI coding agents
 - **Branch-aware**: Issues can follow your branch workflow
-- **Always in sync**: Auto-syncs with your commits
+- **Always in sync**: they are files in the repo, so a commit carries them
 
 ## Why Beads?
 
@@ -51,9 +57,8 @@ Issues in Beads are:
 - Fast, lightweight, and stays out of your way
 
 🔧 **Git Integration**
-- Automatic sync with git commits
-- Branch-aware issue tracking
-- Dolt-native three-way merge resolution
+- Issues travel with the branch they were committed on
+- Conflicts resolve as ordinary text conflicts in the JSON files
 
 ## Get Started with Beads
 

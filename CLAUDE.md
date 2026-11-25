@@ -77,6 +77,17 @@ bd update <id> --claim  # Claim work
 bd close <id>         # Complete work
 ```
 
+**We do not use dolt.** Beads runs its flat-file backend here: issues are JSON
+under `.beads/issues/`, committed with the repo like any other file, so
+`git push` is the whole of "sync the issue database". There is no separate sync
+step and no `bd dolt` command in any workflow.
+
+Expect to be told otherwise. `bd` still ships `bd dolt` subcommands whose own
+help text says "Beads uses a dolt sql-server for all database operations",
+which is stale, and this repository's own checklists listed `bd dolt push` as
+mandatory until it was scrubbed. Both are wrong. Ignore them rather than
+running a command against a backend this project does not have.
+
 - Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
@@ -126,7 +137,6 @@ to per-issue subagents. Coordinate via beads dependency edges, not shared mutabl
 cargo fmt --all && cargo clippy --workspace -- -D warnings && cargo test --workspace
 bd close <completed-ids>
 git pull --rebase
-bd dolt push
 git push
 git status  # must show "up to date with origin"
 ```
@@ -166,7 +176,6 @@ bd close <id>         # Complete work
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
