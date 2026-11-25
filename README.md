@@ -60,11 +60,16 @@ hand-rolled their own implementations using different CMS libraries.
 `smime-tree` is designed to be the shared solution once the underlying
 RustCrypto CMS/X.509 stack stabilizes.
 
-**RSA-PSS CA signatures are not supported** for certificate chain validation.
-Real-world S/MIME CAs overwhelmingly use RSA-PKCS1v15 or ECDSA; RSA-PSS CA
-signatures are rare in practice. File an issue if you need it.
-There is also a version-bridge overhead (DER round-trip per certificate) until
-`pkix-chain` moves to x509-cert 0.3; see [issue #2](https://github.com/MarkAtwood/crate-mime/issues/2).
+**Message signatures are RSA-PKCS1v15 and ECDSA P-256/P-384 only.**
+This is about the `SignerInfo` signature over the message itself: signing
+and verifying with RSA-PSS, Ed25519 or P-521 keys is not implemented. File
+an issue if you need one.
+
+Certificate chain validation is a separate question and is less limited:
+issuer signatures are checked by `pkix_chain::DefaultVerifier`, which
+handles RSA-PKCS1v15, RSASSA-PSS, ECDSA P-256/P-384/P-521 and Ed25519. SHA-1
+based algorithms are refused by design, so a chain still anchored on a
+SHA-1 signature will not validate.
 
 **`mime-tree` is primarily useful as a JMAP body-structure provider.**
 For general-purpose MIME parsing, [`mail-parser`](https://crates.io/crates/mail-parser)
