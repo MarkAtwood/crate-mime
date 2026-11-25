@@ -49,11 +49,25 @@ rm -rf dir              # NOT: rm -r dir
 
 ## Git Commit Policy
 
-git commit and git push require explicit user approval.
+Committing and pushing are ordinary work, not a separate permission. Finish a
+change, run the quality gate above, commit it with a message that explains the
+patch, and push. Do not stop to ask for each one, and do not leave finished work
+sitting in the working tree waiting for approval — an uncommitted fix is a fix
+nobody else can see.
 
-**Exception — fix/test loops**: When operating in a review or fix loop (invoked via a
-`~/PROMPT-*.md` prompt or beads workflow), committing after each fix is permitted without
-asking. Push to remote still requires explicit user confirmation.
+The judgement that still belongs to a human: anything hard to reverse or
+outward-facing beyond a push to this repository's own branch. Rewriting
+published history, force-pushing, tagging a release, or publishing to crates.io
+are decisions to raise rather than take.
+
+### Commit messages: no tool attribution
+
+Never add `Assisted-by`, `Co-Authored-By`, `Generated with`, or any other
+trailer naming a model or tool. Not optional, not configurable.
+
+The commit message records what the patch does and why. Who or what typed it is
+not part of that, and a trailer claiming assistance establishes nothing a
+reviewer can use.
 
 ## Fail Fast
 
