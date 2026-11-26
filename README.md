@@ -67,9 +67,16 @@ an issue if you need one.
 
 Certificate chain validation is a separate question and is less limited:
 issuer signatures are checked by `pkix_chain::DefaultVerifier`, which
-handles RSA-PKCS1v15, RSASSA-PSS, ECDSA P-256/P-384/P-521 and Ed25519. SHA-1
-based algorithms are refused by design, so a chain still anchored on a
-SHA-1 signature will not validate.
+handles RSA-PKCS1v15, RSASSA-PSS, ECDSA P-256/P-384/P-521 and Ed25519.
+
+A chain anchored on a SHA-1 signature will not validate, because no SHA-1
+backend is implemented yet. That is an absence rather than a refusal — an
+earlier version of this file called it "refused by design", which was
+wrong. `pkix-path` plans SHA-1 as a feature-gated, off-by-default
+verifier for old chains, since real deployments still carry them
+(RSA-PKCS1v15+SHA-1 from pre-2018 government PKI, federal bridge
+cross-certs, long-lived enterprise CAs). Verification only: nothing here
+signs with SHA-1 and nothing is intended to.
 
 **`mime-tree` is primarily useful as a JMAP body-structure provider.**
 For general-purpose MIME parsing, [`mail-parser`](https://crates.io/crates/mail-parser)
